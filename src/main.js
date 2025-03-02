@@ -24,10 +24,10 @@ window.useMemo = useMemo;
 window.html = htm.bind(h);
 
 window.PUBLIC_ENV = {
-  supabaseUrl: "https://rzmykjpcnmriyhnevune.supabase.co",
+  supabaseUrl: "https://lbayphzxmdtdmrqmeomt.supabase.co",
   supabaseKey:
-    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ6bXlranBjbm1yaXlobmV2dW5lIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDA2OTg2NjEsImV4cCI6MjA1NjI3NDY2MX0.nlS-vjJTRz5ot2eaDkkR6e6pa-gTNXMsg3xiEwCOGJ0",
-  turnstileSiteKey: "0x4AAAAAAA-9NQ4RRGfU8-HV",
+    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxiYXlwaHp4bWR0ZG1ycW1lb210Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDA5NTAyNTYsImV4cCI6MjA1NjUyNjI1Nn0.uSt7ll1Gy_TtbHxTyRtkyToZBIbW7ud18X45k5BdzKo",
+  turnstileSiteKey: "0x4AAAAAAA_Rl5VDA4u6EMKm",
 };
 
 // Render the App component

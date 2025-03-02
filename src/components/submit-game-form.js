@@ -163,7 +163,7 @@ export const SubmitGameForm = ({ isOpen, onClose }) => {
               required
             />
             <div class="text-sm text-gray-500 mt-2">
-              A unique identifier for your game that will be used in the URL (e.g. 1shot.live/#my-game)
+              A unique identifier for your game that will be used in the URL (e.g. submit-hunt/#my-game)
             </div>
           </div>
 
