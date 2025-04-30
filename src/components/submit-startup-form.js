@@ -92,32 +92,67 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
         );
       }
 
-      // Initialize Supabase client
-      const supabase = supabaseClient();
+      // Validate form data before submission
+      if (!formData.url) {
+        throw new Error("Please enter a valid URL");
+      }
+      if (!formData.projectName) {
+        throw new Error("Please enter a project name");
+      }
+      if (!formData.slug) {
+        throw new Error("Please enter a slug for your project");
+      }
 
-      // Submit to Supabase directly
-      const { data, error } = await supabase
-        .from('startups')
-        .insert([
-          {
-            title: formData.projectName,
-            url: formData.url,
-            description: formData.description,
-            slug: formData.slug,
-            author: {
-              name: formData.xProfile,
-              profile_url: `https://x.com/${formData.xProfile}`,
-              avatar: `https://unavatar.io/twitter/${formData.xProfile}`,
+      // Initialize Supabase client with better error handling
+      let supabase;
+      try {
+        supabase = supabaseClient();
+        console.log("Supabase client initialized successfully");
+      } catch (initError) {
+        console.error("Failed to initialize Supabase client:", initError);
+        throw new Error("Database connection failed. Please try again later.");
+      }
+
+      console.log("Submitting startup to Supabase:", {
+        title: formData.projectName,
+        url: formData.url,
+        slug: formData.slug
+      });
+
+      // Submit to Supabase with better error handling
+      try {
+        const { data, error } = await supabase
+          .from('startups')
+          .insert([
+            {
+              title: formData.projectName,
+              url: formData.url,
+              description: formData.description,
+              slug: formData.slug,
+              author: {
+                name: formData.xProfile,
+                profile_url: `https://x.com/${formData.xProfile}`,
+                avatar: `https://unavatar.io/twitter/${formData.xProfile}`,
+              },
             },
-          },
-        ])
-        .select()
-        .single();
+          ])
+          .select()
+          .single();
 
-      if (error) {
-        // Track submission error
-        trackEvent(ANALYTICS_EVENTS.FORM_SUBMIT, { success: false, error: error.message });
-        throw new Error(error.message || "Failed to submit startup");
+        if (error) {
+          console.error("Supabase insert error:", error);
+          // Track submission error
+          trackEvent(ANALYTICS_EVENTS.FORM_SUBMIT, { success: false, error: error.message });
+          throw new Error(error.message || "Failed to submit startup");
+        }
+        
+        console.log("Startup submitted successfully:", data);
+      } catch (dbError) {
+        console.error("Database operation failed:", dbError);
+        if (dbError.message.includes("fetch")) {
+          throw new Error("Network error: Could not connect to the database. Please check your internet connection and try again.");
+        }
+        throw dbError;
       }
 
       // Track successful submission

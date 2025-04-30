@@ -1,8 +1,33 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.38.4/+esm';
 
+/**
+ * Create and return a Supabase client instance with better error handling
+ * @returns {Object} Supabase client
+ */
 export const supabaseClient = () => {
-  const { supabaseUrl, supabaseKey } = window.PUBLIC_ENV;
-  return createClient(supabaseUrl, supabaseKey);
+  try {
+    // Get environment variables from window.PUBLIC_ENV
+    const { supabaseUrl, supabaseKey } = window.PUBLIC_ENV || {};
+    
+    // Validate URL and key
+    if (!supabaseUrl || !supabaseKey) {
+      console.error('Supabase URL or key is missing. Check your environment variables.');
+      throw new Error('Supabase configuration is incomplete');
+    }
+    
+    // Log connection attempt for debugging
+    console.log(`Connecting to Supabase at: ${supabaseUrl}`);
+    
+    // Create and return the client
+    return createClient(supabaseUrl, supabaseKey, {
+      auth: {
+        persistSession: false // Don't persist auth state for this simple app
+      }
+    });
+  } catch (error) {
+    console.error('Error initializing Supabase client:', error);
+    throw error;
+  }
 };
 
 // Initialize presence channel
