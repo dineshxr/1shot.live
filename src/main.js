@@ -1,5 +1,6 @@
 // @ts-nocheck
 
+// Import Preact and hooks directly from CDN
 import {
   h,
   render,
@@ -15,33 +16,29 @@ import htm from "https://unpkg.com/htm@3.1.1/dist/htm.module.js";
 // Import our root App component
 import { App } from "./components/app.js";
 
-// Initialize Vercel Analytics with simplified approach
-// Use a direct approach without imports to avoid potential issues
-
 // Initialize Vercel Analytics
+// Using direct implementation without imports to avoid module loading issues
 if (typeof window !== 'undefined') {
-  // Create a simple va function if it doesn't exist
+  // Create a fallback analytics function if Vercel Analytics is blocked
   if (!window.va) {
     window.va = function(command, params) {
       console.log(`Vercel Analytics (mock): ${command}`, params || '');
     };
   }
   
-  // Initialize and track page view
+  // Initialize analytics
   window.va('init');
   
-  // Track page view directly
-  if (window.va) {
-    try {
-      window.va('pageview');
-      console.log('Vercel Analytics: Pageview tracked');
-    } catch (error) {
-      console.error('Vercel Analytics error:', error);
-    }
+  // Track page view
+  try {
+    window.va('pageview');
+    console.log('Vercel Analytics: Pageview tracked');
+  } catch (error) {
+    console.error('Vercel Analytics error:', error);
   }
 }
 
-// Make these available globally for our components
+// Make Preact and hooks available globally for our components
 window.h = h;
 window.useState = useState;
 window.useEffect = useEffect;
@@ -49,6 +46,7 @@ window.useRef = useRef;
 window.useMemo = useMemo;
 window.html = htm.bind(h);
 
+// Public environment variables
 window.PUBLIC_ENV = {
   supabaseUrl: "https://lbayphzxmdtdmrqmeomt.supabase.co",
   supabaseKey:
