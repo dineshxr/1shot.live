@@ -1,4 +1,4 @@
-import { trackEvent, ANALYTICS_EVENTS } from '../lib/analytics.js';
+// Using global analytics functions defined in main.js instead of imports
 // Note: useEffect is already defined globally in main.js
 
 export const StartupModal = ({ startup, onClose }) => {

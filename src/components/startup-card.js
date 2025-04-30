@@ -1,5 +1,4 @@
-// Import analytics utilities
-import { trackEvent, ANALYTICS_EVENTS } from '../lib/analytics.js';
+// Using global analytics functions defined in main.js instead of imports
 
 export const StartupCard = ({ startup }) => {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
@@ -74,7 +73,7 @@ export const StartupCard = ({ startup }) => {
         await navigator.clipboard.writeText(url);
         
         // Track link copy event
-        trackEvent(ANALYTICS_EVENTS.LINK_CLICK, {
+        window.trackEvent(window.ANALYTICS_EVENTS.LINK_CLICK, {
           startupId: startup.id,
           startupName: startup.title,
           startupSlug: startup.slug
@@ -100,7 +99,7 @@ export const StartupCard = ({ startup }) => {
         target="_blank" 
         class="block" 
         onClick=${() => {
-          trackEvent(ANALYTICS_EVENTS.LINK_CLICK, {
+          window.trackEvent(window.ANALYTICS_EVENTS.LINK_CLICK, {
             startupId: startup.id,
             startupName: startup.title,
             startupUrl: startup.url

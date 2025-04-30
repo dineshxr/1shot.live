@@ -1,5 +1,5 @@
 import { supabaseClient } from '../lib/supabase-client.js';
-import { trackEvent, ANALYTICS_EVENTS } from '../lib/analytics.js';
+// Using global analytics functions defined in main.js instead of imports
 
 export const SubmitStartupForm = ({ isOpen, onClose }) => {
   const [formData, setFormData] = useState({
@@ -17,7 +17,7 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
     if (!isOpen) return;
     
     // Track form open event
-    trackEvent(ANALYTICS_EVENTS.FORM_OPEN);
+    window.trackEvent(window.ANALYTICS_EVENTS.FORM_OPEN);
     
     // Check if Turnstile script is already loaded
     const existingScript = document.querySelector('script[src="https://challenges.cloudflare.com/turnstile/v0/api.js"]');
@@ -83,7 +83,7 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
     setError(null);
     
     // Track form submission attempt
-    trackEvent(ANALYTICS_EVENTS.FORM_SUBMIT);
+    window.trackEvent(window.ANALYTICS_EVENTS.FORM_SUBMIT);
 
     try {
       if (!turnstileToken) {
@@ -142,7 +142,7 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
         if (error) {
           console.error("Supabase insert error:", error);
           // Track submission error
-          trackEvent(ANALYTICS_EVENTS.FORM_SUBMIT, { success: false, error: error.message });
+          window.trackEvent(window.ANALYTICS_EVENTS.FORM_SUBMIT, { success: false, error: error.message });
           throw new Error(error.message || "Failed to submit startup");
         }
         
@@ -156,7 +156,7 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
       }
 
       // Track successful submission
-      trackEvent(ANALYTICS_EVENTS.FORM_SUBMIT, { success: true });
+      window.trackEvent(window.ANALYTICS_EVENTS.FORM_SUBMIT, { success: true });
       
       // Reset form
       setFormData({ url: "", xProfile: "", projectName: "", description: "", slug: "" });
