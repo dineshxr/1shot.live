@@ -1,3 +1,5 @@
+import { trackEvent, ANALYTICS_EVENTS } from '../lib/analytics.js';
+
 export const GameCard = ({ game }) => {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
@@ -65,26 +67,45 @@ export const GameCard = ({ game }) => {
 
   const handleCopyLink = async (e) => {
     e.preventDefault();
-    e.stopPropagation();
-
-    try {
-      await navigator.clipboard.writeText(`https://submit-hunt.com/#${game.slug}`);
-      setTooltipText("Copied!");
-
-      // Reset tooltip after 2 seconds
-      setTimeout(() => {
-        setTooltipText(copyGameLinkLabel);
-      }, 2000);
-    } catch (err) {
-      console.error("Failed to copy:", err);
-    }
+    const copyGameLink = async () => {
+      try {
+        const url = `${window.location.origin}${window.location.pathname}#${game.slug}`;
+        await navigator.clipboard.writeText(url);
+        
+        // Track link copy event
+        trackEvent(ANALYTICS_EVENTS.STARTUP_LINK_COPY, {
+          startupId: game.id,
+          startupName: game.title,
+          startupSlug: game.slug
+        });
+        
+        setTooltipText("Link copied!");
+        setTimeout(() => {
+          setTooltipText(copyGameLinkLabel);
+        }, 2000);
+      } catch (err) {
+        console.error("Failed to copy:", err);
+      }
+    };
+    copyGameLink();
   };
 
   return html`
     <div
       class="game-card bg-white border-2 border-black overflow-hidden shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] transition-all duration-200 rounded"
     >
-      <a href=${game.url} target="_blank" class="block">
+      <a 
+        href=${game.url} 
+        target="_blank" 
+        class="block" 
+        onClick=${() => {
+          trackEvent(ANALYTICS_EVENTS.STARTUP_VIEW, {
+            startupId: game.id,
+            startupName: game.title,
+            startupUrl: game.url
+          });
+        }}
+      >
         <div class="relative">
           <img
             src=${getCurrentImage()}

@@ -1,4 +1,5 @@
 import { supabaseClient } from '../lib/supabase-client.js';
+import { trackEvent, ANALYTICS_EVENTS } from '../lib/analytics.js';
 
 export const SubmitGameForm = ({ isOpen, onClose }) => {
   const [formData, setFormData] = useState({
@@ -14,6 +15,9 @@ export const SubmitGameForm = ({ isOpen, onClose }) => {
 
   useEffect(() => {
     if (!isOpen) return;
+    
+    // Track form open event
+    trackEvent(ANALYTICS_EVENTS.SUBMIT_FORM_OPEN);
     
     // Load Turnstile script when component mounts
     const script = document.createElement("script");
@@ -63,6 +67,13 @@ export const SubmitGameForm = ({ isOpen, onClose }) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
+    
+    // Track form submission attempt
+    trackEvent(ANALYTICS_EVENTS.SUBMIT_FORM_SUBMIT, {
+      hasUrl: !!formData.url,
+      hasName: !!formData.projectName,
+      hasDescription: !!formData.description
+    });
 
     try {
       if (!turnstileToken) {
@@ -94,9 +105,19 @@ export const SubmitGameForm = ({ isOpen, onClose }) => {
         .single();
 
       if (error) {
+        // Track submission error
+        trackEvent(ANALYTICS_EVENTS.SUBMIT_FORM_ERROR, {
+          errorType: 'supabase_error',
+          errorMessage: error.message
+        });
         throw new Error(error.message || "Failed to submit startup");
       }
 
+      // Track successful submission
+      trackEvent(ANALYTICS_EVENTS.SUBMIT_FORM_SUCCESS, {
+        projectName: formData.projectName
+      });
+      
       // Reset form
       setFormData({ url: "", xProfile: "", projectName: "", description: "", slug: "" });
       setTurnstileToken(null);

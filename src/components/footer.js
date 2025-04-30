@@ -11,13 +11,6 @@ export const Footer = () => {
           </div>
           <div class="flex space-x-4">
             <a
-              href="https://github.com/submithunt/submit-hunt"
-              target="_blank"
-              class="text-black hover:text-blue-800 transition-colors"
-            >
-              <i class="fab fa-github text-xl"></i>
-            </a>
-            <a
               href="https://x.com/submithunt"
               target="_blank"
               class="text-black hover:text-blue-800 transition-colors"

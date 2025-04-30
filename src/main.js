@@ -15,6 +15,11 @@ import htm from "https://unpkg.com/htm@3.1.1/dist/htm.module.js";
 // Import our root App component
 import { App } from "./components/app.js";
 
+// Initialize Vercel Analytics
+if (typeof window !== 'undefined' && window.va) {
+  window.va('init');
+}
+
 // Make these available globally for our components
 window.h = h;
 window.useState = useState;
