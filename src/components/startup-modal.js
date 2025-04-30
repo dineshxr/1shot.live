@@ -1,4 +1,16 @@
+import { trackEvent, ANALYTICS_EVENTS } from '../lib/analytics.js';
+// Note: useEffect is already defined globally in main.js
+
 export const StartupModal = ({ startup, onClose }) => {
+  // Track modal view when opened
+  useEffect(() => {
+    trackEvent(ANALYTICS_EVENTS.LINK_CLICK, {
+      type: 'modal_view',
+      startupId: startup.id,
+      startupName: startup.title
+    });
+  }, []);
+
   return html`
     <div
       class="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50"

@@ -16,8 +16,7 @@ import htm from "https://unpkg.com/htm@3.1.1/dist/htm.module.js";
 import { App } from "./components/app.js";
 
 // Initialize Vercel Analytics with simplified approach
-// Use a relative import to avoid being blocked by ad blockers
-import { trackPageView } from './lib/analytics.js';
+// Use a direct approach without imports to avoid potential issues
 
 // Initialize Vercel Analytics
 if (typeof window !== 'undefined') {
@@ -30,7 +29,16 @@ if (typeof window !== 'undefined') {
   
   // Initialize and track page view
   window.va('init');
-  trackPageView();
+  
+  // Track page view directly
+  if (window.va) {
+    try {
+      window.va('pageview');
+      console.log('Vercel Analytics: Pageview tracked');
+    } catch (error) {
+      console.error('Vercel Analytics error:', error);
+    }
+  }
 }
 
 // Make these available globally for our components

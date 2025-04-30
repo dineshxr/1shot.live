@@ -1,3 +1,4 @@
+// Import analytics utilities
 import { trackEvent, ANALYTICS_EVENTS } from '../lib/analytics.js';
 
 export const StartupCard = ({ startup }) => {
@@ -73,7 +74,7 @@ export const StartupCard = ({ startup }) => {
         await navigator.clipboard.writeText(url);
         
         // Track link copy event
-        trackEvent(ANALYTICS_EVENTS.STARTUP_LINK_COPY, {
+        trackEvent(ANALYTICS_EVENTS.LINK_CLICK, {
           startupId: startup.id,
           startupName: startup.title,
           startupSlug: startup.slug
@@ -99,7 +100,7 @@ export const StartupCard = ({ startup }) => {
         target="_blank" 
         class="block" 
         onClick=${() => {
-          trackEvent(ANALYTICS_EVENTS.STARTUP_VIEW, {
+          trackEvent(ANALYTICS_EVENTS.LINK_CLICK, {
             startupId: startup.id,
             startupName: startup.title,
             startupUrl: startup.url

@@ -23,11 +23,13 @@ export const trackPageView = () => {
 export const trackEvent = (eventName, props = {}) => {
   if (typeof window !== 'undefined' && window.va) {
     try {
-      window.va('event', { name: eventName });
-      console.log(`Vercel Analytics: Event tracked - ${eventName}`);
+      window.va('event', { name: eventName, props });
+      console.log(`Vercel Analytics: Event tracked - ${eventName}`, props);
     } catch (error) {
       console.error('Vercel Analytics error:', error);
     }
+  } else {
+    console.log(`Vercel Analytics (mock): Event tracked - ${eventName}`, props);
   }
 };
 
@@ -37,5 +39,12 @@ export const trackEvent = (eventName, props = {}) => {
 export const ANALYTICS_EVENTS = {
   FORM_OPEN: 'form_open',
   FORM_SUBMIT: 'form_submit',
-  LINK_CLICK: 'link_click'
+  LINK_CLICK: 'link_click',
+};
+
+// Export a default object for ESM compatibility
+export default {
+  trackPageView,
+  trackEvent,
+  ANALYTICS_EVENTS
 };

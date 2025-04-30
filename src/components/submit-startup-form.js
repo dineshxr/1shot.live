@@ -116,12 +116,12 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
 
       if (error) {
         // Track submission error
-        trackEvent(ANALYTICS_EVENTS.FORM_SUBMIT);
+        trackEvent(ANALYTICS_EVENTS.FORM_SUBMIT, { success: false, error: error.message });
         throw new Error(error.message || "Failed to submit startup");
       }
 
       // Track successful submission
-      trackEvent(ANALYTICS_EVENTS.FORM_SUBMIT);
+      trackEvent(ANALYTICS_EVENTS.FORM_SUBMIT, { success: true });
       
       // Reset form
       setFormData({ url: "", xProfile: "", projectName: "", description: "", slug: "" });
