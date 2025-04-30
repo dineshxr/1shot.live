@@ -15,9 +15,21 @@ import htm from "https://unpkg.com/htm@3.1.1/dist/htm.module.js";
 // Import our root App component
 import { App } from "./components/app.js";
 
+// Initialize Vercel Analytics with simplified approach
+import { trackPageView } from './lib/analytics.js';
+
 // Initialize Vercel Analytics
-if (typeof window !== 'undefined' && window.va) {
+if (typeof window !== 'undefined') {
+  // Create a simple va function if it doesn't exist
+  if (!window.va) {
+    window.va = function(command, params) {
+      console.log(`Vercel Analytics (mock): ${command}`, params || '');
+    };
+  }
+  
+  // Initialize and track page view
   window.va('init');
+  trackPageView();
 }
 
 // Make these available globally for our components

@@ -1,17 +1,33 @@
-// Vercel Analytics utility functions
+// Simple Vercel Analytics utility functions
 
 /**
- * Track a custom event with Vercel Analytics
+ * Track a page view with Vercel Analytics
+ */
+export const trackPageView = () => {
+  if (typeof window !== 'undefined' && window.va) {
+    try {
+      window.va('pageview');
+      console.log('Vercel Analytics: Pageview tracked');
+    } catch (error) {
+      console.error('Vercel Analytics error:', error);
+    }
+  }
+};
+
+/**
+ * Track a custom event with Vercel Analytics (simplified version)
  * 
  * @param {string} eventName - Name of the event to track
  * @param {Object} [props] - Optional properties to include with the event
  */
 export const trackEvent = (eventName, props = {}) => {
   if (typeof window !== 'undefined' && window.va) {
-    window.va('event', {
-      name: eventName,
-      ...props
-    });
+    try {
+      window.va('event', { name: eventName });
+      console.log(`Vercel Analytics: Event tracked - ${eventName}`);
+    } catch (error) {
+      console.error('Vercel Analytics error:', error);
+    }
   }
 };
 
@@ -19,12 +35,7 @@ export const trackEvent = (eventName, props = {}) => {
  * Analytics event names used throughout the application
  */
 export const ANALYTICS_EVENTS = {
-  SUBMIT_FORM_OPEN: 'submit_form_open',
-  SUBMIT_FORM_SUBMIT: 'submit_form_submit',
-  SUBMIT_FORM_SUCCESS: 'submit_form_success',
-  SUBMIT_FORM_ERROR: 'submit_form_error',
-  STARTUP_VIEW: 'startup_view',
-  STARTUP_LINK_COPY: 'startup_link_copy',
-  SEARCH: 'search',
-  EXTERNAL_LINK_CLICK: 'external_link_click'
+  FORM_OPEN: 'form_open',
+  FORM_SUBMIT: 'form_submit',
+  LINK_CLICK: 'link_click'
 };

@@ -17,7 +17,7 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
     if (!isOpen) return;
     
     // Track form open event
-    trackEvent(ANALYTICS_EVENTS.SUBMIT_FORM_OPEN);
+    trackEvent(ANALYTICS_EVENTS.FORM_OPEN);
     
     // Check if Turnstile script is already loaded
     const existingScript = document.querySelector('script[src="https://challenges.cloudflare.com/turnstile/v0/api.js"]');
@@ -83,11 +83,7 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
     setError(null);
     
     // Track form submission attempt
-    trackEvent(ANALYTICS_EVENTS.SUBMIT_FORM_SUBMIT, {
-      hasUrl: !!formData.url,
-      hasName: !!formData.projectName,
-      hasDescription: !!formData.description
-    });
+    trackEvent(ANALYTICS_EVENTS.FORM_SUBMIT);
 
     try {
       if (!turnstileToken) {
@@ -120,17 +116,12 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
 
       if (error) {
         // Track submission error
-        trackEvent(ANALYTICS_EVENTS.SUBMIT_FORM_ERROR, {
-          errorType: 'supabase_error',
-          errorMessage: error.message
-        });
+        trackEvent(ANALYTICS_EVENTS.FORM_SUBMIT);
         throw new Error(error.message || "Failed to submit startup");
       }
 
       // Track successful submission
-      trackEvent(ANALYTICS_EVENTS.SUBMIT_FORM_SUCCESS, {
-        projectName: formData.projectName
-      });
+      trackEvent(ANALYTICS_EVENTS.FORM_SUBMIT);
       
       // Reset form
       setFormData({ url: "", xProfile: "", projectName: "", description: "", slug: "" });
