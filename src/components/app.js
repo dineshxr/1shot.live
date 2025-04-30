@@ -1,7 +1,7 @@
 import { Header } from "./header.js";
 import { Content } from "./content.js";
 import { Footer } from "./footer.js";
-import { SubmitGameForm } from "./submit-game-form.js";
+import { SubmitStartupForm } from "./submit-startup-form.js";
 
 export const App = () => {
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -10,7 +10,7 @@ export const App = () => {
   const closeForm = () => setIsFormOpen(false);
 
   useEffect(() => {
-    const submitButton = document.getElementById("submit-game-btn");
+    const submitButton = document.getElementById("submit-startup-btn");
     submitButton?.addEventListener("click", openForm);
     
     // Add listener for custom event from the new CTA button
@@ -27,7 +27,7 @@ export const App = () => {
       <${Header} />
       <${Content} />
       <${Footer} />
-      <${SubmitGameForm} isOpen=${isFormOpen} onClose=${closeForm} />
+      <${SubmitStartupForm} isOpen=${isFormOpen} onClose=${closeForm} />
     </div>
   `;
 };

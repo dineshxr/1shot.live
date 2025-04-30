@@ -1,35 +1,35 @@
 import { supabaseClient } from "../lib/supabase-client.js";
 import { placeholderProjects } from "../lib/placeholder-data.js";
-import { GameCard } from "./game-card.js";
-import { GameModal } from "./game-modal.js";
+import { StartupCard } from "./startup-card.js";
+import { StartupModal } from "./startup-modal.js";
 
 // These are already defined globally in main.js
 // Using the global variables directly
 
 export const Content = () => {
-  const [games, setGames] = useState([]);
+  const [startups, setStartups] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [selectedGame, setSelectedGame] = useState(null);
+  const [selectedStartup, setSelectedStartup] = useState(null);
 
-  const fetchGames = async () => {
+  const fetchStartups = async () => {
     try {
       // Try to fetch from Supabase first
       try {
         const supabase = supabaseClient();
         const { data, error } = await supabase
-          .from("games")
+          .from("startups")
           .select("*")
           .order("created_at", { ascending: false });
 
         if (!error && data && data.length > 0) {
-          setGames(data);
+          setStartups(data);
           
           // Check for hash in URL
           const hash = window.location.hash.slice(1); // Remove the # symbol
           if (hash) {
-            const game = data.find((g) => g.slug === hash);
-            if (game) setSelectedGame(game);
+            const startup = data.find((g) => g.slug === hash);
+            if (startup) setSelectedStartup(startup);
           }
           return;
         }
@@ -38,13 +38,13 @@ export const Content = () => {
       }
       
       // If Supabase fetch fails or returns no data, use placeholder data
-      setGames(placeholderProjects);
+      setStartups(placeholderProjects);
       
       // Check for hash in URL with placeholder data
       const hash = window.location.hash.slice(1);
       if (hash) {
-        const game = placeholderProjects.find((g) => g.slug === hash);
-        if (game) setSelectedGame(game);
+        const startup = placeholderProjects.find((g) => g.slug === hash);
+        if (startup) setSelectedStartup(startup);
       }
     } catch (err) {
       setError(err.message);
@@ -54,31 +54,31 @@ export const Content = () => {
   };
 
   useEffect(() => {
-    fetchGames();
+    fetchStartups();
 
     // Listen for refresh requests
-    window.addEventListener("refresh-games", fetchGames);
+    window.addEventListener("refresh-startups", fetchStartups);
 
     // Listen for hash changes
     const handleHashChange = () => {
       const hash = window.location.hash.slice(1);
       if (hash) {
-        const game = games.find((g) => g.slug === hash);
-        if (game) setSelectedGame(game);
+        const startup = startups.find((s) => s.slug === hash);
+        if (startup) setSelectedStartup(startup);
       } else {
-        setSelectedGame(null);
+        setSelectedStartup(null);
       }
     };
     window.addEventListener("hashchange", handleHashChange);
 
     return () => {
-      window.removeEventListener("refresh-games", fetchGames);
+      window.removeEventListener("refresh-startups", fetchStartups);
       window.removeEventListener("hashchange", handleHashChange);
     };
   }, []);
 
   const closeModal = () => {
-    setSelectedGame(null);
+    setSelectedStartup(null);
     // Remove hash from URL without triggering hashchange
     history.pushState(
       "",
@@ -130,8 +130,8 @@ export const Content = () => {
           <p class="text-gray-600 mb-8">Discover the latest innovations in technology, AI, and more. Each project has been carefully selected for its unique approach and potential impact.</p>
           
           <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 mb-12">
-            ${games.map(
-              (game) => html`<${GameCard} key=${game.id} game=${game} />`
+            ${startups.map(
+              (startup) => html`<${StartupCard} key=${startup.id} startup=${startup} />`
             )}
           </div>
           
@@ -147,8 +147,8 @@ export const Content = () => {
           </div>
         </section>
       `}
-      ${selectedGame &&
-      html`<${GameModal} game=${selectedGame} onClose=${closeModal} />`}
+      ${selectedStartup &&
+      html`<${StartupModal} startup=${selectedStartup} onClose=${closeModal} />`}
     </main>
   `;
 };

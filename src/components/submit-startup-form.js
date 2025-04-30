@@ -1,7 +1,7 @@
 import { supabaseClient } from '../lib/supabase-client.js';
 import { trackEvent, ANALYTICS_EVENTS } from '../lib/analytics.js';
 
-export const SubmitGameForm = ({ isOpen, onClose }) => {
+export const SubmitStartupForm = ({ isOpen, onClose }) => {
   const [formData, setFormData] = useState({
     url: "",
     xProfile: "",
@@ -101,7 +101,7 @@ export const SubmitGameForm = ({ isOpen, onClose }) => {
 
       // Submit to Supabase directly
       const { data, error } = await supabase
-        .from('games')
+        .from('startups')
         .insert([
           {
             title: formData.projectName,
@@ -141,8 +141,8 @@ export const SubmitGameForm = ({ isOpen, onClose }) => {
       }
       onClose();
       
-      // Trigger refresh of games list
-      window.dispatchEvent(new Event("refresh-games"));
+      // Trigger refresh of startups list
+      window.dispatchEvent(new Event("refresh-startups"));
     } catch (err) {
       setError(err.message);
     } finally {
@@ -171,7 +171,7 @@ export const SubmitGameForm = ({ isOpen, onClose }) => {
           <i class="fas fa-times text-xl"></i>
         </button>
 
-        <h2 class="text-2xl font-bold mb-2 text-black">Submit Your Project</h2>
+        <h2 class="text-2xl font-bold mb-2 text-black">Submit Your Startup</h2>
         <div class="mb-4 bg-yellow-300 p-3 border border-black rounded">
           <p class="font-bold flex items-center">
             <span class="mr-2">🚀</span> Launch Today, Get a 36+ DR Backlink
@@ -188,13 +188,13 @@ export const SubmitGameForm = ({ isOpen, onClose }) => {
         <form onSubmit=${handleSubmit}>
           <div class="mb-4">
             <label class="block text-black font-bold mb-2" for="projectName">
-              Project Name
+              Startup Name
             </label>
             <input
               type="text"
               id="projectName"
               name="projectName"
-              placeholder="My Awesome Project"
+              placeholder="My Awesome Startup"
               value=${formData.projectName}
               onChange=${handleChange}
               class="w-full px-3 py-2 border-2 border-black focus:outline-none focus:ring-2 focus:ring-blue-400"
@@ -213,7 +213,7 @@ export const SubmitGameForm = ({ isOpen, onClose }) => {
               value=${formData.url}
               onChange=${handleChange}
               class="w-full px-3 py-2 border-2 border-black focus:outline-none focus:ring-2 focus:ring-blue-400"
-              placeholder="https://myproject.com"
+              placeholder="https://mystartup.com"
               required
             />
           </div>
@@ -229,11 +229,11 @@ export const SubmitGameForm = ({ isOpen, onClose }) => {
               value=${formData.slug}
               onChange=${handleChange}
               class="w-full px-3 py-2 border-2 border-black focus:outline-none focus:ring-2 focus:ring-blue-400"
-              placeholder="my-awesome-project"
+              placeholder="my-awesome-startup"
               required
             />
             <div class="text-sm text-gray-500 mt-2">
-              A unique identifier for your project that will be used in the URL (e.g. submit-hunt/#my-project)
+              A unique identifier for your startup that will be used in the URL (e.g. submit-startup/#my-startup)
             </div>
           </div>
 
