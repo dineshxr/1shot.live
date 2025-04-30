@@ -4,21 +4,21 @@ export const Footer = () => {
       <div class="container max-w-6xl mx-auto px-4">
         <div class="flex flex-col md:flex-row justify-between items-center">
           <div class="mb-4 md:mb-0">
-            <h2 class="text-xl font-bold">1shot.live</h2>
+            <h2 class="text-xl font-bold">Submit Hunt</h2>
             <p class="text-black mt-1 font-medium">
-              A directory of AI-built games
+              A directory for Startups and AI projects
             </p>
           </div>
           <div class="flex space-x-4">
             <a
-              href="https://github.com/wzulfikar/1shot.live"
+              href="https://github.com/submithunt/submit-hunt"
               target="_blank"
               class="text-black hover:text-blue-800 transition-colors"
             >
               <i class="fab fa-github text-xl"></i>
             </a>
             <a
-              href="https://x.com/wzulfikar"
+              href="https://x.com/submithunt"
               target="_blank"
               class="text-black hover:text-blue-800 transition-colors"
             >
@@ -29,7 +29,7 @@ export const Footer = () => {
         <div
           class="mt-6 text-center text-black font-medium border-t-2 border-black pt-4"
         >
-          ${new Date().getFullYear()} · 💥 1shot.live · All rights reserved
+          ${new Date().getFullYear()} · 💥 Submit Hunt · All rights reserved
         </div>
       </div>
     </footer>

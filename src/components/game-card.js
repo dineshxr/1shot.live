@@ -1,7 +1,7 @@
 export const GameCard = ({ game }) => {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
-  const copyGameLinkLabel = `Copy game link: 1shot.live/#${game.slug}`;
+  const copyGameLinkLabel = `Copy project link: Submit Hunt/#${game.slug}`;
   const [tooltipText, setTooltipText] = useState(copyGameLinkLabel);
 
   const handleImageError = (e) => {
@@ -57,7 +57,7 @@ export const GameCard = ({ game }) => {
       return game.image;
     }
     // Fallback
-    return "https://via.placeholder.com/400x225?text=Game+Image";
+    return "https://via.placeholder.com/400x225?text=Startup+Image";
   };
 
   // Check if we should show navigation arrows
@@ -68,7 +68,7 @@ export const GameCard = ({ game }) => {
     e.stopPropagation();
 
     try {
-      await navigator.clipboard.writeText(`https://1shot.live/#${game.slug}`);
+      await navigator.clipboard.writeText(`https://submit-hunt.com/#${game.slug}`);
       setTooltipText("Copied!");
 
       // Reset tooltip after 2 seconds
@@ -158,7 +158,7 @@ export const GameCard = ({ game }) => {
               <button
                 onClick=${handleCopyLink}
                 class="group relative p-1 hover:bg-gray-100 rounded"
-                aria-label="Copy game link"
+                aria-label="Copy startup link"
               >
                 <i class="fas fa-link text-sm"></i>
                 <div

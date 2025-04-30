@@ -1,6 +1,10 @@
 import { supabaseClient } from "../lib/supabase-client.js";
+import { placeholderProjects } from "../lib/placeholder-data.js";
 import { GameCard } from "./game-card.js";
 import { GameModal } from "./game-modal.js";
+
+// These are already defined globally in main.js
+// Using the global variables directly
 
 export const Content = () => {
   const [games, setGames] = useState([]);
@@ -10,20 +14,36 @@ export const Content = () => {
 
   const fetchGames = async () => {
     try {
-      const supabase = supabaseClient();
-      const { data, error } = await supabase
-        .from("games")
-        .select("*")
-        .order("created_at", { ascending: false });
+      // Try to fetch from Supabase first
+      try {
+        const supabase = supabaseClient();
+        const { data, error } = await supabase
+          .from("games")
+          .select("*")
+          .order("created_at", { ascending: false });
 
-      if (error) throw error;
-
-      setGames(data);
-
-      // Check for hash in URL
-      const hash = window.location.hash.slice(1); // Remove the # symbol
+        if (!error && data && data.length > 0) {
+          setGames(data);
+          
+          // Check for hash in URL
+          const hash = window.location.hash.slice(1); // Remove the # symbol
+          if (hash) {
+            const game = data.find((g) => g.slug === hash);
+            if (game) setSelectedGame(game);
+          }
+          return;
+        }
+      } catch (supabaseErr) {
+        console.log("Supabase fetch failed, using placeholder data", supabaseErr);
+      }
+      
+      // If Supabase fetch fails or returns no data, use placeholder data
+      setGames(placeholderProjects);
+      
+      // Check for hash in URL with placeholder data
+      const hash = window.location.hash.slice(1);
       if (hash) {
-        const game = data.find((g) => g.slug === hash);
+        const game = placeholderProjects.find((g) => g.slug === hash);
         if (game) setSelectedGame(game);
       }
     } catch (err) {
@@ -68,15 +88,22 @@ export const Content = () => {
   };
 
   return html`
-    <main class="container max-w-6xl mx-auto px-4 pt-8">
-      <div
-        class="mb-8 bg-white border-2 border-black p-4 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] rounded"
-      >
-        <h2 class="text-2xl font-bold text-black">Recently Added</h2>
-        <p class="text-black font-medium">
-          Explore our curation of AI-built games
+    <main class="container mx-auto px-4 py-8">
+      <section class="text-center mb-12">
+        <h1 class="text-4xl font-bold mb-4">Discover the Best New Startups and AI Projects</h1>
+        <p class="text-xl text-gray-600 max-w-3xl mx-auto">
+          Explore our curated collection of innovative startups and AI projects that are redefining industries and pushing technological boundaries
         </p>
-      </div>
+        <div class="mt-6 flex justify-center">
+          <a 
+            href="#" 
+            onclick="window.dispatchEvent(new CustomEvent('open-submit-form')); return false;"
+            class="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-black hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-black transition duration-150"
+          >
+            <span class="mr-2">🚀</span> Submit Your Startup
+          </a>
+        </div>
+      </section>
 
       ${loading &&
       html`
@@ -86,7 +113,7 @@ export const Content = () => {
           <div
             class="animate-spin rounded-full h-12 w-12 border-4 border-black border-t-transparent"
           ></div>
-          <span>Fetching games data</span>
+          <span>Fetching startups data</span>
         </div>
       `}
       ${error &&
@@ -98,11 +125,27 @@ export const Content = () => {
       ${!loading &&
       !error &&
       html`
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 mb-12">
-          ${games.map(
-            (game) => html`<${GameCard} key=${game.id} game=${game} />`
-          )}
-        </div>
+        <section aria-labelledby="startups-heading" class="mt-8 mb-12">
+          <h2 id="startups-heading" class="text-2xl font-bold mb-6 border-b-2 border-black pb-2">Featured Startups & Projects</h2>
+          <p class="text-gray-600 mb-8">Discover the latest innovations in technology, AI, and more. Each project has been carefully selected for its unique approach and potential impact.</p>
+          
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 mb-12">
+            ${games.map(
+              (game) => html`<${GameCard} key=${game.id} game=${game} />`
+            )}
+          </div>
+          
+          <div class="bg-gray-50 border border-gray-200 rounded-lg p-6 mt-8">
+            <h3 class="text-xl font-semibold mb-3">Are you building something amazing?</h3>
+            <p class="mb-4">Submit your startup or project to get featured on Submit Hunt and receive a valuable 36+ DR backlink.</p>
+            <button 
+              onclick="window.dispatchEvent(new CustomEvent('open-submit-form')); return false;"
+              class="px-5 py-2 bg-black text-white rounded-md hover:bg-gray-800 transition duration-150"
+            >
+              Submit Your Project
+            </button>
+          </div>
+        </section>
       `}
       ${selectedGame &&
       html`<${GameModal} game=${selectedGame} onClose=${closeModal} />`}

@@ -1,8 +1,10 @@
+import { supabaseClient } from '../lib/supabase-client.js';
+
 export const SubmitGameForm = ({ isOpen, onClose }) => {
   const [formData, setFormData] = useState({
     url: "",
     xProfile: "",
-    gameName: "",
+    projectName: "",
     description: "",
     slug: "",
   });
@@ -11,28 +13,44 @@ export const SubmitGameForm = ({ isOpen, onClose }) => {
   const [turnstileToken, setTurnstileToken] = useState(null);
 
   useEffect(() => {
+    if (!isOpen) return;
+    
     // Load Turnstile script when component mounts
     const script = document.createElement("script");
-    script.src =
-      "https://challenges.cloudflare.com/turnstile/v0/api.js?onload=onTurnstileLoad";
+    script.src = "https://challenges.cloudflare.com/turnstile/v0/api.js";
     script.async = true;
-
-    // Define the callback function that Turnstile will call
-    window.onTurnstileLoad = () => {
-      window.turnstile.render(".cf-turnstile", {
-        sitekey: PUBLIC_ENV.turnstileSiteKey,
-        theme: "light",
-        callback: function (token) {
-          setTurnstileToken(token);
-        },
-      });
+    
+    // Function to render Turnstile when script is loaded
+    const renderTurnstile = () => {
+      if (window.turnstile) {
+        window.turnstile.render(".cf-turnstile", {
+          sitekey: window.PUBLIC_ENV.turnstileSiteKey,
+          theme: "light",
+          callback: function (token) {
+            setTurnstileToken(token);
+          },
+        });
+      }
     };
-
+    
+    // Set up event listener for script load
+    script.onload = renderTurnstile;
+    
     document.body.appendChild(script);
-
+    
+    // Try to render immediately in case script is already loaded
+    setTimeout(renderTurnstile, 1000);
+    
     return () => {
-      document.body.removeChild(script);
-      delete window.onTurnstileLoad;
+      // Clean up
+      if (script.parentNode) {
+        document.body.removeChild(script);
+      }
+      
+      // Reset Turnstile if it exists
+      if (window.turnstile) {
+        window.turnstile.reset();
+      }
     };
   }, [isOpen]); // Re-run when modal opens
 
@@ -53,31 +71,39 @@ export const SubmitGameForm = ({ isOpen, onClose }) => {
         );
       }
 
-      // Submit to Edge Function
-      const response = await fetch(
-        `${PUBLIC_ENV.supabaseUrl}/functions/v1/submit-game`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            ...formData,
-            turnstileToken,
-          }),
-        }
-      );
+      // Initialize Supabase client
+      const supabase = supabaseClient();
 
-      const data = await response.json();
-      if (!data.success) {
-        throw new Error(data.error || "Failed to submit game");
+      // Submit to Supabase directly
+      const { data, error } = await supabase
+        .from('games')
+        .insert([
+          {
+            title: formData.projectName,
+            url: formData.url,
+            description: formData.description,
+            slug: formData.slug,
+            author: {
+              name: formData.xProfile,
+              profile_url: `https://x.com/${formData.xProfile}`,
+              avatar: `https://unavatar.io/twitter/${formData.xProfile}`,
+            },
+          },
+        ])
+        .select()
+        .single();
+
+      if (error) {
+        throw new Error(error.message || "Failed to submit startup");
       }
 
       // Reset form
-      setFormData({ url: "", xProfile: "", gameName: "", description: "", slug: "" });
+      setFormData({ url: "", xProfile: "", projectName: "", description: "", slug: "" });
       setTurnstileToken(null);
       // Reset the widget
-      window.turnstile.reset();
+      if (window.turnstile) {
+        window.turnstile.reset();
+      }
       onClose();
       
       // Trigger refresh of games list
@@ -106,7 +132,12 @@ export const SubmitGameForm = ({ isOpen, onClose }) => {
           <i class="fas fa-times text-xl"></i>
         </button>
 
-        <h2 class="text-2xl font-bold mb-4 text-black">Submit Your Game</h2>
+        <h2 class="text-2xl font-bold mb-2 text-black">Submit Your Project</h2>
+        <div class="mb-4 bg-yellow-300 p-3 border border-black rounded">
+          <p class="font-bold flex items-center">
+            <span class="mr-2">🚀</span> Launch Today, Get a 36+ DR Backlink
+          </p>
+        </div>
 
         ${error &&
         html`
@@ -117,15 +148,15 @@ export const SubmitGameForm = ({ isOpen, onClose }) => {
 
         <form onSubmit=${handleSubmit}>
           <div class="mb-4">
-            <label class="block text-black font-bold mb-2" for="gameName">
-              Game Name
+            <label class="block text-black font-bold mb-2" for="projectName">
+              Project Name
             </label>
             <input
               type="text"
-              id="gameName"
-              name="gameName"
-              placeholder="My Awesome Game"
-              value=${formData.gameName}
+              id="projectName"
+              name="projectName"
+              placeholder="My Awesome Project"
+              value=${formData.projectName}
               onChange=${handleChange}
               class="w-full px-3 py-2 border-2 border-black focus:outline-none focus:ring-2 focus:ring-blue-400"
               required
@@ -134,7 +165,7 @@ export const SubmitGameForm = ({ isOpen, onClose }) => {
 
           <div class="mb-4">
             <label class="block text-black font-bold mb-2" for="url">
-              Game URL
+              Startup URL
             </label>
             <input
               type="url"
@@ -143,7 +174,7 @@ export const SubmitGameForm = ({ isOpen, onClose }) => {
               value=${formData.url}
               onChange=${handleChange}
               class="w-full px-3 py-2 border-2 border-black focus:outline-none focus:ring-2 focus:ring-blue-400"
-              placeholder="https://mygame.com"
+              placeholder="https://myproject.com"
               required
             />
           </div>
@@ -159,11 +190,11 @@ export const SubmitGameForm = ({ isOpen, onClose }) => {
               value=${formData.slug}
               onChange=${handleChange}
               class="w-full px-3 py-2 border-2 border-black focus:outline-none focus:ring-2 focus:ring-blue-400"
-              placeholder="my-awesome-game"
+              placeholder="my-awesome-project"
               required
             />
             <div class="text-sm text-gray-500 mt-2">
-              A unique identifier for your game that will be used in the URL (e.g. submit-hunt/#my-game)
+              A unique identifier for your project that will be used in the URL (e.g. submit-hunt/#my-project)
             </div>
           </div>
 
@@ -178,7 +209,7 @@ export const SubmitGameForm = ({ isOpen, onClose }) => {
               value=${formData.description}
               onChange=${handleChange}
               class="w-full px-3 py-2 border-2 border-black focus:outline-none focus:ring-2 focus:ring-blue-400"
-              placeholder="A short description of the game"
+              placeholder="A short description of the startup"
             />
           </div>
 
@@ -197,16 +228,14 @@ export const SubmitGameForm = ({ isOpen, onClose }) => {
               required
             />
             <div class="text-sm text-gray-500 mt-2">
-              We need your X username so we know the creator of the game. If you
-              don't use X and want to add your game, please open a PR in Github.
+              We need your X username so we know the creator of the startup. If you
+              don't use X and want to add your startup, please open a PR in Github.
             </div>
           </div>
 
           <div class="mb-6">
             <div
               class="cf-turnstile"
-              data-sitekey="${PUBLIC_ENV.turnstileSiteKey}"
-              data-theme="light"
             ></div>
           </div>
 

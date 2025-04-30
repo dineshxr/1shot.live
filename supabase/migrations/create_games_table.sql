@@ -2,12 +2,13 @@
 create table if not exists public.games (
     id uuid default gen_random_uuid() primary key,
     created_at timestamp with time zone default timezone('utc'::text, now()) not null,
-    url text not null,
-    x_profile text not null,
-    game_name text not null,
+    url text not null unique,
+    title text not null,
     description text,
     slug text not null unique,
-    views integer default 0
+    views integer default 0,
+    images jsonb default '[]'::jsonb,
+    author jsonb not null
 );
 
 -- Enable Row Level Security (RLS)

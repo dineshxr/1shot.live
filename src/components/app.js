@@ -12,9 +12,13 @@ export const App = () => {
   useEffect(() => {
     const submitButton = document.getElementById("submit-game-btn");
     submitButton?.addEventListener("click", openForm);
+    
+    // Add listener for custom event from the new CTA button
+    window.addEventListener("open-submit-form", openForm);
 
     return () => {
       submitButton?.removeEventListener("click", openForm);
+      window.removeEventListener("open-submit-form", openForm);
     };
   }, []);
 

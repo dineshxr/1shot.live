@@ -1,12 +1,14 @@
+import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.38.4/+esm';
+
 export const supabaseClient = () => {
   const { supabaseUrl, supabaseKey } = window.PUBLIC_ENV;
-  return window.supabase.createClient(supabaseUrl, supabaseKey);
+  return createClient(supabaseUrl, supabaseKey);
 };
 
 // Initialize presence channel
 export const initPresence = async ({ sessionId, countryFlag, countryName }) => {
   const { supabaseUrl, supabaseKey } = window.PUBLIC_ENV;
-  const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+  const supabase = createClient(supabaseUrl, supabaseKey);
   const _ = await supabase.auth.getSession();
 
   // For this implementation, we'll create a public channel that doesn't require authentication

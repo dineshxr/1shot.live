@@ -3,24 +3,69 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Submit Hunt - AI-Built Games Directory</title>
-    <meta name="description" content="A directory of games built with AI" />
+    
+    <!-- Primary Meta Tags -->
+    <title>Submit Hunt - The best new startups and AI projects</title>
+    <meta name="title" content="Submit Hunt - The best new startups and AI projects" />
+    <meta name="description" content="Discover and launch the most innovative startups and AI projects. Get featured and receive a 36+ DR backlink for your project." />
+    <meta name="keywords" content="startups, AI projects, product launch, startup directory, tech startups, side projects, indie hackers" />
+    <meta name="author" content="Submit Hunt" />
+    
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://submit-hunt.com/" />
+    <meta property="og:title" content="Submit Hunt - The best new startups and AI projects" />
+    <meta property="og:description" content="Discover and launch the most innovative startups and AI projects. Get featured and receive a 36+ DR backlink for your project." />
+    <meta property="og:image" content="https://submit-hunt.com/og-image.png" />
+    
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary_large_image" />
+    <meta property="twitter:url" content="https://submit-hunt.com/" />
+    <meta property="twitter:title" content="Submit Hunt - The best new startups and AI projects" />
+    <meta property="twitter:description" content="Discover and launch the most innovative startups and AI projects. Get featured and receive a 36+ DR backlink for your project." />
+    <meta property="twitter:image" content="https://submit-hunt.com/og-image.png" />
+    
+    <!-- Canonical URL -->
+    <link rel="canonical" href="https://submit-hunt.com/" />
+    
+    <!-- Favicon -->
+    <link
+      rel="icon"
+      href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>💥</text></svg>"
+    />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+    
+    <!-- Stylesheets -->
     <script src="https://cdn.tailwindcss.com"></script>
     <link
       rel="stylesheet"
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
     />
+    <link rel="stylesheet" href="src/style.css" />
+    
     <!-- Preact CDN -->
     <script src="https://unpkg.com/preact@10.13.1/dist/preact.min.js"></script>
     <script src="https://unpkg.com/preact@10.13.1/hooks/dist/hooks.umd.js"></script>
     <script src="https://unpkg.com/htm@3.1.1/dist/htm.js"></script>
+    
     <!-- Supabase CDN -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.38.4/dist/umd/supabase.min.js"></script>
-    <link rel="stylesheet" href="src/style.css" />
-    <link
-      rel="icon"
-      href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>💥</text></svg>"
-    />
+    
+    <!-- Structured Data / JSON-LD -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebSite",
+      "name": "Submit Hunt",
+      "url": "https://submit-hunt.com",
+      "description": "Discover and launch the most innovative startups and AI projects",
+      "potentialAction": {
+        "@type": "SearchAction",
+        "target": "https://submit-hunt.com/search?q={search_term_string}",
+        "query-input": "required name=search_term_string"
+      }
+    }
+    </script>
   </head>
   <body>
     <div id="app-root"></div>
