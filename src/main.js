@@ -16,6 +16,7 @@ import htm from "https://unpkg.com/htm@3.1.1/dist/htm.module.js";
 import { App } from "./components/app.js";
 
 // Initialize Vercel Analytics with simplified approach
+// Use a relative import to avoid being blocked by ad blockers
 import { trackPageView } from './lib/analytics.js';
 
 // Initialize Vercel Analytics
