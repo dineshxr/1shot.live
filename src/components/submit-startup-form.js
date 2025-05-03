@@ -1,4 +1,5 @@
 import { supabaseClient } from '../lib/supabase-client.js';
+import { captureScreenshot, uploadScreenshot } from '../lib/screenshot-service.js';
 // Using global analytics functions defined in main.js instead of imports
 
 export const SubmitStartupForm = ({ isOpen, onClose }) => {
@@ -72,9 +73,36 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
     };
   }, [isOpen]); // Re-run when modal opens
 
+  // Generate a slug from the project name
+  const generateSlug = (name) => {
+    if (!name) return '';
+    return name
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-') // Replace non-alphanumeric with hyphens
+      .replace(/^-+|-+$/g, '') // Remove leading/trailing hyphens
+      .substring(0, 50); // Limit length
+  };
+  
+  // Add random suffix to make a slug unique
+  const makeUniqueSlug = (baseSlug) => {
+    const randomSuffix = Math.floor(Math.random() * 10000);
+    return `${baseSlug}-${randomSuffix}`;
+  };
+
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+    
+    // If project name changes, auto-generate a slug if slug is empty or was auto-generated
+    if (name === 'projectName' && value) {
+      setFormData((prev) => ({
+        ...prev,
+        [name]: value,
+        // Only auto-update slug if it's empty or matches previous auto-generated pattern
+        slug: !prev.slug || prev.slug === generateSlug(prev.projectName) ? generateSlug(value) : prev.slug
+      }));
+    } else {
+      setFormData((prev) => ({ ...prev, [name]: value }));
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -137,6 +165,28 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
         url: formData.url,
         slug: formData.slug
       });
+      
+      // Capture screenshot of the website
+      let screenshotUrl = null;
+      try {
+        console.log(`Attempting to capture screenshot for ${formData.url}`);
+        // First try to capture the screenshot
+        const capturedScreenshotUrl = await captureScreenshot(formData.url, {
+          width: 1280,
+          height: 800,
+          waitUntil: 'networkidle2'
+        });
+        
+        if (capturedScreenshotUrl) {
+          console.log(`Screenshot captured, uploading to Supabase storage`);
+          // Then upload it to Supabase storage
+          screenshotUrl = await uploadScreenshot(supabase, capturedScreenshotUrl, formData.slug);
+          console.log(`Screenshot uploaded successfully: ${screenshotUrl}`);
+        }
+      } catch (screenshotError) {
+        // Don't fail the whole submission if screenshot fails
+        console.error('Error capturing/uploading screenshot:', screenshotError);
+      }
 
       // Submit to Supabase with better error handling and retry logic
       let retryCount = 0;
@@ -155,6 +205,7 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
                 url: formData.url,
                 description: formData.description,
                 slug: formData.slug,
+                screenshot_url: screenshotUrl, // Include the screenshot URL if available
                 author: {
                   name: formData.xProfile,
                   profile_url: `https://x.com/${formData.xProfile}`,
@@ -169,8 +220,69 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
             console.error(`Supabase insert error (attempt ${retryCount + 1}):`, error);
             lastError = error;
             
+            // Handle specific database constraint errors
+            if (error.code === '23505') { // PostgreSQL unique constraint violation code
+              // Check which constraint was violated
+              if (error.message && error.message.includes('startups_slug_key')) {
+                // Slug already exists - try with a unique slug automatically
+                console.log(`Slug "${formData.slug}" already exists, trying with a unique slug...`);
+                
+                // Generate a unique slug by adding a random suffix
+                const uniqueSlug = makeUniqueSlug(formData.slug);
+                console.log(`Generated unique slug: ${uniqueSlug}`);
+                
+                // Try again with the unique slug
+                const { data: retryData, error: retryError } = await supabase
+                  .from('startups')
+                  .insert([{
+                    title: formData.projectName,
+                    url: formData.url,
+                    description: formData.description,
+                    slug: uniqueSlug,
+                    author: {
+                      name: formData.xProfile,
+                      profile_url: `https://x.com/${formData.xProfile}`,
+                      avatar: `https://unavatar.io/twitter/${formData.xProfile}`,
+                    },
+                  }])
+                  .select()
+                  .single();
+                
+                if (retryError) {
+                  // If still failing, now show an error message
+                  window.trackEvent(window.ANALYTICS_EVENTS.FORM_SUBMIT, { success: false, error: 'duplicate_slug_retry_failed' });
+                  throw new Error(`Unable to generate a unique slug. Please try again with a different name.`);
+                } else {
+                  // Success with the unique slug!
+                  console.log("Startup submitted successfully with a unique slug:", retryData);
+                  window.trackEvent(window.ANALYTICS_EVENTS.FORM_SUBMIT, { success: true, used_unique_slug: true });
+                  
+                  // Reset form
+                  setFormData({ url: "", xProfile: "", projectName: "", description: "", slug: "" });
+                  setTurnstileToken(null);
+                  // Reset the widget
+                  if (window.turnstile) {
+                    window.turnstile.reset();
+                  }
+                  onClose();
+                  
+                  // Trigger refresh of startups list
+                  window.dispatchEvent(new Event("refresh-startups"));
+                  
+                  return retryData; // Exit the retry loop on success
+                }
+              } else if (error.message && error.message.includes('startups_url_key')) {
+                // URL already exists
+                window.trackEvent(window.ANALYTICS_EVENTS.FORM_SUBMIT, { success: false, error: 'duplicate_url' });
+                throw new Error(`This URL has already been submitted. Each startup can only be submitted once.`);
+              } else {
+                // Other unique constraint violation
+                window.trackEvent(window.ANALYTICS_EVENTS.FORM_SUBMIT, { success: false, error: 'duplicate_entry' });
+                throw new Error('This startup appears to be already registered. Each startup can only be submitted once.');
+              }
+            }
             // If it's a network error, retry; otherwise, throw immediately
-            if (error.message && (error.message.includes("fetch") || error.message.includes("network") || error.code === "PGRST116")) {
+            else if (error.message && (error.message.includes("fetch") || error.message.includes("network") || error.code === "PGRST116")) {
               retryCount++;
               if (retryCount < maxRetries) {
                 // Wait before retrying (exponential backoff)
