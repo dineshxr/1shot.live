@@ -50,11 +50,15 @@ export const StartupCard = ({ startup }) => {
 
   // Get current image URL
   const getCurrentImage = () => {
-    // Handle new format (images array)
+    // First priority: Use the screenshot_url if available
+    if (startup.screenshot_url) {
+      return startup.screenshot_url;
+    }
+    // Second priority: Handle new format (images array)
     if (startup.images && startup.images.length > 0) {
       return startup.images[currentImageIndex];
     }
-    // Handle old format (single image property)
+    // Third priority: Handle old format (single image property)
     if (startup.image) {
       return startup.image;
     }
