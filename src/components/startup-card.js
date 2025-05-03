@@ -50,37 +50,35 @@ export const StartupCard = ({ startup }) => {
 
   // Get current image URL
   const getCurrentImage = () => {
-    // Try all possible image sources in order of priority
-    
-    // 1. Use screenshot_url if it exists and is not null
-    if (startup.screenshot_url && startup.screenshot_url !== 'null') {
-      return startup.screenshot_url;
-    }
-    
-    // 2. Generate a screenshot URL using Microlink API
+    // Generate a screenshot URL using Microlink API
     if (startup.url) {
-      const apiUrl = new URL('https://api.microlink.io');
-      apiUrl.searchParams.append('url', startup.url);
-      apiUrl.searchParams.append('screenshot', 'true');
-      apiUrl.searchParams.append('meta', 'false');
-      apiUrl.searchParams.append('embed', 'screenshot.url');
-      apiUrl.searchParams.append('waitUntil', 'networkidle2');
+      // Store the generated URL in a data attribute for caching
+      if (!startup._generatedScreenshotUrl) {
+        const apiUrl = new URL('https://api.microlink.io');
+        apiUrl.searchParams.append('url', startup.url);
+        apiUrl.searchParams.append('screenshot', 'true');
+        apiUrl.searchParams.append('meta', 'false');
+        apiUrl.searchParams.append('embed', 'screenshot.url');
+        apiUrl.searchParams.append('waitUntil', 'networkidle2');
+        
+        // Cache the generated URL
+        startup._generatedScreenshotUrl = apiUrl.toString();
+      }
       
-      // Return the API URL directly - this will generate the screenshot on-demand
-      return apiUrl.toString();
+      return startup._generatedScreenshotUrl;
     }
     
-    // 3. Handle new format (images array)
+    // Handle new format (images array)
     if (startup.images && startup.images.length > 0) {
       return startup.images[currentImageIndex];
     }
     
-    // 4. Handle old format (single image property)
+    // Handle old format (single image property)
     if (startup.image) {
       return startup.image;
     }
     
-    // 5. Fallback
+    // Fallback
     return "https://via.placeholder.com/400x225?text=Startup+Image";
   };
 
@@ -131,9 +129,12 @@ export const StartupCard = ({ startup }) => {
         <div class="relative">
           <img
             src=${getCurrentImage()}
-            alt=${startup.title}
+            alt=${`Screenshot of ${startup.title} - ${startup.description?.substring(0, 50) || 'Innovative startup'}`}
             class="w-full h-48 object-cover border-b-2 border-black"
             onError=${handleImageError}
+            loading="lazy"
+            width="400"
+            height="225"
           />
           ${hasMultipleImages &&
           html`
