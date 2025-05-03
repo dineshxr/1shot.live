@@ -51,27 +51,11 @@
     <!-- Supabase CDN -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.38.4/dist/umd/supabase.min.js"></script>
     
-    <!-- Vercel Analytics - Simplified Approach -->
+    <!-- Vercel Analytics - Official Implementation -->
     <script>
-      // Create a simple analytics placeholder
-      window.va = window.va || function() {
-        (window.va.q = window.va.q || []).push(arguments);
-        console.log('Vercel Analytics:', arguments);
-      };
-      window.va.l = Date.now();
-      
-      // Load the analytics script asynchronously
-      (function() {
-        var script = document.createElement('script');
-        script.async = true;
-        script.src = 'https://cdn.jsdelivr.net/npm/@vercel/analytics@1.1.1/dist/analytics.js';
-        script.onerror = function() {
-          console.log('Vercel Analytics failed to load, using fallback');
-        };
-        var firstScript = document.getElementsByTagName('script')[0];
-        firstScript.parentNode.insertBefore(script, firstScript);
-      })();
+      window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };
     </script>
+    <script defer src="/_vercel/insights/script.js"></script>
     
     <!-- Structured Data / JSON-LD -->
     <script type="application/ld+json">

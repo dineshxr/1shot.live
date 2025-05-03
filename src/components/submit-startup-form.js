@@ -112,6 +112,25 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
         console.error("Failed to initialize Supabase client:", initError);
         throw new Error("Database connection failed. Please try again later.");
       }
+      
+      // Check connection to Supabase before proceeding
+      try {
+        // Simple ping to check connection
+        const { data: pingData, error: pingError } = await supabase
+          .from('startups')
+          .select('count')
+          .limit(1);
+          
+        if (pingError) {
+          console.error("Supabase connection check failed:", pingError);
+          throw new Error("Could not connect to the database. Please check your internet connection and try again.");
+        }
+        
+        console.log("Supabase connection verified successfully");
+      } catch (connectionError) {
+        console.error("Database connection test failed:", connectionError);
+        throw new Error("Network error: Could not connect to the database. Please check your internet connection and try again.");
+      }
 
       console.log("Submitting startup to Supabase:", {
         title: formData.projectName,
@@ -119,40 +138,89 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
         slug: formData.slug
       });
 
-      // Submit to Supabase with better error handling
-      try {
-        const { data, error } = await supabase
-          .from('startups')
-          .insert([
-            {
-              title: formData.projectName,
-              url: formData.url,
-              description: formData.description,
-              slug: formData.slug,
-              author: {
-                name: formData.xProfile,
-                profile_url: `https://x.com/${formData.xProfile}`,
-                avatar: `https://unavatar.io/twitter/${formData.xProfile}`,
+      // Submit to Supabase with better error handling and retry logic
+      let retryCount = 0;
+      const maxRetries = 3;
+      let lastError = null;
+      
+      while (retryCount < maxRetries) {
+        try {
+          console.log(`Attempt ${retryCount + 1} of ${maxRetries} to submit startup`);
+          
+          const { data, error } = await supabase
+            .from('startups')
+            .insert([
+              {
+                title: formData.projectName,
+                url: formData.url,
+                description: formData.description,
+                slug: formData.slug,
+                author: {
+                  name: formData.xProfile,
+                  profile_url: `https://x.com/${formData.xProfile}`,
+                  avatar: `https://unavatar.io/twitter/${formData.xProfile}`,
+                },
               },
-            },
-          ])
-          .select()
-          .single();
+            ])
+            .select()
+            .single();
 
-        if (error) {
-          console.error("Supabase insert error:", error);
-          // Track submission error
-          window.trackEvent(window.ANALYTICS_EVENTS.FORM_SUBMIT, { success: false, error: error.message });
-          throw new Error(error.message || "Failed to submit startup");
+          if (error) {
+            console.error(`Supabase insert error (attempt ${retryCount + 1}):", error);
+            lastError = error;
+            
+            // If it's a network error, retry; otherwise, throw immediately
+            if (error.message && (error.message.includes("fetch") || error.message.includes("network") || error.code === "PGRST116")) {
+              retryCount++;
+              if (retryCount < maxRetries) {
+                // Wait before retrying (exponential backoff)
+                const waitTime = Math.min(1000 * Math.pow(2, retryCount), 8000);
+                console.log(`Waiting ${waitTime}ms before retry...`);
+                await new Promise(resolve => setTimeout(resolve, waitTime));
+                continue;
+              }
+            } else {
+              // Not a network error, don't retry
+              // Track submission error
+              window.trackEvent(window.ANALYTICS_EVENTS.FORM_SUBMIT, { success: false, error: error.message });
+              throw new Error(error.message || "Failed to submit startup");
+            }
+          } else {
+            // Success!
+            console.log("Startup submitted successfully:", data);
+            return data; // Exit the retry loop on success
+          }
+        } catch (dbError) {
+          console.error(`Database operation failed (attempt ${retryCount + 1}):", dbError);
+          lastError = dbError;
+          
+          // If it's a network error, retry
+          if (dbError.message && (dbError.message.includes("fetch") || dbError.message.includes("network"))) {
+            retryCount++;
+            if (retryCount < maxRetries) {
+              // Wait before retrying (exponential backoff)
+              const waitTime = Math.min(1000 * Math.pow(2, retryCount), 8000);
+              console.log(`Waiting ${waitTime}ms before retry...`);
+              await new Promise(resolve => setTimeout(resolve, waitTime));
+              continue;
+            }
+          } else {
+            // Not a network error, don't retry
+            throw dbError;
+          }
         }
+      }
+      
+      // If we've exhausted all retries
+      if (lastError) {
+        // Track submission error after all retries
+        window.trackEvent(window.ANALYTICS_EVENTS.FORM_SUBMIT, { success: false, error: lastError.message });
         
-        console.log("Startup submitted successfully:", data);
-      } catch (dbError) {
-        console.error("Database operation failed:", dbError);
-        if (dbError.message.includes("fetch")) {
-          throw new Error("Network error: Could not connect to the database. Please check your internet connection and try again.");
+        if (lastError.message && (lastError.message.includes("fetch") || lastError.message.includes("network"))) {
+          throw new Error("Network error: Could not connect to the database after multiple attempts. Please check your internet connection and try again later.");
+        } else {
+          throw lastError;
         }
-        throw dbError;
       }
 
       // Track successful submission

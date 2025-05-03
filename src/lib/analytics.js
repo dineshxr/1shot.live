@@ -1,4 +1,18 @@
-// Simple Vercel Analytics utility functions
+import { inject } from '@vercel/analytics';
+
+// Initialize Vercel Analytics
+if (typeof window !== 'undefined') {
+  inject();
+}
+
+/**
+ * Analytics event names used throughout the application
+ */
+export const ANALYTICS_EVENTS = {
+  FORM_OPEN: 'form_open',
+  FORM_SUBMIT: 'form_submit',
+  LINK_CLICK: 'link_click',
+};
 
 /**
  * Track a page view with Vercel Analytics
@@ -6,7 +20,8 @@
 export const trackPageView = () => {
   if (typeof window !== 'undefined' && window.va) {
     try {
-      window.va('pageview');
+      // For Vercel Web Analytics, we need to use the event API with a special event name
+      window.va('event', { name: 'pageview' });
       console.log('Vercel Analytics: Pageview tracked');
     } catch (error) {
       console.error('Vercel Analytics error:', error);
@@ -15,7 +30,7 @@ export const trackPageView = () => {
 };
 
 /**
- * Track a custom event with Vercel Analytics (simplified version)
+ * Track a custom event with Vercel Analytics
  * 
  * @param {string} eventName - Name of the event to track
  * @param {Object} [props] - Optional properties to include with the event
@@ -31,15 +46,6 @@ export const trackEvent = (eventName, props = {}) => {
   } else {
     console.log(`Vercel Analytics (mock): Event tracked - ${eventName}`, props);
   }
-};
-
-/**
- * Analytics event names used throughout the application
- */
-export const ANALYTICS_EVENTS = {
-  FORM_OPEN: 'form_open',
-  FORM_SUBMIT: 'form_submit',
-  LINK_CLICK: 'link_click',
 };
 
 // Export a default object for ESM compatibility
