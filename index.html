@@ -51,11 +51,29 @@
     <!-- Supabase CDN -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.38.4/dist/umd/supabase.min.js"></script>
     
-    <!-- Vercel Analytics - Official Implementation -->
+    <!-- Vercel Analytics - Hybrid Implementation for both local dev and production -->
     <script>
+      // Initialize Vercel Analytics placeholder function
       window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };
+      
+      // Detect if we're in a local development environment
+      const isLocalDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+      
+      // Only load the script in production or use a mock in development
+      if (!isLocalDev) {
+        // In production, load the official Vercel Analytics script
+        const script = document.createElement('script');
+        script.defer = true;
+        script.src = '/_vercel/insights/script.js';
+        document.head.appendChild(script);
+      } else {
+        // In development, use a mock implementation
+        console.log('Vercel Analytics: Using development mock');
+        window.va = function(command, params) {
+          console.log(`Vercel Analytics (dev mock): ${command}`, params || '');
+        };
+      }
     </script>
-    <script defer src="/_vercel/insights/script.js"></script>
     
     <!-- Structured Data / JSON-LD -->
     <script type="application/ld+json">

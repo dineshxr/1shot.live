@@ -166,7 +166,7 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
             .single();
 
           if (error) {
-            console.error(`Supabase insert error (attempt ${retryCount + 1}):", error);
+            console.error(`Supabase insert error (attempt ${retryCount + 1}):`, error);
             lastError = error;
             
             // If it's a network error, retry; otherwise, throw immediately
@@ -191,7 +191,7 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
             return data; // Exit the retry loop on success
           }
         } catch (dbError) {
-          console.error(`Database operation failed (attempt ${retryCount + 1}):", dbError);
+          console.error(`Database operation failed (attempt ${retryCount + 1}):`, dbError);
           lastError = dbError;
           
           // If it's a network error, retry
