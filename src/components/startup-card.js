@@ -7,11 +7,11 @@ export const StartupCard = ({ startup }) => {
   const [tooltipText, setTooltipText] = useState(copyStartupLinkLabel);
 
   const handleImageError = (e) => {
-    e.target.src = undefined;
+    e.target.src = "https://via.placeholder.com/400x225?text=Startup+Image";
   };
 
   const handleAvatarError = (e) => {
-    e.target.src = undefined;
+    e.target.src = "https://via.placeholder.com/40x40?text=A";
   };
 
   // Ensure avatar URL has proper protocol
@@ -50,19 +50,37 @@ export const StartupCard = ({ startup }) => {
 
   // Get current image URL
   const getCurrentImage = () => {
-    // First priority: Use the screenshot_url if available
-    if (startup.screenshot_url) {
+    // Try all possible image sources in order of priority
+    
+    // 1. Use screenshot_url if it exists and is not null
+    if (startup.screenshot_url && startup.screenshot_url !== 'null') {
       return startup.screenshot_url;
     }
-    // Second priority: Handle new format (images array)
+    
+    // 2. Generate a screenshot URL using Microlink API
+    if (startup.url) {
+      const apiUrl = new URL('https://api.microlink.io');
+      apiUrl.searchParams.append('url', startup.url);
+      apiUrl.searchParams.append('screenshot', 'true');
+      apiUrl.searchParams.append('meta', 'false');
+      apiUrl.searchParams.append('embed', 'screenshot.url');
+      apiUrl.searchParams.append('waitUntil', 'networkidle2');
+      
+      // Return the API URL directly - this will generate the screenshot on-demand
+      return apiUrl.toString();
+    }
+    
+    // 3. Handle new format (images array)
     if (startup.images && startup.images.length > 0) {
       return startup.images[currentImageIndex];
     }
-    // Third priority: Handle old format (single image property)
+    
+    // 4. Handle old format (single image property)
     if (startup.image) {
       return startup.image;
     }
-    // Fallback
+    
+    // 5. Fallback
     return "https://via.placeholder.com/400x225?text=Startup+Image";
   };
 

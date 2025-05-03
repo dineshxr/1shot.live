@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Update Screenshots - Admin</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.38.4/dist/umd/supabase.min.js"></script>
+</head>
+<body class="bg-gray-100">
+  <div class="container mx-auto px-4 py-8 max-w-4xl">
+    <header class="mb-8">
+      <h1 class="text-3xl font-bold mb-2">Screenshot Update Tool</h1>
+      <p class="text-gray-600">Use this tool to update screenshots for startups in the database</p>
+    </header>
+
+    <div class="bg-white rounded-lg shadow-md p-6 mb-8">
+      <h2 class="text-xl font-semibold mb-4">Update All Missing Screenshots</h2>
+      <p class="mb-4">This will find all startups without screenshots and generate screenshots for them.</p>
+      <button id="updateAllBtn" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition">
+        Update All Missing Screenshots
+      </button>
+      <div id="updateAllProgress" class="mt-4 hidden">
+        <div class="w-full bg-gray-200 rounded-full h-2.5">
+          <div id="progressBar" class="bg-blue-600 h-2.5 rounded-full" style="width: 0%"></div>
+        </div>
+        <p id="progressText" class="text-sm mt-1">Processing 0 of 0 startups...</p>
+      </div>
+    </div>
+
+    <div class="bg-white rounded-lg shadow-md p-6 mb-8">
+      <h2 class="text-xl font-semibold mb-4">Update Specific Startup</h2>
+      <p class="mb-4">Enter a startup ID to update its screenshot.</p>
+      <div class="flex gap-2">
+        <input 
+          type="text" 
+          id="startupId" 
+          placeholder="Startup ID" 
+          class="border border-gray-300 rounded px-3 py-2 flex-1"
+        >
+        <button id="updateOneBtn" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 transition">
+          Update
+        </button>
+      </div>
+    </div>
+
+    <div class="bg-white rounded-lg shadow-md p-6">
+      <h2 class="text-xl font-semibold mb-4">Results</h2>
+      <div id="results" class="bg-gray-50 p-4 rounded border border-gray-200 h-64 overflow-auto font-mono text-sm">
+        <p class="text-gray-500">Results will appear here...</p>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { supabaseClient } from '../src/lib/supabase-client.js';
+    import { updateAllScreenshots, updateStartupScreenshot } from '../src/lib/update-screenshots.js';
+
+    // Initialize UI elements
+    const updateAllBtn = document.getElementById('updateAllBtn');
+    const updateOneBtn = document.getElementById('updateOneBtn');
+    const startupIdInput = document.getElementById('startupId');
+    const resultsDiv = document.getElementById('results');
+    const updateAllProgress = document.getElementById('updateAllProgress');
+    const progressBar = document.getElementById('progressBar');
+    const progressText = document.getElementById('progressText');
+
+    // Helper function to log results
+    function logResult(message, isError = false) {
+      const logItem = document.createElement('div');
+      logItem.className = isError ? 'text-red-600' : 'text-green-600';
+      logItem.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+      resultsDiv.appendChild(logItem);
+      resultsDiv.scrollTop = resultsDiv.scrollHeight;
+    }
+
+    // Clear results
+    function clearResults() {
+      resultsDiv.innerHTML = '';
+    }
+
+    // Update all missing screenshots
+    updateAllBtn.addEventListener('click', async () => {
+      try {
+        clearResults();
+        updateAllBtn.disabled = true;
+        updateAllBtn.textContent = 'Processing...';
+        
+        // Show progress bar
+        updateAllProgress.classList.remove('hidden');
+        
+        logResult('Starting to update all missing screenshots...');
+        
+        // Get count of startups without screenshots
+        const supabase = supabaseClient();
+        const { count } = await supabase
+          .from('startups')
+          .select('*', { count: 'exact', head: true })
+          .is('screenshot_url', null);
+          
+        if (count === 0) {
+          logResult('No startups found without screenshots.');
+          updateAllBtn.disabled = false;
+          updateAllBtn.textContent = 'Update All Missing Screenshots';
+          updateAllProgress.classList.add('hidden');
+          return;
+        }
+        
+        logResult(`Found ${count} startups without screenshots.`);
+        progressText.textContent = `Processing 0 of ${count} startups...`;
+        
+        // Get all startups without screenshots
+        const { data: startups } = await supabase
+          .from('startups')
+          .select('*')
+          .is('screenshot_url', null);
+        
+        let processed = 0;
+        
+        for (const startup of startups) {
+          try {
+            logResult(`Processing: ${startup.title} (${startup.url})`);
+            
+            // Capture screenshot
+            const screenshotUrl = await captureScreenshot(startup.url, {
+              width: 1280,
+              height: 800,
+              waitUntil: 'networkidle2'
+            });
+            
+            if (screenshotUrl) {
+              // Upload to Supabase storage
+              const storedUrl = await uploadScreenshot(supabase, screenshotUrl, startup.slug);
+              
+              // Update startup record
+              const { error: updateError } = await supabase
+                .from('startups')
+                .update({ 
+                  screenshot_url: storedUrl,
+                  updated_at: new Date().toISOString()
+                })
+                .eq('id', startup.id);
+              
+              if (updateError) {
+                throw new Error(`Error updating startup: ${updateError.message}`);
+              }
+              
+              logResult(`✅ Successfully updated screenshot for ${startup.title}`);
+            }
+          } catch (err) {
+            logResult(`❌ Failed to update screenshot for ${startup.title}: ${err.message}`, true);
+          }
+          
+          // Update progress
+          processed++;
+          const percentage = Math.round((processed / count) * 100);
+          progressBar.style.width = `${percentage}%`;
+          progressText.textContent = `Processing ${processed} of ${count} startups (${percentage}%)...`;
+          
+          // Add a small delay between requests to avoid rate limiting
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+        
+        logResult(`✅ Completed processing ${count} startups.`);
+      } catch (error) {
+        logResult(`❌ Error: ${error.message}`, true);
+      } finally {
+        updateAllBtn.disabled = false;
+        updateAllBtn.textContent = 'Update All Missing Screenshots';
+      }
+    });
+
+    // Update specific startup
+    updateOneBtn.addEventListener('click', async () => {
+      const startupId = startupIdInput.value.trim();
+      if (!startupId) {
+        logResult('❌ Please enter a startup ID', true);
+        return;
+      }
+      
+      try {
+        updateOneBtn.disabled = true;
+        updateOneBtn.textContent = 'Processing...';
+        
+        logResult(`Starting to update screenshot for startup ID: ${startupId}`);
+        
+        const result = await updateStartupScreenshot(startupId);
+        logResult(`✅ Successfully updated screenshot for ${result.startup.title}`);
+        logResult(`Screenshot URL: ${result.screenshot_url}`);
+      } catch (error) {
+        logResult(`❌ Error: ${error.message}`, true);
+      } finally {
+        updateOneBtn.disabled = false;
+        updateOneBtn.textContent = 'Update';
+      }
+    });
+
+    // Import required functions
+    async function captureScreenshot(url, options = {}) {
+      try {
+        if (!url) {
+          throw new Error('URL is required to capture a screenshot');
+        }
+        
+        // Default options
+        const defaultOptions = {
+          width: 1280,
+          height: 800,
+          waitUntil: 'networkidle2',
+          type: 'png',
+          fullPage: false,
+          ...options
+        };
+        
+        // Construct Microlink API URL with parameters
+        const apiUrl = new URL('https://api.microlink.io');
+        apiUrl.searchParams.append('url', url);
+        apiUrl.searchParams.append('screenshot', 'true');
+        apiUrl.searchParams.append('meta', 'false');
+        apiUrl.searchParams.append('embed', 'screenshot.url');
+        
+        // Add optional parameters
+        if (defaultOptions.width) apiUrl.searchParams.append('width', String(defaultOptions.width));
+        if (defaultOptions.height) apiUrl.searchParams.append('height', String(defaultOptions.height));
+        if (defaultOptions.waitUntil) apiUrl.searchParams.append('waitUntil', defaultOptions.waitUntil);
+        if (defaultOptions.type) apiUrl.searchParams.append('type', defaultOptions.type);
+        if (defaultOptions.fullPage) apiUrl.searchParams.append('fullPage', String(defaultOptions.fullPage));
+        
+        logResult(`Capturing screenshot for ${url} using Microlink API`);
+        
+        // Fetch the screenshot
+        const response = await fetch(apiUrl.toString());
+        
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(`Failed to capture screenshot: ${response.status} ${errorText}`);
+        }
+        
+        const screenshotUrl = await response.text();
+        logResult(`Screenshot captured successfully: ${screenshotUrl}`);
+        
+        return screenshotUrl;
+      } catch (error) {
+        logResult(`Error capturing screenshot: ${error.message}`, true);
+        throw error;
+      }
+    }
+
+    async function uploadScreenshot(supabase, screenshotUrl, slug) {
+      try {
+        if (!supabase || !screenshotUrl || !slug) {
+          throw new Error('Supabase client, screenshot URL, and slug are required');
+        }
+        
+        logResult(`Fetching screenshot from ${screenshotUrl}`);
+        
+        // Fetch the screenshot image
+        const imageResponse = await fetch(screenshotUrl);
+        if (!imageResponse.ok) {
+          throw new Error(`Failed to fetch screenshot: ${imageResponse.status}`);
+        }
+        
+        const imageBlob = await imageResponse.blob();
+        const fileName = `${slug}-${Date.now()}.png`;
+        const filePath = `startups/${fileName}`;
+        
+        logResult(`Uploading screenshot to Supabase storage: ${filePath}`);
+        
+        // Upload to Supabase storage
+        const { data, error } = await supabase.storage
+          .from('screenshots')
+          .upload(filePath, imageBlob, {
+            contentType: 'image/png',
+            cacheControl: '3600',
+            upsert: true
+          });
+        
+        if (error) {
+          throw error;
+        }
+        
+        // Get the public URL
+        const { data: publicUrlData } = supabase.storage
+          .from('screenshots')
+          .getPublicUrl(filePath);
+        
+        const publicUrl = publicUrlData.publicUrl;
+        logResult(`Screenshot uploaded successfully: ${publicUrl}`);
+        
+        return publicUrl;
+      } catch (error) {
+        logResult(`Error uploading screenshot: ${error.message}`, true);
+        throw error;
+      }
+    }
+  </script>
+</body>
+</html>

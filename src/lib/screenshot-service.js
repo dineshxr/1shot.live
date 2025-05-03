@@ -4,6 +4,58 @@
  */
 
 /**
+ * Ensure the screenshot_url column exists in the startups table
+ * 
+ * @param {Object} supabase - Supabase client
+ * @returns {Promise<boolean>} - True if the column exists or was created
+ */
+export const ensureScreenshotColumnExists = async (supabase) => {
+  try {
+    if (!supabase) {
+      throw new Error('Supabase client is required');
+    }
+    
+    console.log('Checking if screenshot_url column exists...');
+    
+    // Try to update a dummy column to see if screenshot_url exists
+    const { error } = await supabase.rpc(
+      'test_column_exists',
+      { table_name: 'startups', column_name: 'screenshot_url' }
+    );
+    
+    if (error) {
+      console.log('Column does not exist, creating it...');
+      
+      // Create a custom function to check if a column exists
+      const { error: createFunctionError } = await supabase.rpc(
+        'create_column_if_not_exists',
+        { 
+          p_table_name: 'startups', 
+          p_column_name: 'screenshot_url', 
+          p_column_type: 'TEXT' 
+        }
+      );
+      
+      if (createFunctionError) {
+        console.error('Error creating column:', createFunctionError);
+        return false;
+      }
+      
+      console.log('Screenshot_url column created successfully');
+    } else {
+      console.log('Screenshot_url column already exists');
+    }
+    
+    return true;
+  } catch (error) {
+    console.error('Error ensuring screenshot column exists:', error);
+    // If we can't verify or create the column, we'll assume it exists
+    // This allows the app to continue functioning even if we can't modify the schema
+    return true;
+  }
+};
+
+/**
  * Capture a screenshot of a website using the Microlink API
  * 
  * @param {string} url - The URL of the website to capture
