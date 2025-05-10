@@ -2,6 +2,8 @@ import { supabaseClient } from '../lib/supabase-client.js';
 import { captureScreenshot, uploadScreenshot } from '../lib/screenshot-service.js';
 // Using global analytics functions defined in main.js instead of imports
 
+import { Confetti } from './confetti.js';
+
 export const SubmitStartupForm = ({ isOpen, onClose }) => {
   const [formData, setFormData] = useState({
     url: "",
@@ -13,6 +15,7 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [turnstileToken, setTurnstileToken] = useState(null);
+  const [success, setSuccess] = useState(false);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -264,11 +267,9 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
                   if (window.turnstile) {
                     window.turnstile.reset();
                   }
-                  onClose();
-                  
+                  setSuccess(true);
                   // Trigger refresh of startups list
                   window.dispatchEvent(new Event("refresh-startups"));
-                  
                   return retryData; // Exit the retry loop on success
                 }
               } else if (error.message && error.message.includes('startups_url_key')) {
@@ -345,7 +346,7 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
       if (window.turnstile) {
         window.turnstile.reset();
       }
-      onClose();
+      setSuccess(true);
       
       // Trigger refresh of startups list
       window.dispatchEvent(new Event("refresh-startups"));
@@ -357,6 +358,31 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
   };
 
   if (!isOpen) return null;
+
+  if (success) {
+    return html`
+      <div
+        class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto"
+      >
+        <div
+          class="bg-white border-4 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] p-8 w-full max-w-md rounded relative my-8 max-h-[90vh] overflow-y-auto flex flex-col items-center"
+        >
+          <${Confetti} show=${true} />
+          <h2 class="text-2xl font-bold mb-4 text-green-700 text-center">🎉 Submission Successful!</h2>
+          <p class="mb-6 text-center text-black">Thank you for submitting your startup! We'll review it soon. 🚀</p>
+          <button
+            class="neo-button px-6 py-2 bg-blue-400 border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:bg-blue-500 font-bold"
+            onClick=${() => {
+              setSuccess(false);
+              onClose();
+            }}
+          >
+            Back to Home
+          </button>
+        </div>
+      </div>
+    `;
+  }
 
   return html`
     <div
