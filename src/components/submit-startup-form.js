@@ -350,6 +350,12 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
       
       // Trigger refresh of startups list
       window.dispatchEvent(new Event("refresh-startups"));
+      
+      // Auto-close the form after 3 seconds
+      setTimeout(() => {
+        setSuccess(false);
+        onClose();
+      }, 3000);
     } catch (err) {
       setError(err.message);
     } finally {

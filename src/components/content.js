@@ -96,8 +96,8 @@ export const Content = () => {
         </p>
         <div class="mt-6 flex justify-center">
           <a 
-            href="#" 
-            onclick="window.dispatchEvent(new CustomEvent('open-submit-form')); return false;"
+            href="javascript:void(0)" 
+            onclick="window.dispatchEvent(new CustomEvent('open-submit-form'));"
             class="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-black hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-black transition duration-150"
           >
             <span class="mr-2">🚀</span> Submit Your Startup
@@ -135,16 +135,7 @@ export const Content = () => {
             )}
           </div>
           
-          <div class="bg-gray-50 border border-gray-200 rounded-lg p-6 mt-8">
-            <h3 class="text-xl font-semibold mb-3">Are you building something amazing?</h3>
-            <p class="mb-4">Submit your startup or project to get featured on Submit Hunt and receive a valuable 36+ DR backlink.</p>
-            <button 
-              onclick="window.dispatchEvent(new CustomEvent('open-submit-form')); return false;"
-              class="px-5 py-2 bg-black text-white rounded-md hover:bg-gray-800 transition duration-150"
-            >
-              Submit Your Project
-            </button>
-          </div>
+
         </section>
       `}
       ${selectedStartup &&
