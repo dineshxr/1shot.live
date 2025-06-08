@@ -1,0 +1,45 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Screenshot Update Service</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 p-8">
+  <div class="max-w-4xl mx-auto bg-white p-6 rounded-lg shadow-md">
+    <h1 class="text-2xl font-bold mb-4">Screenshot Update Service</h1>
+    <p class="mb-4">This page will automatically run the screenshot update service for all startups in the database.</p>
+    <div id="results" class="bg-gray-50 p-4 rounded border border-gray-200 h-64 overflow-auto font-mono text-sm">
+      <p>Starting screenshot update service...</p>
+    </div>
+  </div>
+
+  <script type="module">
+    import { updateAllScreenshots } from './src/lib/update-screenshots.js';
+
+    const resultsDiv = document.getElementById('results');
+
+    function log(message, isError = false) {
+      const p = document.createElement('p');
+      p.textContent = message;
+      p.style.color = isError ? 'red' : 'black';
+      resultsDiv.appendChild(p);
+      console.log(message);
+    }
+
+    try {
+      const results = await updateAllScreenshots();
+      log('Screenshot update completed:');
+      log(`Total: ${results.total}`);
+      log(`Success: ${results.success}`);
+      log(`Failed: ${results.failed}`);
+      log('Details: ' + JSON.stringify(results.details, null, 2));
+    } catch (error) {
+      log(`Error updating screenshots: ${error.message}`, true);
+      console.error('Error updating screenshots:', error);
+    }
+  </script>
+</body>
+</html>

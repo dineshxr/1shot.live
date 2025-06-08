@@ -9,11 +9,11 @@ export const StartupCard = ({ startup }) => {
   const [tooltipText, setTooltipText] = useState(copyStartupLinkLabel);
 
   const handleImageError = (e) => {
-    e.target.src = "https://via.placeholder.com/400x225?text=Startup+Image";
+    e.target.src = "/placeholder-startup.png";
   };
 
   const handleAvatarError = (e) => {
-    e.target.src = "https://via.placeholder.com/40x40?text=A";
+    e.target.src = "/placeholder-avatar.png";
   };
 
   // Ensure avatar URL has proper protocol
@@ -54,20 +54,33 @@ export const StartupCard = ({ startup }) => {
   const getCurrentImage = () => {
     // Generate a screenshot URL using Microlink API
     if (startup.url) {
-      // Store the generated URL in a data attribute for caching
-      if (!startup._generatedScreenshotUrl) {
-        const apiUrl = new URL('https://api.microlink.io');
-        apiUrl.searchParams.append('url', startup.url);
-        apiUrl.searchParams.append('screenshot', 'true');
-        apiUrl.searchParams.append('meta', 'false');
-        apiUrl.searchParams.append('embed', 'screenshot.url');
-        apiUrl.searchParams.append('waitUntil', 'networkidle2');
-        
-        // Cache the generated URL
-        startup._generatedScreenshotUrl = apiUrl.toString();
+      // Check if we already have a screenshot URL stored in the database
+      if (startup.screenshot_url) {
+        return startup.screenshot_url;
       }
       
-      return startup._generatedScreenshotUrl;
+      // If we don't have a stored screenshot and there's no cached URL, generate one
+      if (!startup._generatedScreenshotUrl) {
+        try {
+          const apiUrl = new URL('https://api.microlink.io');
+          apiUrl.searchParams.append('url', startup.url);
+          apiUrl.searchParams.append('screenshot', 'true');
+          apiUrl.searchParams.append('meta', 'false');
+          apiUrl.searchParams.append('embed', 'screenshot.url');
+          apiUrl.searchParams.append('waitUntil', 'networkidle2');
+          
+          // Cache the generated URL
+          startup._generatedScreenshotUrl = apiUrl.toString();
+        } catch (error) {
+          console.error('Error generating screenshot URL:', error);
+          // If there's an error, we'll fall through to the fallback options below
+        }
+      }
+      
+      // Return the cached URL if available
+      if (startup._generatedScreenshotUrl) {
+        return startup._generatedScreenshotUrl;
+      }
     }
     
     // Handle new format (images array)
@@ -81,7 +94,7 @@ export const StartupCard = ({ startup }) => {
     }
     
     // Fallback
-    return "https://via.placeholder.com/400x225?text=Startup+Image";
+    return "/placeholder-startup.png";
   };
 
   // Check if we should show navigation arrows

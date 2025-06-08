@@ -51,16 +51,49 @@ export const GameCard = ({ game }) => {
 
   // Get current image URL
   const getCurrentImage = () => {
+    // Check if we have a screenshot URL stored in the database
+    if (game.screenshot_url) {
+      return game.screenshot_url;
+    }
+    
+    // Generate a screenshot URL using Microlink API if we have a URL
+    if (game.url && !game.images?.length && !game.image) {
+      // If we don't have a stored screenshot and there's no cached URL, generate one
+      if (!game._generatedScreenshotUrl) {
+        try {
+          const apiUrl = new URL('https://api.microlink.io');
+          apiUrl.searchParams.append('url', game.url);
+          apiUrl.searchParams.append('screenshot', 'true');
+          apiUrl.searchParams.append('meta', 'false');
+          apiUrl.searchParams.append('embed', 'screenshot.url');
+          apiUrl.searchParams.append('waitUntil', 'networkidle2');
+          
+          // Cache the generated URL
+          game._generatedScreenshotUrl = apiUrl.toString();
+        } catch (error) {
+          console.error('Error generating screenshot URL:', error);
+          // If there's an error, we'll fall through to the fallback options below
+        }
+      }
+      
+      // Return the cached URL if available
+      if (game._generatedScreenshotUrl) {
+        return game._generatedScreenshotUrl;
+      }
+    }
+    
     // Handle new format (images array)
     if (game.images && game.images.length > 0) {
       return game.images[currentImageIndex];
     }
+    
     // Handle old format (single image property)
     if (game.image) {
       return game.image;
     }
+    
     // Fallback
-    return "https://via.placeholder.com/400x225?text=Startup+Image";
+    return "/placeholder-startup.png";
   };
 
   // Check if we should show navigation arrows

@@ -2,12 +2,14 @@
   "name": "submit-hunt",
   "scripts": {
     "dev": "npx live-server",
+    "build": "echo 'Static site - no build step needed'",
     "supabase:typegen": "bunx supabase gen types --lang=typescript --local > supabase/database-generated.types.ts"
   },
   "devDependencies": {
     "@supabase/supabase-js": "^2.49.1"
   },
   "dependencies": {
-    "@vercel/analytics": "^1.1.1"
+    "@vercel/analytics": "^1.1.1",
+    "dotenv": "^16.5.0"
   }
 }
