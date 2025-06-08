@@ -1,6 +1,9 @@
 // Using global analytics functions defined in main.js instead of imports
 // Note: useEffect is already defined globally in main.js
 
+import { trackEvent, ANALYTICS_EVENTS } from '../lib/analytics.js';
+import { addReferralParam } from '../lib/url-utils.js';
+
 export const StartupModal = ({ startup, onClose }) => {
   // Track modal view when opened
   useEffect(() => {
@@ -165,7 +168,7 @@ export const StartupModal = ({ startup, onClose }) => {
             class="flex items-center justify-between pt-4 border-t-2 border-black"
           >
             <a
-              href=${startup.author.profile_url}
+              href=${addReferralParam(startup.author.profile_url)}
               target="_blank"
               class="flex items-center hover:text-blue-600"
             >
@@ -178,11 +181,11 @@ export const StartupModal = ({ startup, onClose }) => {
             </a>
 
             <a
-              href=${startup.url}
+              href=${addReferralParam(startup.url)}
               target="_blank"
               class="neo-button px-4 py-2 bg-green-400 border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:bg-green-500 font-bold"
             >
-              Play Game
+              Vist
             </a>
           </div>
         </div>

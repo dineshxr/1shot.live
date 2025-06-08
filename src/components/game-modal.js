@@ -1,3 +1,6 @@
+import { trackEvent, ANALYTICS_EVENTS } from '../lib/analytics.js';
+import { addReferralParam } from '../lib/url-utils.js';
+
 export const GameModal = ({ game, onClose }) => {
   return html`
     <div
@@ -50,7 +53,7 @@ export const GameModal = ({ game, onClose }) => {
             class="flex items-center justify-between pt-4 border-t-2 border-black"
           >
             <a
-              href=${game.author.profile_url}
+              href=${addReferralParam(game.author.profile_url)}
               target="_blank"
               class="flex items-center hover:text-blue-600"
             >
@@ -63,11 +66,11 @@ export const GameModal = ({ game, onClose }) => {
             </a>
 
             <a
-              href=${game.url}
+              href=${addReferralParam(game.url)}
               target="_blank"
               class="neo-button px-4 py-2 bg-green-400 border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:bg-green-500 font-bold"
             >
-              Play Game
+              Vist
             </a>
           </div>
         </div>

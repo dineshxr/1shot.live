@@ -1,5 +1,6 @@
 // Import analytics functions and constants
 import { trackEvent, ANALYTICS_EVENTS } from '../lib/analytics.js';
+import { addReferralParam } from '../lib/url-utils.js';
 
 export const StartupCard = ({ startup }) => {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
@@ -157,7 +158,7 @@ export const StartupCard = ({ startup }) => {
       class="startup-card bg-white border-2 border-black overflow-hidden shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] transition-all duration-200 rounded"
     >
       <a 
-        href=${startup.url} 
+        href=${addReferralParam(startup.url)} 
         target="_blank" 
         class="block" 
         onClick=${() => {
@@ -304,7 +305,7 @@ export const StartupCard = ({ startup }) => {
             html`
               <div class="mt-3 flex items-center border-t-2 border-black pt-3">
                 <a
-                  href=${startup.author.profile_url}
+                  href=${addReferralParam(startup.author.profile_url)}
                   target="_blank"
                   class="flex items-center hover:text-blue-600"
                 >

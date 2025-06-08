@@ -1,4 +1,5 @@
 import { trackEvent, ANALYTICS_EVENTS } from '../lib/analytics.js';
+import { addReferralParam } from '../lib/url-utils.js';
 
 export const GameCard = ({ game }) => {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
@@ -95,7 +96,7 @@ export const GameCard = ({ game }) => {
       class="game-card bg-white border-2 border-black overflow-hidden shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] transition-all duration-200 rounded"
     >
       <a 
-        href=${game.url} 
+        href=${addReferralParam(game.url)} 
         target="_blank" 
         class="block" 
         onClick=${() => {
@@ -226,7 +227,7 @@ export const GameCard = ({ game }) => {
             html`
               <div class="mt-3 flex items-center border-t-2 border-black pt-3">
                 <a
-                  href=${game.author.profile_url}
+                  href=${addReferralParam(game.author.profile_url)}
                   target="_blank"
                   class="flex items-center hover:text-blue-600"
                 >
