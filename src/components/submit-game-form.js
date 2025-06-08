@@ -139,7 +139,8 @@ export const SubmitGameForm = ({ isOpen, onClose }) => {
       if (window.turnstile) {
         window.turnstile.reset();
       }
-      onClose();
+      // Redirect to success page instead of just closing the modal
+      window.location.href = 'success.html';
       
       // Trigger refresh of games list
       window.dispatchEvent(new Event("refresh-games"));
