@@ -339,7 +339,14 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
       // Track successful submission
       window.trackEvent(window.ANALYTICS_EVENTS.FORM_SUBMIT, { success: true });
       
-      // Reset form
+      // Trigger refresh of startups list
+      window.dispatchEvent(new Event("refresh-startups"));
+      
+      // IMPORTANT: Redirect to success page immediately before any state updates
+      // that might prevent the redirect from happening
+      window.location.href = 'success.html';
+      
+      // These state updates won't actually happen because we're redirecting
       setFormData({ url: "", xProfile: "", projectName: "", description: "", slug: "" });
       setTurnstileToken(null);
       // Reset the widget
@@ -347,12 +354,6 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
         window.turnstile.reset();
       }
       setSuccess(true);
-      
-      // Trigger refresh of startups list
-      window.dispatchEvent(new Event("refresh-startups"));
-      
-      // Redirect to success page
-      window.location.href = 'success.html';
     } catch (err) {
       setError(err.message);
     } finally {

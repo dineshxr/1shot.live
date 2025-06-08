@@ -132,18 +132,20 @@ export const SubmitGameForm = ({ isOpen, onClose }) => {
         projectName: formData.projectName
       });
       
-      // Reset form
+      // Trigger refresh of games list
+      window.dispatchEvent(new Event("refresh-games"));
+      
+      // IMPORTANT: Redirect to success page immediately before any state updates
+      // that might prevent the redirect from happening
+      window.location.href = 'success.html';
+      
+      // These state updates won't actually happen because we're redirecting
       setFormData({ url: "", xProfile: "", projectName: "", description: "", slug: "" });
       setTurnstileToken(null);
       // Reset the widget
       if (window.turnstile) {
         window.turnstile.reset();
       }
-      // Redirect to success page instead of just closing the modal
-      window.location.href = 'success.html';
-      
-      // Trigger refresh of games list
-      window.dispatchEvent(new Event("refresh-games"));
     } catch (err) {
       setError(err.message);
     } finally {
