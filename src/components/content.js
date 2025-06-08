@@ -95,13 +95,12 @@ export const Content = () => {
           Explore our curated collection of innovative startups and AI projects that are redefining industries and pushing technological boundaries
         </p>
         <div class="mt-6 flex justify-center">
-          <a 
-            href="javascript:void(0)" 
-            onclick="window.dispatchEvent(new CustomEvent('open-submit-form'));"
+          <button 
+            onclick="window.openSubmitForm ? window.openSubmitForm() : window.dispatchEvent(new CustomEvent('open-submit-form')); return false;"
             class="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-black hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-black transition duration-150"
           >
             <span class="mr-2">🚀</span> Submit Your Startup
-          </a>
+          </button>
         </div>
       </section>
 

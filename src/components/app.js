@@ -8,6 +8,9 @@ export const App = () => {
 
   const openForm = () => setIsFormOpen(true);
   const closeForm = () => setIsFormOpen(false);
+  
+  // Expose the openForm function globally
+  window.openSubmitForm = openForm;
 
   useEffect(() => {
     const submitButton = document.getElementById("submit-startup-btn");

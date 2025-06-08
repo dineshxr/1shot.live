@@ -1,4 +1,5 @@
-// Using global analytics functions defined in main.js instead of imports
+// Import analytics functions and constants
+import { trackEvent, ANALYTICS_EVENTS } from '../lib/analytics.js';
 
 export const StartupCard = ({ startup }) => {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
@@ -93,7 +94,7 @@ export const StartupCard = ({ startup }) => {
         await navigator.clipboard.writeText(url);
         
         // Track link copy event
-        window.trackEvent(window.ANALYTICS_EVENTS.LINK_CLICK, {
+        trackEvent(ANALYTICS_EVENTS.LINK_CLICK, {
           startupId: startup.id,
           startupName: startup.title,
           startupSlug: startup.slug
@@ -110,6 +111,47 @@ export const StartupCard = ({ startup }) => {
     copyStartupLink();
   };
 
+  const handleShareOnX = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    const url = `${window.location.origin}${window.location.pathname}#${startup.slug}`;
+    
+    // Create a more detailed share text
+    let shareText = `Check out ${startup.title} on Submithunt`;
+    
+    // Add description if available
+    if (startup.description) {
+      shareText += `: ${startup.description.substring(0, 80)}`;
+      if (startup.description.length > 80) shareText += '...';
+    }
+    
+    // Add the free backlink message
+    shareText += `\n\nEarning free DR 36+ backlink on submithunt`;
+    
+    // Add tags if available
+    if (startup.tags && startup.tags.length > 0) {
+      // Add up to 3 tags as hashtags
+      const hashtags = startup.tags.slice(0, 3).map(tag => `#${tag.replace(/\s+/g, '')}`).join(' ');
+      shareText += `\n\n${hashtags}`;
+    }
+    
+    // Track share event with detailed properties
+    trackEvent(ANALYTICS_EVENTS.SHARE_CLICK, {
+      startupId: startup.id,
+      startupName: startup.title,
+      platform: 'X',
+      startupSlug: startup.slug,
+      startupUrl: startup.url,
+      startupTags: startup.tags?.join(',') || '',
+      shareText: shareText.substring(0, 50) + '...' // Log truncated version for analytics
+    });
+    
+    // Open X share dialog with the detailed text
+    const shareUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(url)}`;
+    window.open(shareUrl, '_blank', 'width=550,height=420');
+  };
+
   return html`
     <div
       class="startup-card bg-white border-2 border-black overflow-hidden shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] transition-all duration-200 rounded"
@@ -119,7 +161,7 @@ export const StartupCard = ({ startup }) => {
         target="_blank" 
         class="block" 
         onClick=${() => {
-          window.trackEvent(window.ANALYTICS_EVENTS.LINK_CLICK, {
+          trackEvent(ANALYTICS_EVENTS.LINK_CLICK, {
             startupId: startup.id,
             startupName: startup.title,
             startupUrl: startup.url
@@ -239,10 +281,23 @@ export const StartupCard = ({ startup }) => {
               )}
             </div>
 
-            <div class="mt-3 flex items-center">
+            <div class="mt-3 flex items-center justify-between">
               <span class="text-xs text-gray-600 font-mono truncate">
                 ${getHostname(startup.url)}
               </span>
+              <button
+                onClick=${handleShareOnX}
+                class="group relative p-1 hover:bg-gray-100 rounded flex items-center"
+                aria-label="Share on X"
+              >
+                <i class="fab fa-x-twitter text-sm mr-1"></i>
+                <span class="text-xs">Share</span>
+                <div
+                  class="absolute -top-8 left-1/2 -translate-x-1/2 hidden group-hover:block bg-black text-white text-xs px-2 py-1 rounded whitespace-nowrap"
+                >
+                  Share on X
+                </div>
+              </button>
             </div>
 
             ${startup.author &&
