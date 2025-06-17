@@ -11,11 +11,13 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
     projectName: "",
     description: "",
     slug: "",
+    plan: "free" // Default plan selection
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [turnstileToken, setTurnstileToken] = useState(null);
   const [success, setSuccess] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1); // Track which page of the form we're on
 
   useEffect(() => {
     if (!isOpen) return;
@@ -106,6 +108,43 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
     } else {
       setFormData((prev) => ({ ...prev, [name]: value }));
     }
+  };
+
+  const goToNextPage = () => {
+    // Validate current page before proceeding
+    if (currentPage === 1) {
+      // Validate first page fields
+      if (!formData.projectName) {
+        setError("Please enter a project name");
+        return;
+      }
+      if (!formData.url) {
+        setError("Please enter a valid URL");
+        return;
+      }
+      if (!formData.slug) {
+        setError("Please enter a slug for your project");
+        return;
+      }
+      if (!formData.xProfile) {
+        setError("Please enter your X username");
+        return;
+      }
+      
+      // Clear any existing errors and proceed to next page
+      setError(null);
+      setCurrentPage(2);
+      window.trackEvent(window.ANALYTICS_EVENTS.FORM_NEXT_PAGE, { page: 1 });
+    }
+  };
+
+  const goToPreviousPage = () => {
+    setCurrentPage(currentPage - 1);
+    window.trackEvent(window.ANALYTICS_EVENTS.FORM_PREV_PAGE, { page: currentPage });
+  };
+
+  const selectPlan = (plan) => {
+    setFormData(prev => ({ ...prev, plan }));
   };
 
   const handleSubmit = async (e) => {
@@ -209,6 +248,7 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
                 description: formData.description,
                 slug: formData.slug,
                 screenshot_url: screenshotUrl, // Include the screenshot URL if available
+                plan: formData.plan, // Include the selected plan
                 author: {
                   name: formData.xProfile,
                   profile_url: `https://x.com/${formData.xProfile}`,
@@ -402,6 +442,7 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
         `}
 
         <form onSubmit=${handleSubmit}>
+          ${currentPage === 1 ? html`
           <div class="mb-4">
             <label class="block text-black font-bold mb-2" for="projectName">
               Startup Name
@@ -503,14 +544,87 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
             >
               Cancel
             </button>
-            <button
-              type="submit"
-              class="neo-button px-4 py-2 bg-green-400 border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:bg-green-500 font-bold disabled:opacity-50"
-              disabled=${loading}
-            >
-              ${loading ? "Submitting..." : "Submit"}
-            </button>
+            ${currentPage === 1 ? html`
+              <button
+                type="button"
+                onClick=${goToNextPage}
+                class="neo-button px-4 py-2 bg-blue-400 border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:bg-blue-500 font-bold disabled:opacity-50"
+                disabled=${loading}
+              >
+                Next
+              </button>
+            ` : html`
+              <button
+                type="button"
+                onClick=${goToPreviousPage}
+                class="mr-2 px-4 py-2 bg-gray-200 border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:bg-gray-300 font-bold"
+                disabled=${loading}
+              >
+                Back
+              </button>
+              <button
+                type="submit"
+                class="neo-button px-4 py-2 bg-green-400 border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:bg-green-500 font-bold disabled:opacity-50"
+                disabled=${loading}
+              >
+                ${loading ? "Submitting..." : "Submit"}
+              </button>
+            `}
           </div>
+          ` : currentPage === 2 ? html`
+            <div class="mb-6">
+              <h3 class="text-xl font-bold mb-4 text-black">Choose Your Launch Date</h3>
+              
+              <div class="mb-6">
+                <div class="flex flex-col space-y-6">
+                  <!-- Free Option -->
+                  <div 
+                    class="border-4 ${formData.plan === 'free' ? 'border-blue-500' : 'border-black'} p-4 rounded-lg cursor-pointer hover:bg-gray-50 transition-all"
+                    onClick=${() => selectPlan('free')}
+                  >
+                    <div class="flex justify-between items-center mb-2">
+                      <h4 class="text-lg font-bold">Free</h4>
+                      <span class="text-lg font-bold">$0</span>
+                    </div>
+                    <ul class="list-disc pl-5 space-y-1 mb-3">
+                      <li>Get listed on the homepage</li>
+                      <li>Basic analytics</li>
+                      <li>Standard position</li>
+                    </ul>
+                    ${formData.plan === 'free' ? html`
+                      <div class="bg-blue-100 text-blue-800 text-sm font-bold py-1 px-2 rounded inline-block">
+                        <i class="fas fa-check mr-1"></i> Selected
+                      </div>
+                    ` : ''}
+                  </div>
+                  
+                  <!-- Premium Option -->
+                  <div 
+                    class="border-4 ${formData.plan === 'premium' ? 'border-blue-500' : 'border-black'} p-4 rounded-lg cursor-pointer hover:bg-gray-50 transition-all"
+                    onClick=${() => selectPlan('premium')}
+                  >
+                    <div class="flex justify-between items-center mb-2">
+                      <h4 class="text-lg font-bold">Premium</h4>
+                      <span class="text-lg font-bold">$49</span>
+                    </div>
+                    <ul class="list-disc pl-5 space-y-1 mb-3">
+                      <li>Featured position on homepage</li>
+                      <li>Advanced analytics dashboard</li>
+                      <li>Social media promotion</li>
+                      <li>Priority support</li>
+                    </ul>
+                    ${formData.plan === 'premium' ? html`
+                      <div class="bg-blue-100 text-blue-800 text-sm font-bold py-1 px-2 rounded inline-block">
+                        <i class="fas fa-check mr-1"></i> Selected
+                      </div>
+                    ` : ''}
+                  </div>
+                </div>
+              </div>
+              
+              <div class="cf-turnstile"></div>
+            </div>
+          ` : ''}
         </form>
       </div>
     </div>
