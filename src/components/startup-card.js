@@ -9,11 +9,13 @@ export const StartupCard = ({ startup }) => {
   const [tooltipText, setTooltipText] = useState(copyStartupLinkLabel);
 
   const handleImageError = (e) => {
-    e.target.src = "/placeholder-startup.png";
+    // Use data URI instead of placeholder.com
+    e.target.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='225' viewBox='0 0 400 225'%3E%3Crect width='400' height='225' fill='%23f0f0f0'/%3E%3Ctext x='50%25' y='50%25' font-family='Arial' font-size='24' fill='%23999' text-anchor='middle' dominant-baseline='middle'%3EStartup Image%3C/text%3E%3C/svg%3E";
   };
 
   const handleAvatarError = (e) => {
-    e.target.src = "/placeholder-avatar.png";
+    // Use data URI instead of placeholder.com
+    e.target.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40' viewBox='0 0 40 40'%3E%3Crect width='40' height='40' fill='%23f0f0f0'/%3E%3Ctext x='50%25' y='50%25' font-family='Arial' font-size='16' fill='%23999' text-anchor='middle' dominant-baseline='middle'%3EA%3C/text%3E%3C/svg%3E";
   };
 
   // Ensure avatar URL has proper protocol
@@ -94,7 +96,7 @@ export const StartupCard = ({ startup }) => {
     }
     
     // Fallback
-    return "/placeholder-startup.png";
+    return "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='225' viewBox='0 0 400 225'%3E%3Crect width='400' height='225' fill='%23f0f0f0'/%3E%3Ctext x='50%25' y='50%25' font-family='Arial' font-size='24' fill='%23999' text-anchor='middle' dominant-baseline='middle'%3EStartup Image%3C/text%3E%3C/svg%3E";
   };
 
   // Check if we should show navigation arrows

@@ -82,7 +82,7 @@ export const StartupModal = ({ startup, onClose }) => {
       }
       
       // Fallback
-      return "https://via.placeholder.com/400x225?text=Startup+Image";
+      return "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='225' viewBox='0 0 400 225'%3E%3Crect width='400' height='225' fill='%23f0f0f0'/%3E%3Ctext x='50%25' y='50%25' font-family='Arial' font-size='24' fill='%23999' text-anchor='middle' dominant-baseline='middle'%3EStartup Image%3C/text%3E%3C/svg%3E";
     }
     
     // Generate structured data for this startup
@@ -147,7 +147,10 @@ export const StartupModal = ({ startup, onClose }) => {
               src=${startup.images?.[0]}
               alt=${startup.title}
               class="w-full h-full object-cover"
-            />
+              onError=${(e) => {
+                // Use data URI instead of placeholder.com
+                e.target.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='225' viewBox='0 0 400 225'%3E%3Crect width='400' height='225' fill='%23f0f0f0'/%3E%3Ctext x='50%25' y='50%25' font-family='Arial' font-size='24' fill='%23999' text-anchor='middle' dominant-baseline='middle'%3EStartup Image%3C/text%3E%3C/svg%3E";
+              }}
           </div>
 
           <p class="text-black">${startup.description}</p>
@@ -176,6 +179,10 @@ export const StartupModal = ({ startup, onClose }) => {
                 src=${startup.author.avatar}
                 alt=${startup.author.name}
                 class="w-6 h-6 rounded border border-black mr-2"
+                onError=${(e) => {
+                  // Use data URI instead of placeholder.com
+                  e.target.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40' viewBox='0 0 40 40'%3E%3Crect width='40' height='40' fill='%23f0f0f0'/%3E%3Ctext x='50%25' y='50%25' font-family='Arial' font-size='16' fill='%23999' text-anchor='middle' dominant-baseline='middle'%3EA%3C/text%3E%3C/svg%3E";
+                }}
               />
               <span class="text-sm font-bold">${startup.author.name}</span>
             </a>
