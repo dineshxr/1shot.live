@@ -1,6 +1,7 @@
 import { supabaseClient } from '../lib/supabase-client.js';
 import { captureScreenshot, uploadScreenshot } from '../lib/screenshot-service.js';
 // Using global analytics functions defined in main.js instead of imports
+// html and useState are defined globally in main.js
 
 import { Confetti } from './confetti.js';
 
@@ -382,9 +383,8 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
       // Trigger refresh of startups list
       window.dispatchEvent(new Event("refresh-startups"));
       
-      // IMPORTANT: Redirect to success page immediately before any state updates
-      // that might prevent the redirect from happening
-      window.location.href = 'success.html';
+      // Instead of redirecting, we'll show a success message
+      // window.location.href = 'success.html';
       
       // These state updates won't actually happen because we're redirecting
       setFormData({ url: "", xProfile: "", projectName: "", description: "", slug: "" });
@@ -403,9 +403,57 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
 
   if (!isOpen) return null;
 
-  // We don't need the success UI here anymore as we're redirecting to success.html
+  // Show success UI when submission is successful
   if (success) {
-    return null; // This won't actually render as we redirect before this
+    return html`
+      <div
+        class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto"
+        onClick=${(e) => {
+          // Close modal when clicking the backdrop
+          if (e.target === e.currentTarget) onClose();
+        }}
+      >
+        <div
+          class="bg-white border-4 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] p-6 w-full max-w-md rounded relative my-8 max-h-[90vh] overflow-y-auto"
+        >
+          <button
+            onClick=${onClose}
+            class="absolute top-2 right-2 text-black hover:text-gray-700"
+            aria-label="Close"
+          >
+            <i class="fas fa-times text-xl"></i>
+          </button>
+
+          <h2 class="text-2xl font-bold mb-4 text-black">Submit Your Startup</h2>
+          
+          <div class="mb-6 p-4 bg-green-100 border-2 border-green-500 rounded text-center">
+            <p class="text-green-700 font-bold text-xl mb-2">Congratulations on Launching!</p>
+            <p class="text-green-700">You will be featured on the Home Page shortly.</p>
+          </div>
+          
+          ${formData.plan === 'premium' ? html`
+            <div class="mb-4 bg-yellow-300 p-3 border border-black rounded">
+              <p class="font-bold">Your premium submission will be prioritized and featured immediately.</p>
+            </div>
+          ` : html`
+            <div class="mb-4 bg-blue-100 p-3 border border-black rounded">
+              <p>Your submission has been added to the queue and will be featured soon.</p>
+            </div>
+          `}
+          
+          <${Confetti} />
+          
+          <div class="flex justify-center mt-6">
+            <button
+              onClick=${onClose}
+              class="px-6 py-2 bg-blue-400 border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:bg-blue-500 font-bold"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
   }
 
   return html`
