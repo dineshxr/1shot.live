@@ -1,24 +1,10 @@
 import { supabaseClient } from '../lib/supabase-client.js';
 import { captureScreenshot, uploadScreenshot } from '../lib/screenshot-service.js';
 // Using global analytics functions defined in main.js instead of imports
-import { Confetti } from './confetti.js';
 
-// @ts-ignore - Import from global scope as defined in main.js
-const { useState, useEffect } = window;
+// Use global html function and hooks defined in main.js
 const html = window.html;
-
-// Type definitions for global analytics functions
-/** @ts-ignore */
-declare global {
-  interface Window {
-    trackEvent: (eventName: string, data: any) => void;
-    ANALYTICS_EVENTS: Record<string, string>;
-    turnstile: any;
-    PUBLIC_ENV: any;
-    preactHooks: any;
-    html: any;
-  }
-}
+const { useState, useEffect } = window;
 
 export const SubmitStartupForm = ({ isOpen, onClose }) => {
   const [formData, setFormData] = useState({
@@ -34,9 +20,8 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
   const [loadingDates, setLoadingDates] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [turnstileToken, setTurnstileToken] = useState(null);
+  const [turnstileToken, setTurnstileToken] = useState(""); // Use empty string instead of null
   const [success, setSuccess] = useState(false);
-  const [showConfetti, setShowConfetti] = useState(false);
   const [currentPage, setCurrentPage] = useState(1); // Track which page of the form we're on
 
   useEffect(() => {
@@ -543,20 +528,8 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
       // Trigger refresh of startups list
       window.dispatchEvent(new Event("refresh-startups"));
       
-      // Show success UI with confetti
-      setFormData({ url: "", xProfile: "", projectName: "", description: "", slug: "", plan: "free", launchDate: "" });
-      setTurnstileToken(""); // Use empty string instead of null to avoid type error
-      // Reset the widget
-      if (window.turnstile) {
-        window.turnstile.reset();
-      }
-      setSuccess(true);
-      setShowConfetti(true);
-      
-      // Hide confetti after 8 seconds for better effect
-      setTimeout(() => {
-        setShowConfetti(false);
-      }, 8000);
+      // Redirect to success page
+      window.location.href = "/success.html";
     } catch (err) {
       setError(err.message);
     } finally {
@@ -566,38 +539,8 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
 
   if (!isOpen) return null;
 
-  // Success UI with confetti
   if (success) {
-    return html`
-      <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-        ${showConfetti && html`<${Confetti} show=${true} />`}
-        <div class="relative w-full max-w-2xl rounded-lg bg-white p-6 shadow-xl dark:bg-gray-800 sm:p-8">
-          <button
-            onClick=${onClose}
-            class="absolute right-4 top-4 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-            aria-label="Close"
-          >
-            <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-          <div class="flex flex-col items-center justify-center py-8 text-center">
-            <svg class="h-16 w-16 text-green-500 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            <h2 class="text-2xl font-bold mb-2">Submission Successful!</h2>
-            <p class="text-xl font-bold text-green-600 mb-4">Your startup will be on the homepage shortly!</p>
-            <p class="text-gray-600 dark:text-gray-300">Thank you for your submission.</p>
-            <button
-              onClick=${onClose}
-              class="mt-6 inline-flex items-center rounded-md border border-transparent bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
-            >
-              Close
-            </button>
-          </div>
-        </div>
-      </div>
-    `;
+    return null; // This won't actually render as we redirect before this
   }
 
   return html`
