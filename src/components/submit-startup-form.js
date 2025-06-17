@@ -1,8 +1,24 @@
 import { supabaseClient } from '../lib/supabase-client.js';
 import { captureScreenshot, uploadScreenshot } from '../lib/screenshot-service.js';
 // Using global analytics functions defined in main.js instead of imports
-
 import { Confetti } from './confetti.js';
+
+// @ts-ignore - Import from global scope as defined in main.js
+const { useState, useEffect } = window;
+const html = window.html;
+
+// Type definitions for global analytics functions
+/** @ts-ignore */
+declare global {
+  interface Window {
+    trackEvent: (eventName: string, data: any) => void;
+    ANALYTICS_EVENTS: Record<string, string>;
+    turnstile: any;
+    PUBLIC_ENV: any;
+    preactHooks: any;
+    html: any;
+  }
+}
 
 export const SubmitStartupForm = ({ isOpen, onClose }) => {
   const [formData, setFormData] = useState({
@@ -11,12 +27,16 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
     projectName: "",
     description: "",
     slug: "",
-    plan: "free" // Default plan selection
+    plan: "free", // Default plan selection
+    launchDate: "" // Launch date selection
   });
+  const [availableDates, setAvailableDates] = useState([]);
+  const [loadingDates, setLoadingDates] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [turnstileToken, setTurnstileToken] = useState(null);
   const [success, setSuccess] = useState(false);
+  const [showConfetti, setShowConfetti] = useState(false);
   const [currentPage, setCurrentPage] = useState(1); // Track which page of the form we're on
 
   useEffect(() => {
@@ -135,6 +155,21 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
       setError(null);
       setCurrentPage(2);
       window.trackEvent(window.ANALYTICS_EVENTS.FORM_NEXT_PAGE, { page: 1 });
+    } else if (currentPage === 2) {
+      // Validate plan selection
+      if (!formData.plan) {
+        setError("Please select a plan");
+        return;
+      }
+      
+      // Clear any existing errors and proceed to next page
+      setError(null);
+      setCurrentPage(3);
+      
+      // Fetch available dates when moving to the date selection page
+      fetchAvailableDates();
+      
+      window.trackEvent(window.ANALYTICS_EVENTS.FORM_NEXT_PAGE, { page: 2 });
     }
   };
 
@@ -145,6 +180,117 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
 
   const selectPlan = (plan) => {
     setFormData(prev => ({ ...prev, plan }));
+  };
+
+  const selectLaunchDate = (date) => {
+    setFormData(prev => ({ ...prev, launchDate: date }));
+  };
+
+  // Fetch available launch dates from the database
+  const fetchAvailableDates = async () => {
+    setLoadingDates(true);
+    try {
+      const supabase = supabaseClient();
+      
+      // Get the current date in ISO format (YYYY-MM-DD)
+      const today = new Date();
+      const todayFormatted = today.toISOString().split('T')[0];
+      
+      // Fetch the count of submissions for each date for the next 30 days
+      const { data: submissionCounts, error } = await supabase
+        .from('startups')
+        .select('launch_date, count(*)')
+        .gte('launch_date', todayFormatted)
+        .lte('launch_date', new Date(today.setDate(today.getDate() + 30)).toISOString().split('T')[0])
+        .group('launch_date');
+      
+      if (error) {
+        console.error('Error fetching submission counts:', error);
+        throw error;
+      }
+      
+      // Create a map of date -> count for easy lookup
+      const countsByDate = {};
+      submissionCounts.forEach(item => {
+        countsByDate[item.launch_date] = parseInt(item.count);
+      });
+      
+      // Generate dates for the next 30 days
+      const dates = [];
+      const startDate = new Date();
+      
+      // For premium plan, include today regardless of count
+      if (formData.plan === 'premium') {
+        const todayDate = new Date();
+        dates.push({
+          date: todayDate.toISOString().split('T')[0],
+          display: `Today, ${todayDate.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}`,
+          isPremium: true,
+          isFree: false,
+          count: countsByDate[todayDate.toISOString().split('T')[0]] || 0
+        });
+      }
+      
+      // Generate the next 30 days
+      for (let i = 1; i <= 30; i++) {
+        const currentDate = new Date(startDate);
+        currentDate.setDate(startDate.getDate() + i);
+        const dateString = currentDate.toISOString().split('T')[0];
+        const count = countsByDate[dateString] || 0;
+        
+        // Determine if this date is available for free plan (less than 5 submissions)
+        const isFreeAvailable = count < 5;
+        
+        dates.push({
+          date: dateString,
+          display: `${currentDate.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}`,
+          isPremium: true, // Premium is always available
+          isFree: isFreeAvailable,
+          count: count
+        });
+      }
+      
+      setAvailableDates(dates);
+    } catch (err) {
+      console.error('Error loading available dates:', err);
+      // Fallback to some default dates if there's an error
+      setAvailableDates(getDefaultDates());
+    } finally {
+      setLoadingDates(false);
+    }
+  };
+  
+  // Fallback function to generate default dates if API fails
+  const getDefaultDates = () => {
+    const dates = [];
+    const today = new Date();
+    
+    // For premium plan, include today
+    if (formData.plan === 'premium') {
+      const todayFormatted = new Date();
+      dates.push({
+        date: todayFormatted.toISOString().split('T')[0],
+        display: `Today, ${todayFormatted.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}`,
+        isPremium: true,
+        isFree: false,
+        count: 0
+      });
+    }
+    
+    // Generate next 14 days
+    for (let i = 1; i <= 14; i++) {
+      const currentDate = new Date(today);
+      currentDate.setDate(today.getDate() + i);
+      dates.push({
+        date: currentDate.toISOString().split('T')[0],
+        display: `${currentDate.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}`,
+        isPremium: true,
+        isFree: i % 2 === 0, // Just alternate for the fallback
+        count: 0
+      });
+    }
+    
+    return dates;
   };
 
   const handleSubmit = async (e) => {
@@ -171,6 +317,20 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
       }
       if (!formData.slug) {
         throw new Error("Please enter a slug for your project");
+      }
+      if (!formData.plan) {
+        throw new Error("Please select a plan");
+      }
+      if (!formData.launchDate) {
+        throw new Error("Please select a launch date");
+      }
+      
+      // For free plan, verify that the selected date still has slots available
+      if (formData.plan === 'free') {
+        const selectedDate = availableDates.find(d => d.date === formData.launchDate);
+        if (!selectedDate || !selectedDate.isFree) {
+          throw new Error("This date is no longer available for free submissions. Please select another date or upgrade to premium.");
+        }
       }
 
       // Initialize Supabase client with better error handling
@@ -249,6 +409,7 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
                 slug: formData.slug,
                 screenshot_url: screenshotUrl, // Include the screenshot URL if available
                 plan: formData.plan, // Include the selected plan
+                launch_date: formData.launchDate, // Include the launch date
                 author: {
                   name: formData.xProfile,
                   profile_url: `https://x.com/${formData.xProfile}`,
@@ -301,7 +462,7 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
                   window.trackEvent(window.ANALYTICS_EVENTS.FORM_SUBMIT, { success: true, used_unique_slug: true });
                   
                   // Reset form
-                  setFormData({ url: "", xProfile: "", projectName: "", description: "", slug: "" });
+                  setFormData({ url: "", xProfile: "", projectName: "", description: "", slug: "", plan: "free", launchDate: "" });
                   setTurnstileToken(null);
                   // Reset the widget
                   if (window.turnstile) {
@@ -382,18 +543,20 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
       // Trigger refresh of startups list
       window.dispatchEvent(new Event("refresh-startups"));
       
-      // IMPORTANT: Redirect to success page immediately before any state updates
-      // that might prevent the redirect from happening
-      window.location.href = 'success.html';
-      
-      // These state updates won't actually happen because we're redirecting
-      setFormData({ url: "", xProfile: "", projectName: "", description: "", slug: "" });
-      setTurnstileToken(null);
+      // Show success UI with confetti
+      setFormData({ url: "", xProfile: "", projectName: "", description: "", slug: "", plan: "free", launchDate: "" });
+      setTurnstileToken(""); // Use empty string instead of null to avoid type error
       // Reset the widget
       if (window.turnstile) {
         window.turnstile.reset();
       }
       setSuccess(true);
+      setShowConfetti(true);
+      
+      // Hide confetti after 8 seconds for better effect
+      setTimeout(() => {
+        setShowConfetti(false);
+      }, 8000);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -403,9 +566,38 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
 
   if (!isOpen) return null;
 
-  // We don't need the success UI here anymore as we're redirecting to success.html
+  // Success UI with confetti
   if (success) {
-    return null; // This won't actually render as we redirect before this
+    return html`
+      <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+        ${showConfetti && html`<${Confetti} show=${true} />`}
+        <div class="relative w-full max-w-2xl rounded-lg bg-white p-6 shadow-xl dark:bg-gray-800 sm:p-8">
+          <button
+            onClick=${onClose}
+            class="absolute right-4 top-4 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+            aria-label="Close"
+          >
+            <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+          <div class="flex flex-col items-center justify-center py-8 text-center">
+            <svg class="h-16 w-16 text-green-500 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <h2 class="text-2xl font-bold mb-2">Submission Successful!</h2>
+            <p class="text-xl font-bold text-green-600 mb-4">Your startup will be on the homepage shortly!</p>
+            <p class="text-gray-600 dark:text-gray-300">Thank you for your submission.</p>
+            <button
+              onClick=${onClose}
+              class="mt-6 inline-flex items-center rounded-md border border-transparent bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
   }
 
   return html`
@@ -557,7 +749,7 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
           </div>
           ` : currentPage === 2 ? html`
             <div class="mb-6">
-              <h3 class="text-xl font-bold mb-4 text-black">Choose Your Launch Date</h3>
+              <h3 class="text-xl font-bold mb-4 text-black">Choose Your Plan</h3>
               
               <div class="mb-6">
                 <div class="flex flex-col space-y-6">
@@ -617,9 +809,81 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
                   Previous
                 </button>
                 <button
+                  type="button"
+                  onClick=${goToNextPage}
+                  class="neo-button px-4 py-2 bg-blue-400 border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:bg-blue-500 font-bold disabled:opacity-50"
+                  disabled=${loading}
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          ` : currentPage === 3 ? html`
+            <div class="mb-6">
+              <h3 class="text-xl font-bold mb-4 text-black">Choose Your Launch Date</h3>
+              <p class="mb-4 text-gray-700">Select from available launch dates</p>
+              
+              <div class="mb-6">
+                ${loadingDates ? html`
+                  <div class="flex justify-center items-center py-8">
+                    <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-black"></div>
+                    <span class="ml-3 text-lg">Loading available dates...</span>
+                  </div>
+                ` : html`
+                  <div class="flex flex-col space-y-4">
+                    ${availableDates.map(dateOption => {
+                      // Skip dates that aren't available for the selected plan
+                      if (formData.plan === 'free' && !dateOption.isFree) return '';
+                      
+                      return html`
+                        <div 
+                          class="border-4 ${formData.launchDate === dateOption.date ? 'border-blue-500' : 'border-black'} p-4 rounded-lg cursor-pointer hover:bg-gray-50 transition-all"
+                          onClick=${() => selectLaunchDate(dateOption.date)}
+                        >
+                          <div class="flex justify-between items-center">
+                            <h4 class="text-lg font-bold">${dateOption.display}</h4>
+                            <div class="flex flex-col items-end">
+                              <div class="flex items-center">
+                                ${dateOption.isPremium ? html`<span class="text-sm text-green-600 mr-2">Premium available</span>` : ''}
+                                ${dateOption.isFree ? html`<span class="text-sm text-blue-600">Free available</span>` : ''}
+                              </div>
+                              ${dateOption.count > 0 ? html`
+                                <span class="text-xs text-gray-500 mt-1">${dateOption.count}/5 slots filled</span>
+                              ` : ''}
+                            </div>
+                          </div>
+                          ${formData.launchDate === dateOption.date ? html`
+                            <div class="bg-blue-100 text-blue-800 text-sm font-bold py-1 px-2 rounded inline-block mt-2">
+                              <i class="fas fa-check mr-1"></i> Selected
+                            </div>
+                          ` : ''}
+                        </div>
+                      `;
+                    })
+                    }
+                    ${availableDates.filter(d => formData.plan === 'premium' || d.isFree).length === 0 ? html`
+                      <div class="border-4 border-gray-300 p-4 rounded-lg bg-gray-50">
+                        <p class="text-center text-gray-600">No available dates found. Please check back later or upgrade to premium for immediate launch.</p>
+                      </div>
+                    ` : ''}
+                  </div>
+                `}
+                </div>
+              </div>
+              
+              <div class="flex justify-end mt-6">
+                <button
+                  type="button"
+                  onClick=${goToPreviousPage}
+                  class="mr-2 px-4 py-2 bg-gray-200 border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:bg-gray-300 font-bold"
+                  disabled=${loading}
+                >
+                  Previous
+                </button>
+                <button
                   type="submit"
                   class="neo-button px-4 py-2 bg-green-400 border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:bg-green-500 font-bold disabled:opacity-50"
-                  disabled=${loading}
+                  disabled=${loading || !formData.launchDate}
                 >
                   ${loading ? "Submitting..." : "Submit"}
                 </button>
