@@ -403,29 +403,28 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
 
   if (!isOpen) return null;
 
-  // Show success UI when submission is successful
-  if (success) {
-    return html`
+  return html`
+    <div
+      class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto"
+      onClick=${(e) => {
+        // Close modal when clicking the backdrop
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
       <div
-        class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto"
-        onClick=${(e) => {
-          // Close modal when clicking the backdrop
-          if (e.target === e.currentTarget) onClose();
-        }}
+        class="bg-white border-4 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] p-6 w-full max-w-md rounded relative my-8 max-h-[90vh] overflow-y-auto"
       >
-        <div
-          class="bg-white border-4 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] p-6 w-full max-w-md rounded relative my-8 max-h-[90vh] overflow-y-auto"
+        <button
+          onClick=${onClose}
+          class="absolute top-2 right-2 text-black hover:text-gray-700"
+          aria-label="Close"
         >
-          <button
-            onClick=${onClose}
-            class="absolute top-2 right-2 text-black hover:text-gray-700"
-            aria-label="Close"
-          >
-            <i class="fas fa-times text-xl"></i>
-          </button>
+          <i class="fas fa-times text-xl"></i>
+        </button>
 
-          <h2 class="text-2xl font-bold mb-4 text-black">Submit Your Startup</h2>
-          
+        <h2 class="text-2xl font-bold mb-2 text-black">Submit Your Startup</h2>
+        
+        ${success ? html`
           <div class="mb-6 p-4 bg-green-100 border-2 border-green-500 rounded text-center">
             <p class="text-green-700 font-bold text-xl mb-2">Congratulations on Launching!</p>
             <p class="text-green-700">You will be featured on the Home Page shortly.</p>
@@ -451,43 +450,19 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
               Close
             </button>
           </div>
-        </div>
-      </div>
-    `;
-  }
-
-  return html`
-    <div
-      class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto"
-      onClick=${(e) => {
-        // Close modal when clicking the backdrop
-        if (e.target === e.currentTarget) onClose();
-      }}
-    >
-      <div
-        class="bg-white border-4 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] p-6 w-full max-w-md rounded relative my-8 max-h-[90vh] overflow-y-auto"
-      >
-        <button
-          onClick=${onClose}
-          class="absolute top-2 right-2 text-black hover:text-gray-700"
-          aria-label="Close"
-        >
-          <i class="fas fa-times text-xl"></i>
-        </button>
-
-        <h2 class="text-2xl font-bold mb-2 text-black">Submit Your Startup</h2>
-        <div class="mb-4 bg-yellow-300 p-3 border border-black rounded">
-          <p class="font-bold flex items-center">
-            <span class="mr-2">🚀</span> Launch Today, Get a 36+ DR Backlink
-          </p>
-        </div>
-
-        ${error &&
-        html`
-          <div class="mb-4 p-3 bg-red-100 border-2 border-red-500 rounded">
-            <p class="text-red-700">${error}</p>
+        ` : html`
+          <div class="mb-4 bg-yellow-300 p-3 border border-black rounded">
+            <p class="font-bold flex items-center">
+              <span class="mr-2">🚀</span> Launch Today, Get a 36+ DR Backlink
+            </p>
           </div>
-        `}
+
+          ${error &&
+          html`
+            <div class="mb-4 p-3 bg-red-100 border-2 border-red-500 rounded">
+              <p class="text-red-700">${error}</p>
+            </div>
+          `}
 
         <form onSubmit=${handleSubmit}>
           ${currentPage === 1 ? html`
