@@ -553,23 +553,7 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
               >
                 Next
               </button>
-            ` : html`
-              <button
-                type="button"
-                onClick=${goToPreviousPage}
-                class="mr-2 px-4 py-2 bg-gray-200 border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:bg-gray-300 font-bold"
-                disabled=${loading}
-              >
-                Back
-              </button>
-              <button
-                type="submit"
-                class="neo-button px-4 py-2 bg-green-400 border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:bg-green-500 font-bold disabled:opacity-50"
-                disabled=${loading}
-              >
-                ${loading ? "Submitting..." : "Submit"}
-              </button>
-            `}
+            ` : ''}
           </div>
           ` : currentPage === 2 ? html`
             <div class="mb-6">
@@ -587,9 +571,9 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
                       <span class="text-lg font-bold">$0</span>
                     </div>
                     <ul class="list-disc pl-5 space-y-1 mb-3">
-                      <li>Get listed on the homepage</li>
-                      <li>Basic analytics</li>
-                      <li>Standard position</li>
+                      <li>Live on homepage for 7 days</li>
+                      <li>High authority backlink (for verified submissions)</li>
+                      <li>Standard launch queue</li>
                     </ul>
                     ${formData.plan === 'free' ? html`
                       <div class="bg-blue-100 text-blue-800 text-sm font-bold py-1 px-2 rounded inline-block">
@@ -608,10 +592,9 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
                       <span class="text-lg font-bold">$49</span>
                     </div>
                     <ul class="list-disc pl-5 space-y-1 mb-3">
-                      <li>Featured position on homepage</li>
-                      <li>Advanced analytics dashboard</li>
-                      <li>Social media promotion</li>
-                      <li>Priority support</li>
+                      <li>Live on homepage for 14 days</li>
+                      <li>Guaranteed high authority backlink</li>
+                      <li>Skip the queue (launch today)</li>
                     </ul>
                     ${formData.plan === 'premium' ? html`
                       <div class="bg-blue-100 text-blue-800 text-sm font-bold py-1 px-2 rounded inline-block">
@@ -623,6 +606,24 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
               </div>
               
               <div class="cf-turnstile"></div>
+              
+              <div class="flex justify-end mt-6">
+                <button
+                  type="button"
+                  onClick=${goToPreviousPage}
+                  class="mr-2 px-4 py-2 bg-gray-200 border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:bg-gray-300 font-bold"
+                  disabled=${loading}
+                >
+                  Previous
+                </button>
+                <button
+                  type="submit"
+                  class="neo-button px-4 py-2 bg-green-400 border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:bg-green-500 font-bold disabled:opacity-50"
+                  disabled=${loading}
+                >
+                  ${loading ? "Submitting..." : "Submit"}
+                </button>
+              </div>
             </div>
           ` : ''}
         </form>
