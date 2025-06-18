@@ -19,6 +19,7 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
   const [turnstileToken, setTurnstileToken] = useState(null);
   const [success, setSuccess] = useState(false);
   const [currentPage, setCurrentPage] = useState(1); // Track which page of the form we're on
+  const [showSuccessPage, setShowSuccessPage] = useState(false); // New state to control success page visibility
 
   useEffect(() => {
     if (!isOpen) return;
@@ -383,17 +384,23 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
       // Trigger refresh of startups list
       window.dispatchEvent(new Event("refresh-startups"));
       
-      // Instead of redirecting, we'll show a success message
-      // window.location.href = 'success.html';
+      // Save the submitted data for the success page
+      const submittedData = { ...formData };
       
-      // These state updates won't actually happen because we're redirecting
+      // Reset form data
       setFormData({ url: "", xProfile: "", projectName: "", description: "", slug: "" });
       setTurnstileToken(null);
       // Reset the widget
       if (window.turnstile) {
         window.turnstile.reset();
       }
+      
+      // Show success page
       setSuccess(true);
+      setShowSuccessPage(true);
+      
+      // Track success page view
+      window.trackEvent(window.ANALYTICS_EVENTS.SUCCESS_PAGE_VIEW, { plan: submittedData.plan });
     } catch (err) {
       setError(err.message);
     } finally {
@@ -403,6 +410,82 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
 
   if (!isOpen) return null;
 
+  // Render the success page if showSuccessPage is true
+  if (showSuccessPage) {
+    return html`
+      <div
+        class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto"
+        onClick=${(e) => {
+          // Close modal when clicking the backdrop
+          if (e.target === e.currentTarget) onClose();
+        }}
+      >
+        <div
+          class="bg-white border-4 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] p-6 w-full max-w-md rounded relative my-8 max-h-[90vh] overflow-y-auto"
+        >
+          <button
+            onClick=${onClose}
+            class="absolute top-2 right-2 text-black hover:text-gray-700"
+            aria-label="Close"
+          >
+            <i class="fas fa-times text-xl"></i>
+          </button>
+
+          <h2 class="text-2xl font-bold mb-2 text-black">Launch Successful! 🚀</h2>
+          
+          <div class="mb-6 p-4 bg-green-100 border-2 border-green-500 rounded text-center">
+            <p class="text-green-700 font-bold text-xl mb-2">Congratulations on Launching!</p>
+            <p class="text-green-700">You will be featured on the Home Page shortly.</p>
+          </div>
+          
+          ${formData.plan === 'premium' ? html`
+            <div class="mb-4 bg-yellow-300 p-3 border border-black rounded">
+              <p class="font-bold">Your premium submission will be prioritized and featured immediately.</p>
+            </div>
+          ` : html`
+            <div class="mb-4 bg-blue-100 p-3 border border-black rounded">
+              <p>Your submission has been added to the queue and will be featured soon.</p>
+            </div>
+          `}
+          
+          <div class="mt-6 p-4 border-2 border-black rounded bg-gray-50">
+            <h3 class="font-bold text-lg mb-2">What's Next?</h3>
+            <ul class="list-disc pl-5 space-y-2">
+              <li>Share your launch on social media</li>
+              <li>Your startup will appear on our homepage</li>
+              <li>You'll receive a high-authority backlink</li>
+              <li>Expect increased traffic to your site</li>
+            </ul>
+          </div>
+          
+          <div class="mt-6 flex flex-col items-center">
+            <p class="mb-3 font-bold">Share your launch:</p>
+            <div class="flex space-x-4">
+              <a href="https://twitter.com/intent/tweet?text=I%20just%20launched%20my%20startup%20on%201shot.live%21" target="_blank" class="p-2 bg-blue-400 hover:bg-blue-500 rounded-full">
+                <i class="fab fa-twitter text-white text-xl"></i>
+              </a>
+              <a href="https://www.linkedin.com/sharing/share-offsite/?url=https://1shot.live" target="_blank" class="p-2 bg-blue-700 hover:bg-blue-800 rounded-full">
+                <i class="fab fa-linkedin-in text-white text-xl"></i>
+              </a>
+            </div>
+          </div>
+          
+          <${Confetti} />
+          
+          <div class="flex justify-center mt-6">
+            <button
+              onClick=${onClose}
+              class="px-6 py-2 bg-blue-400 border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:bg-blue-500 font-bold"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  // Render the regular form if not showing success page
   return html`
     <div
       class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto"
@@ -426,29 +509,8 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
         
         ${success ? html`
           <div class="mb-6 p-4 bg-green-100 border-2 border-green-500 rounded text-center">
-            <p class="text-green-700 font-bold text-xl mb-2">Congratulations on Launching!</p>
-            <p class="text-green-700">You will be featured on the Home Page shortly.</p>
-          </div>
-          
-          ${formData.plan === 'premium' ? html`
-            <div class="mb-4 bg-yellow-300 p-3 border border-black rounded">
-              <p class="font-bold">Your premium submission will be prioritized and featured immediately.</p>
-            </div>
-          ` : html`
-            <div class="mb-4 bg-blue-100 p-3 border border-black rounded">
-              <p>Your submission has been added to the queue and will be featured soon.</p>
-            </div>
-          `}
-          
-          <${Confetti} />
-          
-          <div class="flex justify-center mt-6">
-            <button
-              onClick=${onClose}
-              class="px-6 py-2 bg-blue-400 border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:bg-blue-500 font-bold"
-            >
-              Close
-            </button>
+            <p class="text-green-700 font-bold text-xl mb-2">Processing your submission...</p>
+            <p class="text-green-700">Please wait while we redirect you.</p>
           </div>
         ` : html`
           <div class="mb-4 bg-yellow-300 p-3 border border-black rounded">
@@ -464,7 +526,7 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
             </div>
           `}
 
-        <form onSubmit=${handleSubmit}>
+          <form onSubmit=${handleSubmit}>
           ${currentPage === 1 ? html`
           <div class="mb-4">
             <label class="block text-black font-bold mb-2" for="projectName">
@@ -649,7 +711,8 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
               </div>
             </div>
           ` : ''}
-        </form>
+          </form>
+        `}
       </div>
     </div>
   `;
