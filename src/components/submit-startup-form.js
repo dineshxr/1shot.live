@@ -343,6 +343,21 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
           } else {
             // Success!
             console.log("Startup submitted successfully:", data);
+            
+            // Show success page
+            setSuccess(true);
+            setShowSuccessPage(true);
+            
+            // Save the submitted data for the success page
+            const submittedData = { ...formData };
+            
+            // Track success page view
+            try {
+              window.trackEvent(window.ANALYTICS_EVENTS.SUCCESS_PAGE_VIEW, { plan: submittedData.plan });
+            } catch (analyticsError) {
+              console.warn('Analytics error:', analyticsError);
+            }
+            
             return data; // Exit the retry loop on success
           }
         } catch (dbError) {
