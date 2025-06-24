@@ -465,21 +465,16 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
           
           <div class="mt-6 p-4 border-2 border-black rounded bg-gray-50">
             <h3 class="font-bold text-lg mb-2">What's Next?</h3>
-            <ul class="list-disc pl-5 space-y-2">
-              <li>Share your launch on social media</li>
-              <li>Your startup will appear on our homepage</li>
-              <li>You'll receive a high-authority backlink</li>
-              <li>Expect increased traffic to your site</li>
-            </ul>
+            <p class="mb-2">Share your launch on social media for the backlink and tag submithunt</p>
           </div>
           
           <div class="mt-6 flex flex-col items-center">
             <p class="mb-3 font-bold">Share your launch:</p>
             <div class="flex space-x-4">
-              <a href="https://twitter.com/intent/tweet?text=I%20just%20launched%20my%20startup%20on%201shot.live%21" target="_blank" class="p-2 bg-blue-400 hover:bg-blue-500 rounded-full">
+              <a href="https://twitter.com/intent/tweet?text=I%20just%20launched%20my%20startup%20on%20submithunt.com%21" target="_blank" class="p-2 bg-blue-400 hover:bg-blue-500 rounded-full">
                 <i class="fab fa-twitter text-white text-xl"></i>
               </a>
-              <a href="https://www.linkedin.com/sharing/share-offsite/?url=https://1shot.live" target="_blank" class="p-2 bg-blue-700 hover:bg-blue-800 rounded-full">
+              <a href="https://www.linkedin.com/sharing/share-offsite/?url=https://submithunt.com" target="_blank" class="p-2 bg-blue-700 hover:bg-blue-800 rounded-full">
                 <i class="fab fa-linkedin-in text-white text-xl"></i>
               </a>
             </div>
