@@ -446,11 +446,12 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
             <i class="fas fa-times text-xl"></i>
           </button>
 
-          <h2 class="text-2xl font-bold mb-2 text-black">Launch Successful! 🚀</h2>
+          <h2 class="text-2xl font-bold mb-2 text-black">Startup Submitted Successfully! 🚀</h2>
           
           <div class="mb-6 p-4 bg-green-100 border-2 border-green-500 rounded text-center">
-            <p class="text-green-700 font-bold text-xl mb-2">Congratulations on Launching!</p>
-            <p class="text-green-700">You will be featured on the Home Page shortly.</p>
+            <p class="text-green-700 font-bold text-xl mb-2">Congratulations on Submitting Your Startup!</p>
+            <p class="text-green-700">You've successfully launched on our Product Hunt alternative platform.</p>
+            <p class="text-green-700 mt-2">Your startup will be featured on the Home Page shortly.</p>
           </div>
           
           ${formData.plan === 'premium' ? html`
@@ -465,7 +466,8 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
           
           <div class="mt-6 p-4 border-2 border-black rounded bg-gray-50">
             <h3 class="font-bold text-lg mb-2">What's Next?</h3>
-            <p class="mb-2">Share your launch on social media for the backlink and tag submithunt</p>
+            <p class="mb-2">Share your startup submission on social media for maximum exposure and tag @submithunt</p>
+            <p class="mb-2">Tell others about your experience with our Product Hunt alternative platform</p>
           </div>
           
           <div class="mt-6 flex flex-col items-center">
@@ -516,6 +518,7 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
         </button>
 
         <h2 class="text-2xl font-bold mb-2 text-black">Submit Your Startup</h2>
+        <p class="text-gray-700 mb-3">Launch your project on the best Product Hunt alternative for startup founders and indie hackers.</p>
         
         ${success ? html`
           <div class="mb-6 p-4 bg-green-100 border-2 border-green-500 rounded text-center">
@@ -525,8 +528,9 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
         ` : html`
           <div class="mb-4 bg-yellow-300 p-3 border border-black rounded">
             <p class="font-bold flex items-center">
-              <span class="mr-2">🚀</span> Launch Today, Get a 36+ DR Backlink
+              <span class="mr-2">🚀</span> Submit Your Startup, Get a 36+ DR Backlink
             </p>
+            <p class="text-sm mt-1">Join hundreds of founders who chose SubmitHunt as their Product Hunt alternative</p>
           </div>
 
           ${error &&
@@ -619,8 +623,7 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
               required
             />
             <div class="text-sm text-gray-500 mt-2">
-              We need your X username so we know the creator of the startup. If you
-              don't use X and want to add your startup, please open a PR in Github.
+              We need your X username so we know the creator of the startup.
             </div>
           </div>
 
@@ -652,7 +655,8 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
           </div>
           ` : currentPage === 2 ? html`
             <div class="mb-6">
-              <h3 class="text-xl font-bold mb-4 text-black">Choose Your Launch Date</h3>
+              <h3 class="text-xl font-bold mb-4 text-black">Choose Your Launch Plan</h3>
+              <p class="text-gray-700 mb-3">Select how you want to submit your startup to our Product Hunt alternative platform:</p>
               
               <div class="mb-6">
                 <div class="flex flex-col space-y-6">
@@ -669,6 +673,7 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
                       <li>Live on homepage for 7 days</li>
                       <li>High authority backlink (for verified submissions)</li>
                       <li>Standard launch queue</li>
+                      <li>Basic Product Hunt alternative features</li>
                     </ul>
                     ${formData.plan === 'free' ? html`
                       <div class="bg-blue-100 text-blue-800 text-sm font-bold py-1 px-2 rounded inline-block">
@@ -690,6 +695,8 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
                       <li>Live on homepage for 14 days</li>
                       <li>Guaranteed high authority backlink</li>
                       <li>Skip the queue (launch today)</li>
+                      <li>Premium Product Hunt alternative experience</li>
+                      <li>Featured in our startup newsletter</li>
                     </ul>
                     ${formData.plan === 'premium' ? html`
                       <div class="bg-blue-100 text-blue-800 text-sm font-bold py-1 px-2 rounded inline-block">

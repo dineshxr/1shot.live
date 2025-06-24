@@ -2,7 +2,12 @@ User-agent: *
 Allow: /
 
 # Sitemap location
-Sitemap: https://submit-hunt.com/sitemap.xml
+Sitemap: https://submithunt.com/sitemap.xml
 
-# Crawl-delay to prevent server overload
-Crawl-delay: 10
+# Reduced crawl-delay for better indexing
+Crawl-delay: 5
+
+# Important pages to prioritize indexing
+Allow: /submit-startup
+Allow: /product-hunt-alternative
+Allow: /startups
