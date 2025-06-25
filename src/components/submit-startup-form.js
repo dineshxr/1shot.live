@@ -28,48 +28,63 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
   const [availableLaunchDates, setAvailableLaunchDates] = useState([]); // Available launch dates
 
   // Generate available launch dates
-  const generateLaunchDates = () => {
-    // Explicitly type the array to fix TypeScript errors
+  const generateLaunchDates = async () => {
     const dates = [];
     const today = new Date();
     
-    // Generate next 6 available dates (starting from next Tuesday)
-    for (let i = 0; i < 30; i++) {
-      const date = new Date(today);
-      date.setDate(today.getDate() + i);
+    // Find the next weekday (Monday through Friday)
+    let nextDate = new Date(today);
+    let daysAdded = 0;
+    
+    // Get the next available day (skip today)
+    nextDate.setDate(today.getDate() + 1);
+    
+    // Generate sequential available dates on weekdays (Monday through Friday)
+    // We'll show 10 days (2 weeks of weekdays)
+    while (dates.length < 10 && daysAdded < 30) {
+      const day = nextDate.getDay(); // 0 = Sunday, 1 = Monday, etc.
       
-      // Format the date with proper TypeScript types
-      const dateOptions = { 
-        weekday: "long", 
-        month: "long", 
-        day: "numeric" 
-      };
-      const formattedDate = date.toLocaleDateString('en-US', dateOptions);
-      
-      // Determine availability
-      // For this example: Tuesdays, Wednesdays, and Fridays are available
-      const day = date.getDay(); // 0 = Sunday, 1 = Monday, etc.
-      if (day === 2 || day === 3 || day === 5) { // Tuesday, Wednesday, Friday
-        const isFull = day !== 5 && Math.random() > 0.3; // Randomly mark some days as full for demo
+      // Only use weekdays (Monday = 1 through Friday = 5)
+      if (day >= 1 && day <= 5) {
+        const dateOptions = { weekday: 'long', month: 'long', day: 'numeric' };
+        const formattedDate = nextDate.toLocaleDateString('en-US', dateOptions);
+        const dateValue = nextDate.toISOString().split('T')[0];
         
-        // Add to dates array
+        // Check how many submissions are already scheduled for this date
+        const supabase = supabaseClient();
+        const { data, error, count } = await supabase
+          .from('startups')
+          .select('id', { count: 'exact' })
+          .eq('plan', 'free')
+          .eq('launch_date', dateValue);
+        
+        if (error) {
+          console.error('Error checking launch date availability:', error);
+        }
+        
+        // Each day can have up to 5 free submissions
+        // If we have 5 or more, mark as unavailable for free tier
+        const freeAvailable = !count || count < 5;
+        
         dates.push({
           date: formattedDate,
-          value: date.toISOString().split('T')[0],
-          freeAvailable: !isFull,
-          premiumAvailable: true // Featured always available
+          value: dateValue,
+          freeAvailable: freeAvailable,
+          premiumAvailable: true, // Featured always available
+          freeCount: count || 0
         });
-        
-        // Once we have 6 dates, stop
-        if (dates.length >= 6) break;
       }
+      
+      // Move to next day
+      nextDate.setDate(nextDate.getDate() + 1);
+      daysAdded++;
     }
     
     return dates;
   };
   
   // Select a launch date
-  const selectLaunchDate = (dateValue: string) => {
+  const selectLaunchDate = (dateValue) => {
     setFormData(prev => ({ ...prev, launchDate: dateValue }));
   };
   
@@ -117,7 +132,12 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
     }
     
     // Generate available launch dates when form opens
-    setAvailableLaunchDates(generateLaunchDates());
+    const loadLaunchDates = async () => {
+      const dates = await generateLaunchDates();
+      setAvailableLaunchDates(dates);
+    };
+    
+    loadLaunchDates();
     
     // Check daily submission limit
     checkDailySubmissionLimit();
@@ -373,28 +393,53 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
         try {
           console.log(`Attempt ${retryCount + 1} of ${maxRetries} to submit startup`);
           
+          // Check Supabase connection before attempting insert
+          try {
+            // Simple ping query to verify connection
+            const { error: pingError } = await supabase
+              .from('startups')
+              .select('count')
+              .limit(1);
+              
+            if (pingError) {
+              console.error('Supabase connection test failed:', pingError);
+              throw new Error(`Connection test failed: ${pingError.message || 'Unknown error'}`);
+            }
+          } catch (pingErr) {
+            console.error('Connection test error:', pingErr);
+            // Wait before retry
+            retryCount++;
+            if (retryCount < maxRetries) {
+              const waitTime = 1000 * retryCount;
+              console.log(`Waiting ${waitTime}ms before retry...`);
+              await new Promise(resolve => setTimeout(resolve, waitTime));
+              continue;
+            } else {
+              throw pingErr; // Let the outer catch handle it
+            }
+          }
+          
+          // Proceed with the actual insert
           const { data, error } = await supabase
             .from('startups')
             .insert([
               {
-                title: formData.projectName,
+                name: formData.projectName,
                 url: formData.url,
                 description: formData.description,
                 slug: formData.slug,
-                screenshot_url: screenshotUrl, // Include the screenshot URL if available
-                plan: formData.plan, // Include the selected plan
-                author: {
-                  name: formData.xProfile,
-                  profile_url: `https://x.com/${formData.xProfile}`,
-                  avatar: `https://unavatar.io/twitter/${formData.xProfile}`,
-                },
-              },
+                x_profile: formData.xProfile.replace('@', ''),
+                screenshot_url: screenshotUrl,
+                plan: formData.plan,
+                launch_date: formData.launchDate || new Date().toISOString().split('T')[0] // Store launch date
+              }
             ])
             .select()
             .single();
 
           if (error) {
             console.error(`Supabase insert error (attempt ${retryCount + 1}):`, error);
+            console.error('Error details:', JSON.stringify(error, null, 2));
             lastError = error;
             
             // Handle specific database constraint errors
@@ -880,7 +925,9 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
                         <div class="flex flex-col items-end">
                           <div class="flex items-center">
                             <span class="inline-block w-3 h-3 rounded-full ${date.freeAvailable ? 'bg-green-500' : 'bg-red-500'} mr-2"></span>
-                            <span class="${date.freeAvailable ? 'text-green-700' : 'text-red-700'} text-sm">${date.freeAvailable ? 'Free available' : 'Free full'}</span>
+                            <span class="${date.freeAvailable ? 'text-green-700' : 'text-red-700'} text-sm">
+                              ${date.freeAvailable ? `Free (${date.freeCount}/5)` : 'Free full'}
+                            </span>
                           </div>
                           <div class="flex items-center mt-1">
                             <span class="inline-block w-3 h-3 rounded-full ${date.premiumAvailable ? 'bg-green-500' : 'bg-red-500'} mr-2"></span>
@@ -893,6 +940,9 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
                           <i class="fas fa-check mr-1"></i> Selected
                         </div>
                       ` : ''}
+                      <div class="mt-2 text-sm text-gray-600">
+                        ${date.freeCount > 0 ? `${date.freeCount} startup${date.freeCount !== 1 ? 's' : ''} scheduled` : 'No startups scheduled yet'}
+                      </div>
                     </div>
                   `)}
                 </div>

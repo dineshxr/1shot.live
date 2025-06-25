@@ -11,19 +11,35 @@ export const Content = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [selectedStartup, setSelectedStartup] = useState(null);
+  const [groupedStartups, setGroupedStartups] = useState({});
 
   const fetchStartups = async () => {
     try {
       // Try to fetch from Supabase first
       try {
         const supabase = supabaseClient();
+        const today = new Date().toISOString().split('T')[0]; // Get today's date in YYYY-MM-DD format
+        
         const { data, error } = await supabase
           .from("startups")
           .select("*")
-          .order("created_at", { ascending: false });
+          // Only show startups that are scheduled to launch today or earlier
+          .lte('launch_date', today)
+          .order("launch_date", { ascending: false }); // Sort by launch date, newest first
 
         if (!error && data && data.length > 0) {
           setStartups(data);
+          
+          // Group startups by launch date
+          const grouped = {};
+          data.forEach(startup => {
+            const launchDate = startup.launch_date;
+            if (!grouped[launchDate]) {
+              grouped[launchDate] = [];
+            }
+            grouped[launchDate].push(startup);
+          });
+          setGroupedStartups(grouped);
           
           // Check for hash in URL
           const hash = window.location.hash.slice(1); // Remove the # symbol
@@ -39,6 +55,18 @@ export const Content = () => {
       
       // If Supabase fetch fails or returns no data, use placeholder data
       setStartups(placeholderProducts);
+      
+      // Group placeholder startups by launch date
+      const grouped = {};
+      placeholderProducts.forEach(startup => {
+        // Use created_at as fallback if launch_date is not available
+        const launchDate = startup.launch_date || startup.created_at?.split('T')[0] || new Date().toISOString().split('T')[0];
+        if (!grouped[launchDate]) {
+          grouped[launchDate] = [];
+        }
+        grouped[launchDate].push(startup);
+      });
+      setGroupedStartups(grouped);
       
       // Check for hash in URL with placeholder data
       const hash = window.location.hash.slice(1);
@@ -128,11 +156,37 @@ export const Content = () => {
           <h2 id="startups-heading" class="text-2xl font-bold mb-6 border-b-2 border-black pb-2">Featured Startups & Products</h2>
           <p class="text-gray-600 mb-8">Discover the latest innovations in technology, AI, and more. Each product has been carefully selected for its unique approach and potential impact.</p>
           
-          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 mb-12">
-            ${startups.map(
-              (startup) => html`<${StartupCard} key=${startup.id} startup=${startup} />`
-            )}
-          </div>
+          <!-- Group startups by launch date -->
+          ${Object.keys(groupedStartups).sort().reverse().map(date => {
+            const startupsForDate = groupedStartups[date];
+            const formattedDate = new Date(date).toLocaleDateString('en-US', {
+              weekday: 'long',
+              month: 'long',
+              day: 'numeric',
+              year: 'numeric'
+            });
+            
+            return html`
+              <div class="mb-12">
+                <h3 class="text-xl font-bold mb-4 bg-yellow-100 p-3 rounded-lg border-l-4 border-yellow-500">
+                  <i class="fas fa-rocket mr-2"></i> Launched on ${formattedDate}
+                  <span class="text-sm font-normal ml-2">(${startupsForDate.length} startup${startupsForDate.length !== 1 ? 's' : ''})</span>
+                </h3>
+                
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 mb-8">
+                  ${startupsForDate.map(
+                    (startup) => html`<${StartupCard} key=${startup.id} startup=${startup} />`
+                  )}
+                </div>
+              </div>
+            `;
+          })}
+          
+          ${Object.keys(groupedStartups).length === 0 && html`
+            <div class="text-center py-12 bg-gray-50 rounded-lg">
+              <p class="text-gray-600">No startups have been launched yet. Check back soon!</p>
+            </div>
+          `}
           
 
         </section>
