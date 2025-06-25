@@ -239,7 +239,7 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
         .from('startups')
         .select('id', { count: 'exact' })
         .eq('plan', 'free')
-        .eq('x_profile', formData.xProfile.replace('@', ''));
+        .filter('author->name', 'eq', formData.xProfile.replace('@', ''));
       
       if (error) throw error;
       
@@ -428,13 +428,17 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
                 url: formData.url,
                 description: formData.description,
                 slug: formData.slug,
-                x_profile: formData.xProfile.replace('@', ''),
+                author: {
+                  name: formData.xProfile.replace('@', ''),
+                  profile_url: `https://x.com/${formData.xProfile.replace('@', '')}`,
+                  avatar: `https://unavatar.io/twitter/${formData.xProfile.replace('@', '')}`
+                },
                 screenshot_url: screenshotUrl,
                 plan: formData.plan,
                 launch_date: formData.launchDate || new Date().toISOString().split('T')[0] // Store launch date
               }
             ])
-            .select('id, title, url, description, slug, x_profile, screenshot_url, plan, launch_date')
+            .select('id, title, url, description, slug, author, screenshot_url, plan, launch_date')
             .single();
 
           if (error) {
@@ -461,12 +465,16 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
                     url: formData.url,
                     description: formData.description,
                     slug: uniqueSlug,
-                    x_profile: formData.xProfile.replace('@', ''),
+                    author: {
+                      name: formData.xProfile.replace('@', ''),
+                      profile_url: `https://x.com/${formData.xProfile.replace('@', '')}`,
+                      avatar: `https://unavatar.io/twitter/${formData.xProfile.replace('@', '')}`
+                    },
                     screenshot_url: screenshotUrl,
                     plan: formData.plan,
                     launch_date: formData.launchDate || new Date().toISOString().split('T')[0],
                   }])
-                  .select('id, title, url, description, slug, x_profile, screenshot_url, plan, launch_date')
+                  .select('id, title, url, description, slug, author, screenshot_url, plan, launch_date')
                   .single();
                 
                 if (retryError) {
