@@ -12,7 +12,8 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
     projectName: "",
     description: "",
     slug: "",
-    plan: "free" // Default plan selection
+    plan: "free", // Default plan selection
+    launchDate: "" // Launch date selection
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -20,12 +21,98 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
   const [success, setSuccess] = useState(false);
   const [currentPage, setCurrentPage] = useState(1); // Track which page of the form we're on
   const [showSuccessPage, setShowSuccessPage] = useState(false); // New state to control success page visibility
+  const [hasExistingSubmission, setHasExistingSubmission] = useState(false); // Track if user already has a free submission
+  const [dailySubmissionCount, setDailySubmissionCount] = useState(0); // Track daily free submission count
+  const [dailyLimitReached, setDailyLimitReached] = useState(false); // Track if daily limit is reached
+  const [availableLaunchDates, setAvailableLaunchDates] = useState([]); // Available launch dates
+
+  // Generate available launch dates
+  const generateLaunchDates = () => {
+    const dates = [];
+    const today = new Date();
+    
+    // Generate next 6 available dates (starting from next Tuesday)
+    for (let i = 0; i < 30; i++) {
+      const date = new Date(today);
+      date.setDate(today.getDate() + i);
+      
+      // Format the date
+      const options = { weekday: "long", month: "long", day: "numeric" };
+      const formattedDate = date.toLocaleDateString('en-US', options);
+      
+      // Determine availability
+      // For this example: Tuesdays, Wednesdays, and Fridays are available
+      const day = date.getDay(); // 0 = Sunday, 1 = Monday, etc.
+      if (day === 2 || day === 3 || day === 5) { // Tuesday, Wednesday, Friday
+        const isFull = day !== 5 && Math.random() > 0.3; // Randomly mark some days as full for demo
+        
+        dates.push({
+          date: formattedDate,
+          value: date.toISOString().split('T')[0],
+          freeAvailable: !isFull,
+          premiumAvailable: true // Premium always available
+        });
+        
+        // Once we have 6 dates, stop
+        if (dates.length >= 6) break;
+      }
+    }
+    
+    return dates;
+  };
+  
+  // Select a launch date
+  const selectLaunchDate = (dateValue) => {
+    setFormData(prev => ({ ...prev, launchDate: dateValue }));
+  };
+  
+  // Check daily submission limit
+  const checkDailySubmissionLimit = async () => {
+    try {
+      setLoading(true);
+      
+      // Get today's date in YYYY-MM-DD format
+      const today = new Date().toISOString().split('T')[0];
+      
+      // Query Supabase to count free submissions made today
+      const { data, error, count } = await supabaseClient
+        .from('startups')
+        .select('id', { count: 'exact' })
+        .eq('plan', 'free')
+        .gte('created_at', today);
+      
+      if (error) throw error;
+      
+      // Set the daily submission count
+      setDailySubmissionCount(count || 0);
+      
+      // Check if limit reached (5 per day)
+      if (count >= 5) {
+        setDailyLimitReached(true);
+        // Auto-select premium plan if daily limit reached
+        setFormData(prev => ({ ...prev, plan: 'premium' }));
+      }
+      
+      return count >= 5;
+    } catch (err) {
+      console.error('Error checking daily submission limit:', err);
+      return false;
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
     if (!isOpen) return;
     
     // Track form open event
     window.trackEvent(window.ANALYTICS_EVENTS.FORM_OPEN);
+    
+    // Generate available launch dates
+    setAvailableLaunchDates(generateLaunchDates());
+    
+    // Check daily submission limit
+    checkDailySubmissionLimit();
     
     // Check if Turnstile script is already loaded
     const existingScript = document.querySelector('script[src="https://challenges.cloudflare.com/turnstile/v0/api.js"]');
@@ -112,12 +199,41 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
     }
   };
 
-  const goToNextPage = () => {
+  // Check if user already has a free submission with this X username
+  const checkExistingSubmissions = async (xProfile) => {
+    try {
+      setLoading(true);
+      // Query Supabase to check if this X username already has a free submission
+      const { data, error } = await supabaseClient
+        .from('startups')
+        .select('id, plan')
+        .eq('xProfile', xProfile)
+        .eq('plan', 'free');
+      
+      if (error) throw error;
+      
+      // If data exists and there's at least one free submission, set hasExistingSubmission to true
+      if (data && data.length > 0) {
+        setHasExistingSubmission(true);
+        return true;
+      }
+      
+      return false;
+    } catch (err) {
+      console.error('Error checking existing submissions:', err);
+      // If there's an error, we'll allow the submission to continue
+      return false;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const goToNextPage = async () => {
     // Validate current page before proceeding
     if (currentPage === 1) {
       // Validate first page fields
       if (!formData.projectName) {
-        setError("Please enter a project name");
+        setError("Please enter a product name");
         return;
       }
       if (!formData.url) {
@@ -125,12 +241,20 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
         return;
       }
       if (!formData.slug) {
-        setError("Please enter a slug for your project");
+        setError("Please enter a slug for your product");
         return;
       }
       if (!formData.xProfile) {
         setError("Please enter your X username");
         return;
+      }
+      
+      // Check if user already has a free submission
+      const hasSubmission = await checkExistingSubmissions(formData.xProfile);
+      
+      if (hasSubmission) {
+        // If they already have a submission, automatically set plan to featured
+        setFormData(prev => ({ ...prev, plan: 'premium' }));
       }
       
       // Clear any existing errors and proceed to next page
@@ -545,6 +669,21 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
           `}
 
           <form onSubmit=${handleSubmit}>
+          ${hasExistingSubmission ? html`
+          <div class="mb-6 p-4 bg-yellow-100 border-2 border-yellow-500 rounded">
+            <p class="text-yellow-800 font-bold">You already have a free submission!</p>
+            <p class="text-yellow-800 mt-2">We've detected that you already have a free submission with this X username. You can only have one free submission at a time.</p>
+            <p class="text-yellow-800 mt-2">Please use our Featured option to submit another product, or <a href="https://submit.gumroad.com/l/featured" target="_blank" class="underline hover:text-blue-700">click here</a> to purchase a Featured spot directly.</p>
+          </div>
+          `:''}  
+          
+          ${dailyLimitReached ? html`
+          <div class="mb-6 p-4 bg-yellow-100 border-2 border-yellow-500 rounded">
+            <p class="text-yellow-800 font-bold">Daily Free Submission Limit Reached!</p>
+            <p class="text-yellow-800 mt-2">We've reached our limit of 5 free submissions for today. Please use our Featured option to submit your product immediately, or schedule a free submission for a future date.</p>
+            <p class="text-yellow-800 mt-2">Featured submissions are prioritized and displayed immediately.</p>
+          </div>
+          `:''}          
           ${currentPage === 1 ? html`
           <div class="mb-4">
             <label class="block text-black font-bold mb-2" for="projectName">
@@ -666,8 +805,8 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
                 <div class="flex flex-col space-y-6">
                   <!-- Free Option -->
                   <div 
-                    class="border-4 ${formData.plan === 'free' ? 'border-blue-500' : 'border-black'} p-4 rounded-lg cursor-pointer hover:bg-gray-50 transition-all"
-                    onClick=${() => selectPlan('free')}
+                    class="border-4 ${formData.plan === 'free' ? 'border-blue-500' : 'border-black'} p-4 rounded-lg ${hasExistingSubmission || dailyLimitReached ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:bg-gray-50'} transition-all"
+                    onClick=${hasExistingSubmission || dailyLimitReached ? null : () => selectPlan('free')}
                   >
                     <div class="flex justify-between items-center mb-2">
                       <h4 class="text-lg font-bold">Free</h4>
@@ -678,7 +817,15 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
                       <li>High authority backlink (for verified submissions)</li>
                       <li>Standard launch queue</li>
                     </ul>
-                    ${formData.plan === 'free' ? html`
+                    ${hasExistingSubmission ? html`
+                      <div class="bg-red-100 text-red-800 text-sm font-bold py-1 px-2 rounded inline-block">
+                        <i class="fas fa-times mr-1"></i> Username Limit Reached
+                      </div>
+                    ` : dailyLimitReached ? html`
+                      <div class="bg-red-100 text-red-800 text-sm font-bold py-1 px-2 rounded inline-block">
+                        <i class="fas fa-times mr-1"></i> Daily Limit Reached (5/5)
+                      </div>
+                    ` : formData.plan === 'free' ? html`
                       <div class="bg-blue-100 text-blue-800 text-sm font-bold py-1 px-2 rounded inline-block">
                         <i class="fas fa-check mr-1"></i> Selected
                       </div>
@@ -708,6 +855,42 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
                   </div>
                 </div>
               </div>
+              
+              ${formData.plan === 'free' && !hasExistingSubmission ? html`
+              <div class="mb-6">
+                <h3 class="text-xl font-bold mb-4 text-black">Choose Your Launch Date</h3>
+                <p class="text-gray-700 mb-3">Select from available launch dates:</p>
+                
+                <div class="space-y-4">
+                  ${availableLaunchDates.map(date => html`
+                    <div 
+                      class="border-2 ${formData.launchDate === date.value ? 'border-blue-500' : 'border-black'} p-4 rounded-lg ${!date.freeAvailable && formData.plan === 'free' ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:bg-gray-50'} transition-all"
+                      onClick=${!date.freeAvailable && formData.plan === 'free' ? null : () => selectLaunchDate(date.value)}
+                    >
+                      <div class="flex justify-between items-center">
+                        <h4 class="text-lg font-bold">${date.date}</h4>
+                        <div class="flex flex-col items-end">
+                          <div class="flex items-center">
+                            <span class="inline-block w-3 h-3 rounded-full ${date.freeAvailable ? 'bg-green-500' : 'bg-red-500'} mr-2"></span>
+                            <span class="${date.freeAvailable ? 'text-green-700' : 'text-red-700'} text-sm">${date.freeAvailable ? 'Free available' : 'Free full'}</span>
+                          </div>
+                          <div class="flex items-center mt-1">
+                            <span class="inline-block w-3 h-3 rounded-full ${date.premiumAvailable ? 'bg-green-500' : 'bg-red-500'} mr-2"></span>
+                            <span class="${date.premiumAvailable ? 'text-green-700' : 'text-red-700'} text-sm">Premium available</span>
+                          </div>
+                        </div>
+                      </div>
+                      ${formData.launchDate === date.value ? html`
+                        <div class="mt-2 bg-blue-100 text-blue-800 text-sm font-bold py-1 px-2 rounded inline-block">
+                          <i class="fas fa-check mr-1"></i> Selected
+                        </div>
+                      ` : ''}
+                    </div>
+                  `)}
+                </div>
+              </div>
+              ` : ''}
+              
               
               <div class="cf-turnstile"></div>
               
