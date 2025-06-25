@@ -120,8 +120,8 @@ const FeaturedPage = () => {
                       <span class="bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-0.5 rounded">Premium</span>
                       <span class="bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-0.5 rounded">Sponsored</span>
                     </div>
-                    <a href="#" class="inline-block bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded">
-                      Learn More
+                    <a href="https://submit.gumroad.com/l/featured" target="_blank" class="inline-block bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded">
+                      Get Featured
                     </a>
                   </div>
                 </div>
@@ -176,17 +176,18 @@ const FeaturedPage = () => {
                   <div class="text-gray-500">/week</div>
                 </div>
                 
-                <button 
-                  onClick=${handleContactClick}
-                  class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-6 rounded-lg shadow-md transition-all transform hover:scale-105"
+                <a 
+                  href="https://submit.gumroad.com/l/featured"
+                  target="_blank"
+                  class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-6 rounded-lg shadow-md transition-all transform hover:scale-105 inline-block"
                 >
                   Ready to get featured?
-                </button>
+                </a>
               </div>
               
               <div class="bg-blue-50 p-4 rounded-lg">
                 <p class="text-center font-medium">
-                  Message <a href="https://x.com/submithunt" target="_blank" class="text-blue-600 hover:underline">@submithunt</a> on X to get started
+                  Click the button above or <a href="https://submit.gumroad.com/l/featured" target="_blank" class="text-blue-600 hover:underline">visit our payment page</a> to get started
                 </p>
               </div>
             </div>
@@ -224,12 +225,13 @@ const FeaturedPage = () => {
             <p class="text-xl max-w-3xl mx-auto mb-8">
               Get your product in front of our engaged audience of tech enthusiasts, investors, and early adopters.
             </p>
-            <button 
-              onClick=${handleContactClick}
-              class="bg-white text-blue-600 hover:bg-gray-100 font-bold py-3 px-8 rounded-lg shadow-lg transition-all transform hover:scale-105"
+            <a 
+              href="https://submit.gumroad.com/l/featured"
+              target="_blank"
+              class="bg-white text-blue-600 hover:bg-gray-100 font-bold py-3 px-8 rounded-lg shadow-lg transition-all transform hover:scale-105 inline-block"
             >
               Get Featured Today
-            </button>
+            </a>
           </div>
         </section>
       </main>

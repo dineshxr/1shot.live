@@ -450,13 +450,17 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
           
           <div class="mb-6 p-4 bg-green-100 border-2 border-green-500 rounded text-center">
             <p class="text-green-700 font-bold text-xl mb-2">Congratulations on Submitting Your Startup!</p>
-            <p class="text-green-700">You've successfully launched on our Product Hunt alternative platform.</p>
-            <p class="text-green-700 mt-2">Your startup will be featured on the Home Page shortly.</p>
+            ${formData.plan === 'premium' ? '' : html`
+              <p class="text-green-700">You've successfully launched on our Product Hunt alternative platform.</p>
+              <p class="text-green-700 mt-2">Your startup will be featured on the Home Page shortly.</p>
+            `}
           </div>
           
           ${formData.plan === 'premium' ? html`
             <div class="mb-4 bg-yellow-300 p-3 border border-black rounded">
-              <p class="font-bold">Your featured submission will be prioritized and displayed immediately.</p>
+              <p class="font-bold mb-2"><a href="https://submit.gumroad.com/l/featured" target="_blank" class="underline hover:text-blue-700">Pay Now</a></p>
+              <p>After you pay - Your startup will be featured on the Home Page.</p>
+              <p class="mt-2 font-bold">Your featured submission will be prioritized and displayed immediately.</p>
             </div>
           ` : html`
             <div class="mb-4 bg-blue-100 p-3 border border-black rounded">
