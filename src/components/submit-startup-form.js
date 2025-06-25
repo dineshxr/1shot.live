@@ -456,7 +456,7 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
           
           ${formData.plan === 'premium' ? html`
             <div class="mb-4 bg-yellow-300 p-3 border border-black rounded">
-              <p class="font-bold">Your premium submission will be prioritized and featured immediately.</p>
+              <p class="font-bold">Your featured submission will be prioritized and displayed immediately.</p>
             </div>
           ` : html`
             <div class="mb-4 bg-blue-100 p-3 border border-black rounded">
@@ -673,7 +673,6 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
                       <li>Live on homepage for 7 days</li>
                       <li>High authority backlink (for verified submissions)</li>
                       <li>Standard launch queue</li>
-                      <li>Basic Product Hunt alternative features</li>
                     </ul>
                     ${formData.plan === 'free' ? html`
                       <div class="bg-blue-100 text-blue-800 text-sm font-bold py-1 px-2 rounded inline-block">
@@ -682,20 +681,19 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
                     ` : ''}
                   </div>
                   
-                  <!-- Premium Option -->
+                  <!-- Featured Option -->
                   <div 
                     class="border-4 ${formData.plan === 'premium' ? 'border-blue-500' : 'border-black'} p-4 rounded-lg cursor-pointer hover:bg-gray-50 transition-all"
                     onClick=${() => selectPlan('premium')}
                   >
                     <div class="flex justify-between items-center mb-2">
-                      <h4 class="text-lg font-bold">Premium</h4>
-                      <span class="text-lg font-bold">$49</span>
+                      <h4 class="text-lg font-bold">Featured</h4>
+                      <span class="text-lg font-bold">$5</span>
                     </div>
                     <ul class="list-disc pl-5 space-y-1 mb-3">
                       <li>Live on homepage for 14 days</li>
                       <li>Guaranteed high authority backlink</li>
                       <li>Skip the queue (launch today)</li>
-                      <li>Premium Product Hunt alternative experience</li>
                       <li>Featured in our startup newsletter</li>
                     </ul>
                     ${formData.plan === 'premium' ? html`
