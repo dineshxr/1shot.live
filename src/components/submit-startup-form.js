@@ -424,7 +424,7 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
             .from('startups')
             .insert([
               {
-                name: formData.projectName,
+                title: formData.projectName,
                 url: formData.url,
                 description: formData.description,
                 slug: formData.slug,
