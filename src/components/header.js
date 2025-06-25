@@ -22,7 +22,7 @@ export const Header = () => {
               id="submit-startup-btn"
               class="neo-button inline-flex items-center px-4 py-2 bg-purple-400 border-2 border-black rounded shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:bg-purple-500 font-bold"
             >
-              <i class="fas fa-plus mr-2"></i> Submit Project
+              <i class="fas fa-plus mr-2"></i> Submit Product
             </button>
           </div>
         </div>

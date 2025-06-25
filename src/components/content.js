@@ -1,5 +1,5 @@
 import { supabaseClient } from "../lib/supabase-client.js";
-import { placeholderProjects } from "../lib/placeholder-data.js";
+import { placeholderProjects as placeholderProducts } from "../lib/placeholder-data.js";
 import { StartupCard } from "./startup-card.js";
 import { StartupModal } from "./startup-modal.js";
 
@@ -38,12 +38,12 @@ export const Content = () => {
       }
       
       // If Supabase fetch fails or returns no data, use placeholder data
-      setStartups(placeholderProjects);
+      setStartups(placeholderProducts);
       
       // Check for hash in URL with placeholder data
       const hash = window.location.hash.slice(1);
       if (hash) {
-        const startup = placeholderProjects.find((g) => g.slug === hash);
+        const startup = placeholderProducts.find((g) => g.slug === hash);
         if (startup) setSelectedStartup(startup);
       }
     } catch (err) {
@@ -90,17 +90,17 @@ export const Content = () => {
   return html`
     <main class="container mx-auto px-4 py-8">
       <section class="text-center mb-12">
-        <h1 class="text-4xl font-bold mb-4">Discover the Best New Startups and AI Projects</h1>
+        <h1 class="text-4xl font-bold mb-4">Discover the Best New Startups and AI Products</h1>
         <p class="text-xl text-gray-600 max-w-3xl mx-auto">
-          Explore our curated collection of innovative startups and AI projects that are redefining industries and pushing technological boundaries
+          Explore our curated collection of innovative startups and AI products that are redefining industries and pushing technological boundaries
         </p>
         <div class="mt-6 flex justify-center">
-          <button 
-            onclick="window.openSubmitForm ? window.openSubmitForm() : window.dispatchEvent(new CustomEvent('open-submit-form')); return false;"
-            class="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-black hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-black transition duration-150"
+          <a 
+            href="/featured.html"
+            class="inline-flex items-center px-6 py-3 border-2 border-black text-base font-medium rounded-md shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] text-black bg-yellow-400 hover:bg-yellow-500 focus:outline-none transition duration-150"
           >
-            <span class="mr-2">🚀</span> Submit Your Startup
-          </button>
+            <span class="mr-2">⭐</span> Get Featured
+          </a>
         </div>
       </section>
 
@@ -125,8 +125,8 @@ export const Content = () => {
       !error &&
       html`
         <section aria-labelledby="startups-heading" class="mt-8 mb-12">
-          <h2 id="startups-heading" class="text-2xl font-bold mb-6 border-b-2 border-black pb-2">Featured Startups & Projects</h2>
-          <p class="text-gray-600 mb-8">Discover the latest innovations in technology, AI, and more. Each project has been carefully selected for its unique approach and potential impact.</p>
+          <h2 id="startups-heading" class="text-2xl font-bold mb-6 border-b-2 border-black pb-2">Featured Startups & Products</h2>
+          <p class="text-gray-600 mb-8">Discover the latest innovations in technology, AI, and more. Each product has been carefully selected for its unique approach and potential impact.</p>
           
           <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 mb-12">
             ${startups.map(
