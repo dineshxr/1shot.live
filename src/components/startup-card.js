@@ -320,17 +320,17 @@ export const StartupCard = ({ startup }) => {
             html`
               <div class="mt-3 flex items-center border-t-2 border-black pt-3">
                 <a
-                  href=${addReferralParam(startup.author.profile_url)}
+                  href=${addReferralParam(`https://twitter.com/${startup.x_profile}`)}
                   target="_blank"
                   class="flex items-center hover:text-blue-600"
                 >
                   <img
-                    src=${getAvatarUrl(startup.author.avatar)}
-                    alt=${startup.author.name}
+                    src=${getAvatarUrl(`https://unavatar.io/twitter/${startup.x_profile}`)}
+                    alt=${startup.x_profile || 'User'}
                     class="w-6 h-6 rounded border border-black mr-2"
                     onError=${handleAvatarError}
                   />
-                  <span class="text-sm font-bold">${startup.author.name}</span>
+                  <span class="text-sm font-bold">@${startup.x_profile || 'user'}</span>
                 </a>
               </div>
             `}
