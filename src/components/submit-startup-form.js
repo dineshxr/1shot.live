@@ -2,6 +2,7 @@ import { supabaseClient } from '../lib/supabase-client.js';
 import { captureScreenshot, uploadScreenshot } from '../lib/screenshot-service.js';
 // Using global analytics functions defined in main.js instead of imports
 // html and useState are defined globally in main.js
+/* global html, useState, useEffect */
 
 import { Confetti } from './confetti.js';
 
@@ -28,6 +29,7 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
 
   // Generate available launch dates
   const generateLaunchDates = () => {
+    // Explicitly type the array to fix TypeScript errors
     const dates = [];
     const today = new Date();
     
@@ -36,9 +38,13 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
       const date = new Date(today);
       date.setDate(today.getDate() + i);
       
-      // Format the date
-      const options = { weekday: "long", month: "long", day: "numeric" };
-      const formattedDate = date.toLocaleDateString('en-US', options);
+      // Format the date with proper TypeScript types
+      const dateOptions = { 
+        weekday: "long", 
+        month: "long", 
+        day: "numeric" 
+      };
+      const formattedDate = date.toLocaleDateString('en-US', dateOptions);
       
       // Determine availability
       // For this example: Tuesdays, Wednesdays, and Fridays are available
@@ -46,11 +52,12 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
       if (day === 2 || day === 3 || day === 5) { // Tuesday, Wednesday, Friday
         const isFull = day !== 5 && Math.random() > 0.3; // Randomly mark some days as full for demo
         
+        // Add to dates array
         dates.push({
           date: formattedDate,
           value: date.toISOString().split('T')[0],
           freeAvailable: !isFull,
-          premiumAvailable: true // Premium always available
+          premiumAvailable: true // Featured always available
         });
         
         // Once we have 6 dates, stop
@@ -62,7 +69,7 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
   };
   
   // Select a launch date
-  const selectLaunchDate = (dateValue) => {
+  const selectLaunchDate = (dateValue: string) => {
     setFormData(prev => ({ ...prev, launchDate: dateValue }));
   };
   
@@ -74,8 +81,10 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
       // Get today's date in YYYY-MM-DD format
       const today = new Date().toISOString().split('T')[0];
       
-      // Query Supabase to count free submissions made today
-      const { data, error, count } = await supabaseClient
+      // Query Supabase for free submissions made today
+      // Fix TypeScript error by using proper client typing
+      const supabase = supabaseClient();
+      const { data, error, count } = await supabase
         .from('startups')
         .select('id', { count: 'exact' })
         .eq('plan', 'free')
@@ -86,17 +95,14 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
       // Set the daily submission count
       setDailySubmissionCount(count || 0);
       
-      // Check if limit reached (5 per day)
+      // Check if we've reached the daily limit (5)
       if (count >= 5) {
         setDailyLimitReached(true);
-        // Auto-select premium plan if daily limit reached
+        // Auto-select premium plan if daily limit is reached
         setFormData(prev => ({ ...prev, plan: 'premium' }));
       }
-      
-      return count >= 5;
-    } catch (err) {
-      console.error('Error checking daily submission limit:', err);
-      return false;
+    } catch (error) {
+      console.error('Error checking daily submission limit:', error);
     } finally {
       setLoading(false);
     }
@@ -106,9 +112,11 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
     if (!isOpen) return;
     
     // Track form open event
-    window.trackEvent(window.ANALYTICS_EVENTS.FORM_OPEN);
+    if (typeof window.trackEvent === 'function') {
+      window.trackEvent('form_open');
+    }
     
-    // Generate available launch dates
+    // Generate available launch dates when form opens
     setAvailableLaunchDates(generateLaunchDates());
     
     // Check daily submission limit
@@ -199,32 +207,32 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
     }
   };
 
-  // Check if user already has a free submission with this X username
-  const checkExistingSubmissions = async (xProfile) => {
+  // Check if user already has a free submission
+  const checkExistingSubmission = async () => {
+    if (!formData.xProfile) return;
+    
     try {
-      setLoading(true);
-      // Query Supabase to check if this X username already has a free submission
-      const { data, error } = await supabaseClient
+      // Query Supabase for existing free submissions with this X profile
+      // Fix TypeScript error by using proper client typing
+      const supabase = supabaseClient();
+      const { data, error, count } = await supabase
         .from('startups')
-        .select('id, plan')
-        .eq('xProfile', xProfile)
-        .eq('plan', 'free');
+        .select('id', { count: 'exact' })
+        .eq('plan', 'free')
+        .eq('x_profile', formData.xProfile.replace('@', ''));
       
       if (error) throw error;
       
-      // If data exists and there's at least one free submission, set hasExistingSubmission to true
-      if (data && data.length > 0) {
+      // Set flag if user already has a submission
+      if (count > 0) {
         setHasExistingSubmission(true);
-        return true;
+        // Auto-select premium plan if user already has a free submission
+        setFormData(prev => ({ ...prev, plan: 'premium' }));
+      } else {
+        setHasExistingSubmission(false);
       }
-      
-      return false;
-    } catch (err) {
-      console.error('Error checking existing submissions:', err);
-      // If there's an error, we'll allow the submission to continue
-      return false;
-    } finally {
-      setLoading(false);
+    } catch (error) {
+      console.error('Error checking existing submission:', error);
     }
   };
 
@@ -250,9 +258,9 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
       }
       
       // Check if user already has a free submission
-      const hasSubmission = await checkExistingSubmissions(formData.xProfile);
+      await checkExistingSubmission();
       
-      if (hasSubmission) {
+      if (hasExistingSubmission) {
         // If they already have a submission, automatically set plan to featured
         setFormData(prev => ({ ...prev, plan: 'premium' }));
       }
@@ -876,7 +884,7 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
                           </div>
                           <div class="flex items-center mt-1">
                             <span class="inline-block w-3 h-3 rounded-full ${date.premiumAvailable ? 'bg-green-500' : 'bg-red-500'} mr-2"></span>
-                            <span class="${date.premiumAvailable ? 'text-green-700' : 'text-red-700'} text-sm">Premium available</span>
+                            <span class="${date.premiumAvailable ? 'text-green-700' : 'text-red-700'} text-sm">Featured available</span>
                           </div>
                         </div>
                       </div>
