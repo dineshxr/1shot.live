@@ -434,7 +434,7 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
                 launch_date: formData.launchDate || new Date().toISOString().split('T')[0] // Store launch date
               }
             ])
-            .select()
+            .select('id, title, url, description, slug, x_profile, screenshot_url, plan, launch_date')
             .single();
 
           if (error) {
@@ -461,13 +461,12 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
                     url: formData.url,
                     description: formData.description,
                     slug: uniqueSlug,
-                    author: {
-                      name: formData.xProfile,
-                      profile_url: `https://x.com/${formData.xProfile}`,
-                      avatar: `https://unavatar.io/twitter/${formData.xProfile}`,
-                    },
+                    x_profile: formData.xProfile.replace('@', ''),
+                    screenshot_url: screenshotUrl,
+                    plan: formData.plan,
+                    launch_date: formData.launchDate || new Date().toISOString().split('T')[0],
                   }])
-                  .select()
+                  .select('id, title, url, description, slug, x_profile, screenshot_url, plan, launch_date')
                   .single();
                 
                 if (retryError) {
