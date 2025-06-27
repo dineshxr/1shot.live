@@ -168,20 +168,34 @@ export const StartupCard = ({ startup }) => {
     window.open(shareUrl, '_blank', 'width=550,height=420');
   };
 
+  // Create internal link to startup detail page using slug
+  const getInternalDetailUrl = () => {
+    return `/startup/${startup.slug}`;
+  };
+  
   return html`
     <div
       class="startup-card bg-white border-2 border-black overflow-hidden shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] transition-all duration-200 rounded"
     >
       <a 
-        href=${addReferralParam(startup.url)} 
-        target="_blank" 
+        href=${getInternalDetailUrl()} 
         class="block" 
-        onClick=${() => {
+        onClick=${(e) => {
+          // Prevent default to handle navigation manually
+          e.preventDefault();
+          
+          // Track the click event
           trackEvent(ANALYTICS_EVENTS.LINK_CLICK, {
             startupId: startup.id,
             startupName: startup.title,
-            startupUrl: startup.url
+            startupUrl: getInternalDetailUrl()
           });
+          
+          // Update browser history and URL without page reload
+          window.history.pushState({}, "", getInternalDetailUrl());
+          
+          // Dispatch a popstate event to trigger route change
+          window.dispatchEvent(new PopStateEvent('popstate'));
         }}
       >
         <div class="relative">

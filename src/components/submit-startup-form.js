@@ -41,8 +41,8 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
     nextDate.setDate(today.getDate());
     
     // Generate sequential available dates on weekdays (Monday through Friday)
-    // We'll show 10 days (2 weeks of weekdays)
-    while (dates.length < 10 && daysAdded < 30) {
+    // We'll show only the next 3 dates
+    while (dates.length < 3 && daysAdded < 30) {
       const day = nextDate.getDay(); // 0 = Sunday, 1 = Monday, etc.
       
       // Only use weekdays (Monday = 1 through Friday = 5)
@@ -936,7 +936,7 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
                 <p class="text-gray-700 mb-3">Select from available launch dates:</p>
                 
                 <div class="space-y-4">
-                  ${availableLaunchDates.map(date => html`
+                  ${availableLaunchDates.slice(0, 3).map(date => html`
                     <div 
                       class="border-2 ${formData.launchDate === date.value ? 'border-blue-500' : 'border-black'} p-4 rounded-lg ${!date.freeAvailable && formData.plan === 'free' ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:bg-gray-50'} transition-all"
                       onClick=${!date.freeAvailable && formData.plan === 'free' ? null : () => selectLaunchDate(date.value)}
