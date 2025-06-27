@@ -18,13 +18,17 @@ export const Content = () => {
       // Try to fetch from Supabase first
       try {
         const supabase = supabaseClient();
-        const today = new Date().toISOString().split('T')[0]; // Get today's date in YYYY-MM-DD format
+        // Get today's date in YYYY-MM-DD format using PDT time zone
+        const today = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Los_Angeles' }));
+        const todayStr = today.getFullYear() + '-' + 
+                      String(today.getMonth() + 1).padStart(2, '0') + '-' + 
+                      String(today.getDate()).padStart(2, '0');
         
         const { data, error } = await supabase
           .from("startups")
           .select("*")
           // Only show startups that are scheduled to launch today or earlier
-          .lte('launch_date', today)
+          .lte('launch_date', todayStr)
           .order("launch_date", { ascending: false }); // Sort by launch date, newest first
 
         if (!error && data && data.length > 0) {
@@ -34,10 +38,12 @@ export const Content = () => {
           const grouped = {};
           data.forEach(startup => {
             const launchDate = startup.launch_date;
-            if (!grouped[launchDate]) {
-              grouped[launchDate] = [];
+            // Ensure we're using the correct date in PDT time zone
+            const adjustedDate = launchDate;
+            if (!grouped[adjustedDate]) {
+              grouped[adjustedDate] = [];
             }
-            grouped[launchDate].push(startup);
+            grouped[adjustedDate].push(startup);
           });
           setGroupedStartups(grouped);
           
@@ -159,7 +165,11 @@ export const Content = () => {
           <!-- Group startups by launch date -->
           ${Object.keys(groupedStartups).sort().reverse().map(date => {
             const startupsForDate = groupedStartups[date];
-            const formattedDate = new Date(date).toLocaleDateString('en-US', {
+            // Use PDT time zone for consistent date display
+            const dateObj = new Date(date + 'T00:00:00');
+            // Add PDT offset to ensure correct date display
+            const pdtDate = new Date(dateObj.toLocaleString('en-US', { timeZone: 'America/Los_Angeles' }));
+            const formattedDate = pdtDate.toLocaleDateString('en-US', {
               weekday: 'long',
               month: 'long',
               day: 'numeric',

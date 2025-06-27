@@ -30,14 +30,15 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
   // Generate available launch dates
   const generateLaunchDates = async () => {
     const dates = [];
-    const today = new Date();
+    // Use PDT time zone for date calculations
+    const today = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Los_Angeles' }));
     
     // Find the next weekday (Monday through Friday)
     let nextDate = new Date(today);
     let daysAdded = 0;
     
-    // Get the next available day (skip today)
-    nextDate.setDate(today.getDate() + 1);
+    // Include today as an available date
+    nextDate.setDate(today.getDate());
     
     // Generate sequential available dates on weekdays (Monday through Friday)
     // We'll show 10 days (2 weeks of weekdays)
@@ -62,9 +63,9 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
           console.error('Error checking launch date availability:', error);
         }
         
-        // Each day can have up to 5 free submissions
-        // If we have 5 or more, mark as unavailable for free tier
-        const freeAvailable = !count || count < 5;
+        // Each day can have up to 6 free submissions
+        // If we have 6 or more, mark as unavailable for free tier
+        const freeAvailable = !count || count < 6;
         
         dates.push({
           date: formattedDate,
@@ -93,8 +94,11 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
     try {
       setLoading(true);
       
-      // Get today's date in YYYY-MM-DD format
-      const today = new Date().toISOString().split('T')[0];
+      // Get today's date in YYYY-MM-DD format using PDT time zone
+      const today = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Los_Angeles' }));
+      const todayStr = today.getFullYear() + '-' + 
+                    String(today.getMonth() + 1).padStart(2, '0') + '-' + 
+                    String(today.getDate()).padStart(2, '0');
       
       // Query Supabase for free submissions made today
       // Fix TypeScript error by using proper client typing
@@ -103,15 +107,15 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
         .from('startups')
         .select('id', { count: 'exact' })
         .eq('plan', 'free')
-        .gte('created_at', today);
+        .gte('created_at', todayStr);
       
       if (error) throw error;
       
       // Set the daily submission count
       setDailySubmissionCount(count || 0);
       
-      // Check if we've reached the daily limit (5)
-      if (count >= 5) {
+      // Check if we've reached the daily limit (6)
+      if (count >= 6) {
         setDailyLimitReached(true);
         // Auto-select premium plan if daily limit is reached
         setFormData(prev => ({ ...prev, plan: 'premium' }));
@@ -435,7 +439,12 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
                 },
                 screenshot_url: screenshotUrl,
                 plan: formData.plan,
-                launch_date: formData.launchDate || new Date().toISOString().split('T')[0] // Store launch date
+                launch_date: formData.launchDate || (() => {
+                  const pdt = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Los_Angeles' }));
+                  return pdt.getFullYear() + '-' + 
+                         String(pdt.getMonth() + 1).padStart(2, '0') + '-' + 
+                         String(pdt.getDate()).padStart(2, '0');
+                })() // Store launch date in PDT
               }
             ])
             .select('id, title, url, description, slug, author, screenshot_url, plan, launch_date')
@@ -472,7 +481,12 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
                     },
                     screenshot_url: screenshotUrl,
                     plan: formData.plan,
-                    launch_date: formData.launchDate || new Date().toISOString().split('T')[0],
+                    launch_date: formData.launchDate || (() => {
+                      const pdt = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Los_Angeles' }));
+                      return pdt.getFullYear() + '-' + 
+                             String(pdt.getMonth() + 1).padStart(2, '0') + '-' + 
+                             String(pdt.getDate()).padStart(2, '0');
+                    })(),
                   }])
                   .select('id, title, url, description, slug, author, screenshot_url, plan, launch_date')
                   .single();
@@ -883,7 +897,7 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
                       </div>
                     ` : dailyLimitReached ? html`
                       <div class="bg-red-100 text-red-800 text-sm font-bold py-1 px-2 rounded inline-block">
-                        <i class="fas fa-times mr-1"></i> Daily Limit Reached (5/5)
+                        <i class="fas fa-times mr-1"></i> Daily Limit Reached (6/6)
                       </div>
                     ` : formData.plan === 'free' ? html`
                       <div class="bg-blue-100 text-blue-800 text-sm font-bold py-1 px-2 rounded inline-block">
@@ -933,7 +947,7 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
                           <div class="flex items-center">
                             <span class="inline-block w-3 h-3 rounded-full ${date.freeAvailable ? 'bg-green-500' : 'bg-red-500'} mr-2"></span>
                             <span class="${date.freeAvailable ? 'text-green-700' : 'text-red-700'} text-sm">
-                              ${date.freeAvailable ? `Free (${date.freeCount}/5)` : 'Free full'}
+                              ${date.freeAvailable ? `Free (${date.freeCount}/6)` : 'Free full'}
                             </span>
                           </div>
                           <div class="flex items-center mt-1">
