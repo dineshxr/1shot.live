@@ -145,6 +145,11 @@ export const StartupCard = ({ startup }) => {
     // Add the free backlink message
     shareText += `\n\nEarning free DR 36+ backlink on submithunt`;
     
+    // Add creator tag if available
+    if (startup.author && startup.author.name) {
+      shareText += ` @${startup.author.name.replace('@', '')}`;
+    }
+    
     // Add tags if available
     if (startup.tags && startup.tags.length > 0) {
       // Add up to 3 tags as hashtags
