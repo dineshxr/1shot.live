@@ -25,6 +25,7 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
   const [hasExistingSubmission, setHasExistingSubmission] = useState(false); // Track if user already has a free submission
   const [dailySubmissionCount, setDailySubmissionCount] = useState(0); // Track daily free submission count
   const [dailyLimitReached, setDailyLimitReached] = useState(false); // Track if daily limit is reached
+  const [isDuplicate, setIsDuplicate] = useState(false); // Track if the URL is a duplicate
   const [availableLaunchDates, setAvailableLaunchDates] = useState([]); // Available launch dates
 
   // Generate available launch dates
@@ -260,6 +261,40 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
     }
   };
 
+  // Check for duplicate URL
+  const checkDuplicateUrl = async () => {
+    if (!formData.url) return;
+
+    try {
+      const normalizeUrl = (url) => {
+        let normalized = url.trim().replace(/^(https?:\/\/)?(www\.)?/, '');
+        if (normalized.endsWith('/')) {
+          normalized = normalized.slice(0, -1);
+        }
+        return normalized;
+      };
+
+      const normalizedUrl = normalizeUrl(formData.url);
+
+      const supabase = supabaseClient();
+      const { data, error } = await supabase.rpc('check_duplicate_url', { p_url: normalizedUrl });
+
+      if (error) {
+        console.error('Error checking duplicate URL:', error);
+        return;
+      }
+
+      if (data) {
+        setError('This URL has already been submitted. If you want to feature it, please contact us.');
+        setIsDuplicate(true);
+      } else {
+        setIsDuplicate(false);
+      }
+    } catch (error) {
+      console.error('Error in checkDuplicateUrl:', error);
+    }
+  };
+
   const goToNextPage = async () => {
     // Validate current page before proceeding
     if (currentPage === 1) {
@@ -279,6 +314,12 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
       if (!formData.xProfile) {
         setError("Please enter your X username");
         return;
+      }
+
+      // Check for duplicate URL
+      await checkDuplicateUrl();
+      if (isDuplicate) {
+        return; // Stop if it's a duplicate
       }
       
       // Check if user already has a free submission
