@@ -464,6 +464,25 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
             }
           }
           
+          // Get authenticated user info if available
+          let authorInfo = {
+            name: formData.xProfile.replace('@', ''),
+            profile_url: `https://x.com/${formData.xProfile.replace('@', '')}`,
+            avatar: `https://unavatar.io/twitter/${formData.xProfile.replace('@', '')}`
+          };
+          
+          // If user is authenticated via Supabase, use their X profile info
+          if (window.auth && window.auth.getUser()) {
+            const authUser = window.auth.getUser();
+            if (authUser.user_metadata) {
+              authorInfo = {
+                name: authUser.user_metadata.full_name || formData.xProfile.replace('@', ''),
+                profile_url: authUser.user_metadata.custom_claims?.twitter_url || `https://x.com/${formData.xProfile.replace('@', '')}`,
+                avatar: authUser.user_metadata.avatar_url || `https://unavatar.io/twitter/${formData.xProfile.replace('@', '')}`
+              };
+            }
+          }
+
           // Proceed with the actual insert
           const { data, error } = await supabase
             .from('startups')
@@ -473,11 +492,7 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
                 url: formData.url,
                 description: formData.description,
                 slug: formData.slug,
-                author: {
-                  name: formData.xProfile.replace('@', ''),
-                  profile_url: `https://x.com/${formData.xProfile.replace('@', '')}`,
-                  avatar: `https://unavatar.io/twitter/${formData.xProfile.replace('@', '')}`
-                },
+                author: authorInfo,
                 screenshot_url: screenshotUrl,
                 plan: formData.plan,
                 launch_date: formData.launchDate || (() => {

@@ -33,6 +33,10 @@ if (typeof window !== 'undefined') {
   trackPageView();
 }
 
+// Import auth service and make it globally available
+import { auth } from './lib/auth.js';
+window.auth = auth;
+
 // Make Preact and hooks available globally for our components
 window.h = h;
 window.useState = useState;
