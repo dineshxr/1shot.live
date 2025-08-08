@@ -34,6 +34,47 @@ if (typeof window !== 'undefined') {
   trackPageView();
 }
 
+// Countdown component: counts down to next UTC midnight
+const Countdown = () => {
+  const [timeLeft, setTimeLeft] = useState({ hours: 0, minutes: 0, seconds: 0 });
+
+  const getNextUtcMidnight = () => {
+    const now = new Date();
+    const next = new Date(now);
+    // Move to next day UTC midnight
+    next.setUTCHours(24, 0, 0, 0);
+    return next;
+  };
+
+  const update = () => {
+    const now = new Date();
+    const target = getNextUtcMidnight();
+    const diff = Math.max(0, target - now);
+    const totalSeconds = Math.floor(diff / 1000);
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
+    setTimeLeft({ hours, minutes, seconds });
+  };
+
+  useEffect(() => {
+    update();
+    const id = setInterval(update, 1000);
+    return () => clearInterval(id);
+  }, []);
+
+  return html`
+    <div class="border-t border-amber-200 bg-amber-50">
+      <div class="container mx-auto px-4 py-4 flex items-center gap-3 text-amber-900">
+        <span class="text-lg font-semibold">New launches in</span>
+        <span class="inline-block rounded-md bg-amber-200/70 px-3 py-1 font-semibold">${timeLeft.hours} hours</span>
+        <span class="inline-block rounded-md bg-amber-200/70 px-3 py-1 font-semibold">${timeLeft.minutes} mins</span>
+        <span class="inline-block rounded-md bg-amber-200/70 px-3 py-1 font-semibold">${timeLeft.seconds} secs</span>
+      </div>
+    </div>
+  `;
+};
+
 // Featured Page Component
 const FeaturedPage = () => {
   const [showSubmitForm, setShowSubmitForm] = useState(false);
@@ -95,6 +136,9 @@ const FeaturedPage = () => {
             </p>
           </div>
         </section>
+
+        <!-- Countdown directly below hero -->
+        ${Countdown()}
         
         <!-- Featured Product Demo Section -->
         <section class="py-12 bg-gray-50">

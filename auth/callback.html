@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Authentication Callback - 1shot.live</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        .container {
+            text-align: center;
+            padding: 2rem;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid rgba(255, 255, 255, 0.3);
+            border-top: 4px solid white;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 1rem;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .error {
+            color: #ff6b6b;
+            background: rgba(255, 107, 107, 0.1);
+            padding: 1rem;
+            border-radius: 8px;
+            margin-top: 1rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="spinner"></div>
+        <h2>Completing authentication...</h2>
+        <p>Please wait while we complete your sign-in with X.</p>
+        <div id="error-message" class="error" style="display: none;"></div>
+    </div>
+
+    <script type="module">
+        import { supabaseClient } from '../src/lib/supabase.js';
+
+        async function handleAuthCallback() {
+            try {
+                const supabase = supabaseClient();
+                
+                // Complete the OAuth flow by exchanging the code in the URL for a session
+                // This is required for supabase-js v2 when using redirect-based OAuth
+                const { error: exchangeError } = await supabase.auth.exchangeCodeForSession({
+                    // Use the current URL which contains the authorization code and state
+                    currentUrl: window.location.href
+                });
+
+                if (exchangeError) {
+                    throw exchangeError;
+                }
+
+                // After exchanging, the session should now be available
+                const { data, error } = await supabase.auth.getSession();
+
+                if (error) {
+                    throw error;
+                }
+
+                if (data?.session) {
+                    // Authentication successful, redirect to main page
+                    window.location.href = '/';
+                } else {
+                    // No session found after exchange – surface a clearer message
+                    throw new Error('Authentication succeeded but no session was found. Please try again.');
+                }
+            } catch (error) {
+                console.error('Authentication callback error:', error);
+                
+                // Show error message
+                const errorDiv = document.getElementById('error-message');
+                errorDiv.style.display = 'block';
+                errorDiv.textContent = `Authentication failed: ${error.message}`;
+                
+                // Redirect to home page after 3 seconds
+                setTimeout(() => {
+                    window.location.href = '/';
+                }, 3000);
+            }
+        }
+
+        // Handle the callback when the page loads
+        handleAuthCallback();
+    </script>
+</body>
+</html>

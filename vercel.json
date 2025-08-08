@@ -4,6 +4,7 @@
     { "src": "**/*", "use": "@vercel/static" }
   ],
   "rewrites": [
+    { "source": "/auth/callback", "destination": "/auth/callback.html" },
     { "source": "/(.*)", "destination": "/index.html" }
   ],
   "cleanUrls": true,

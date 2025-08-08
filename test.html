@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Page</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .test-button {
+            background: #1DA1F2;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 0;
+        }
+        .test-button:hover {
+            background: #0d8bd9;
+        }
+        .result {
+            margin: 20px 0;
+            padding: 15px;
+            border-radius: 6px;
+            background: #f8f9fa;
+            border-left: 4px solid #007bff;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 X Authentication Test</h1>
+        <p>This is a simple test page to verify your X authentication setup.</p>
+        
+        <div>
+            <h3>Current URL:</h3>
+            <div class="result" id="current-url"></div>
+        </div>
+        
+        <div>
+            <h3>Supabase Client Test:</h3>
+            <button class="test-button" onclick="testSupabaseClient()">Test Supabase Connection</button>
+            <div class="result" id="supabase-result"></div>
+        </div>
+        
+        <div>
+            <h3>X Authentication Test:</h3>
+            <button class="test-button" onclick="testXAuth()">Test X Authentication</button>
+            <div class="result" id="auth-result"></div>
+        </div>
+        
+        <div>
+            <h3>Navigation Test:</h3>
+            <button class="test-button" onclick="goToMain()">Go to Main App</button>
+        </div>
+    </div>
+
+    <script type="module">
+        // Display current URL
+        document.getElementById('current-url').textContent = window.location.href;
+        
+        // Import Supabase client
+        import { supabaseClient } from './src/lib/supabase.js';
+        import { auth } from './src/lib/auth.js';
+        
+        window.testSupabaseClient = async function() {
+            const resultDiv = document.getElementById('supabase-result');
+            try {
+                const supabase = supabaseClient();
+                const { data, error } = await supabase.auth.getSession();
+                
+                if (error) {
+                    resultDiv.innerHTML = `<strong>Error:</strong> ${error.message}`;
+                    resultDiv.style.borderLeftColor = '#dc3545';
+                } else {
+                    resultDiv.innerHTML = `<strong>Success!</strong> Supabase client connected. Session: ${data.session ? 'Active' : 'None'}`;
+                    resultDiv.style.borderLeftColor = '#28a745';
+                }
+            } catch (err) {
+                resultDiv.innerHTML = `<strong>Error:</strong> ${err.message}`;
+                resultDiv.style.borderLeftColor = '#dc3545';
+            }
+        };
+        
+        window.testXAuth = async function() {
+            const resultDiv = document.getElementById('auth-result');
+            try {
+                resultDiv.innerHTML = '<strong>Starting X authentication...</strong>';
+                resultDiv.style.borderLeftColor = '#ffc107';
+                
+                await auth.signInWithX();
+                
+                // This won't execute because of redirect, but just in case
+                resultDiv.innerHTML = '<strong>Authentication initiated!</strong> You should be redirected to X.';
+                resultDiv.style.borderLeftColor = '#28a745';
+            } catch (err) {
+                resultDiv.innerHTML = `<strong>Error:</strong> ${err.message}`;
+                resultDiv.style.borderLeftColor = '#dc3545';
+            }
+        };
+        
+        window.goToMain = function() {
+            window.location.href = '/';
+        };
+    </script>
+</body>
+</html>

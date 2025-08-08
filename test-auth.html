@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Twitter Auth</title>
+</head>
+<body>
+    <h1>Test Twitter Authentication</h1>
+    <button id="test-twitter-auth">Test Twitter Login</button>
+    <div id="result"></div>
+
+    <script type="module">
+        import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm'
+
+        const supabaseUrl = 'https://lbayphzxmdtdmrqmeomt.supabase.co'
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxiYXlwaHp4bWR0ZG1ycW1lb210Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDA5NTAyNTYsImV4cCI6MjA1NjUyNjI1Nn0.uSt7ll1Gy_TtbHxTyRtkyToZBIbW7ud18X45k5BdzKo'
+        
+        const supabase = createClient(supabaseUrl, supabaseKey)
+
+        document.getElementById('test-twitter-auth').addEventListener('click', async () => {
+            const resultDiv = document.getElementById('result')
+            resultDiv.innerHTML = 'Testing Twitter auth...'
+            
+            try {
+                console.log('Attempting Twitter OAuth...')
+                const { data, error } = await supabase.auth.signInWithOAuth({
+                    provider: 'twitter',
+                    options: {
+                        redirectTo: `${window.location.origin}/auth/callback`,
+                        scopes: 'tweet.read users.read account.read'
+                    }
+                })
+                
+                if (error) {
+                    console.error('Twitter auth error:', error)
+                    resultDiv.innerHTML = `Error: ${error.message}`
+                } else {
+                    console.log('Twitter auth data:', data)
+                    resultDiv.innerHTML = 'Redirecting to Twitter...'
+                }
+            } catch (err) {
+                console.error('Caught error:', err)
+                resultDiv.innerHTML = `Caught error: ${err.message}`
+            }
+        })
+    </script>
+</body>
+</html>
