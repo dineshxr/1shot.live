@@ -53,8 +53,21 @@
     />
     <link rel="stylesheet" href="src/style.css" />
     
-    <!-- Poopup Analytics -->
-    <script defer data-domain="submithunt.com" src="https://poopup.co/js/script.js"></script>
+    <!-- Poopup Analytics (load only in production to avoid CORS in local dev) -->
+    <script>
+      (function(){
+        const isLocalDev = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+        if (!isLocalDev) {
+          const s = document.createElement('script');
+          s.defer = true;
+          s.setAttribute('data-domain', 'submithunt.com');
+          s.src = 'https://poopup.co/js/script.js';
+          document.head.appendChild(s);
+        } else {
+          console.log('Poopup Analytics disabled in local development');
+        }
+      })();
+    </script>
     
     <!-- Preact CDN -->
     <script src="https://unpkg.com/preact@10.13.1/dist/preact.min.js"></script>

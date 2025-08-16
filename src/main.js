@@ -45,13 +45,46 @@ window.useRef = useRef;
 window.useMemo = useMemo;
 window.html = htm.bind(h);
 
+// Import configuration
+import { config } from './config.js';
+
 // Public environment variables
 window.PUBLIC_ENV = {
-  supabaseUrl: "https://lbayphzxmdtdmrqmeomt.supabase.co",
-  supabaseKey:
-    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxiYXlwaHp4bWR0ZG1ycW1lb210Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDA5NTAyNTYsImV4cCI6MjA1NjUyNjI1Nn0.uSt7ll1Gy_TtbHxTyRtkyToZBIbW7ud18X45k5BdzKo",
-  turnstileSiteKey: "0x4AAAAAAA_Rl5VDA4u6EMKm",
+  supabaseUrl: config.supabase.url,
+  supabaseKey: config.supabase.anonKey,
+  turnstileSiteKey: config.turnstile.siteKey,
+  // Clerk publishable key for browser SDK
+  clerkPublishableKey: config.clerk.publishableKey,
 };
+
+// Initialize ClerkJS (browser SDK)
+// Load via CDN ESM and expose as window.clerk after ready
+(() => {
+  const publishableKey = window.PUBLIC_ENV?.clerkPublishableKey;
+  if (!publishableKey) {
+    console.log('[Clerk] Skipping initialization: no publishable key provided');
+    return;
+  }
+
+  (async () => {
+    try {
+      const { default: Clerk } = await import(
+        'https://cdn.jsdelivr.net/npm/@clerk/clerk-js@latest/dist/clerk.browser.js?module'
+      );
+
+      console.log('[Clerk] Using publishable key:', publishableKey);
+      // Some clerk-js versions require the object form { publishableKey }
+      const clerk = new Clerk({ publishableKey });
+      await clerk.load();
+      window.clerk = clerk;
+
+      // Signal readiness for modules waiting on Clerk
+      window.dispatchEvent(new Event('clerk-ready'));
+    } catch (e) {
+      console.error('[Clerk] Failed to initialize', e);
+    }
+  })();
+})();
 
 // Render the App component
 render(html`<${App} />`, document.getElementById("app-root"));

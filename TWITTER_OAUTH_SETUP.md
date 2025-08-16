@@ -1,40 +1,46 @@
-# Twitter OAuth Setup Guide for 1shot.live
+# Twitter OAuth Setup Guide for SubmitHunt (submithunt.com)
 
 ## Current Status
 - ✅ Local Supabase configuration is correct (`supabase/config.toml`)
 - ✅ Environment variables are set (`.env`)
 - ✅ Auth flow code is implemented
-- ❌ **Twitter OAuth provider not enabled in Supabase Dashboard**
-- ❌ **Twitter app callback URL may need verification**
+- ❌ **Twitter OAuth provider may still be disabled in Supabase Dashboard**
+- ❌ **Twitter app callback URL needs verification**
 
 ## Required Fixes
 
 ### 1. Enable Twitter OAuth in Supabase Dashboard
 
-**CRITICAL**: You must enable Twitter OAuth in the Supabase dashboard:
+**CRITICAL**: Enable Twitter OAuth in the Supabase dashboard and use environment variables for credentials (do not paste secrets in docs or code):
 
 1. Go to: https://supabase.com/dashboard/project/lbayphzxmdtdmrqmeomt/auth/providers
 2. Find "Twitter" in the providers list
 3. Toggle it to "Enabled"
-4. Enter your credentials:
-   - **Client ID**: `LTVVc2JweTJWWkdWdGM2ejhFYXM6MTpjaQ`
-   - **Client Secret**: `JBfkYdoyUbYwESYgFyBCCU59qKq1DHXKQpKqqMEJNi_G20QFrY`
+4. Configure credentials using `.env` variables:
+   - `SUPABASE_AUTH_EXTERNAL_TWITTER_CLIENT_ID`
+   - `SUPABASE_AUTH_EXTERNAL_TWITTER_SECRET`
 5. Click "Save"
+   
+> Security note: Keep secrets only in `.env` and your Supabase project settings. Never commit secrets to source control.
 
 ### 2. Verify Twitter App Configuration
 
 In your Twitter Developer Dashboard (https://developer.twitter.com/en/portal/dashboard):
 
-1. **Callback URL**: Must be exactly `https://lbayphzxmdtdmrqmeomt.supabase.co/auth/v1/callback`
+1. **Callback URL**: Must be exactly `https://lbayphzxmdtdmrqmeomt.supabase.co/auth/v1/callback` (Supabase fixed callback)
 2. **OAuth 2.0**: Must be enabled
 3. **Request email from users**: Must be ON
 4. **App type**: Must be "Web App"
-5. **Website URL**: Can be `https://1shot.live` or `http://localhost:8080` for testing
+5. **Website URL**: Use production domain `https://submithunt.com` and `http://localhost:8080` for local testing
 
 ### 3. Test the Authentication
 
 After completing steps 1 and 2, test using:
-- Main app: http://localhost:8080 (click "Submit Your Startup" button)
+
+- Local: `http://localhost:8080` (click "Submit Your Startup" and sign in with X/Twitter)
+- Production: `https://submithunt.com`
+
+If redirected to `/auth/callback`, ensure our callback page completes the code exchange and returns to `/`.
 - Test page: http://localhost:8080/test-auth.html
 
 ## Current Configuration

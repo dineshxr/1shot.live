@@ -53,37 +53,46 @@
         <div id="error-message" class="error" style="display: none;"></div>
     </div>
 
-    <script type="module">
-        import { supabaseClient } from '../src/lib/supabase.js';
-
+    <script>
         async function handleAuthCallback() {
             try {
-                const supabase = supabaseClient();
+                // Wait for Clerk to be available
+                const waitForClerk = () => {
+                    return new Promise((resolve) => {
+                        if (window.clerk) {
+                            resolve(window.clerk);
+                            return;
+                        }
+                        
+                        const checkClerk = () => {
+                            if (window.clerk) {
+                                resolve(window.clerk);
+                            } else {
+                                setTimeout(checkClerk, 100);
+                            }
+                        };
+                        
+                        // Also listen for the clerk-ready event
+                        window.addEventListener('clerk-ready', () => {
+                            resolve(window.clerk);
+                        }, { once: true });
+                        
+                        checkClerk();
+                    });
+                };
+
+                const clerk = await waitForClerk();
                 
-                // Complete the OAuth flow by exchanging the code in the URL for a session
-                // This is required for supabase-js v2 when using redirect-based OAuth
-                const { error: exchangeError } = await supabase.auth.exchangeCodeForSession({
-                    // Use the current URL which contains the authorization code and state
-                    currentUrl: window.location.href
-                });
-
-                if (exchangeError) {
-                    throw exchangeError;
-                }
-
-                // After exchanging, the session should now be available
-                const { data, error } = await supabase.auth.getSession();
-
-                if (error) {
-                    throw error;
-                }
-
-                if (data?.session) {
+                // Handle the OAuth callback
+                await clerk.handleRedirectCallback();
+                
+                // Check if user is now signed in
+                if (clerk.user) {
+                    console.log('Authentication successful:', clerk.user);
                     // Authentication successful, redirect to main page
                     window.location.href = '/';
                 } else {
-                    // No session found after exchange – surface a clearer message
-                    throw new Error('Authentication succeeded but no session was found. Please try again.');
+                    throw new Error('Authentication completed but no user found. Please try again.');
                 }
             } catch (error) {
                 console.error('Authentication callback error:', error);

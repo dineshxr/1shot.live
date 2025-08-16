@@ -1,3 +1,5 @@
+// @ts-nocheck
+/* global useState, useEffect, html */
 import { supabaseClient } from "../lib/supabase-client.js";
 import { placeholderProjects as placeholderProducts } from "../lib/placeholder-data.js";
 import { StartupCard } from "./startup-card.js";
@@ -5,6 +7,49 @@ import { StartupModal } from "./startup-modal.js";
 
 // These are already defined globally in main.js
 // Using the global variables directly
+
+// Countdown to next midnight in America/Los_Angeles (PST/PDT)
+const HomeCountdown = () => {
+  const [timeLeft, setTimeLeft] = useState({ hours: 0, minutes: 0, seconds: 0 });
+
+  const nowInLA = () => new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Los_Angeles' }));
+
+  const getNextLAMidnight = () => {
+    const now = nowInLA();
+    const target = new Date(now);
+    target.setHours(24, 0, 0, 0); // next day at 00:00 in LA time
+    return target;
+  };
+
+  const tick = () => {
+    const nowLA = nowInLA();
+    const targetLA = getNextLAMidnight();
+    const diff = Math.max(0, targetLA - nowLA);
+    const total = Math.floor(diff / 1000);
+    const hours = Math.floor(total / 3600);
+    const minutes = Math.floor((total % 3600) / 60);
+    const seconds = total % 60;
+    setTimeLeft({ hours, minutes, seconds });
+  };
+
+  useEffect(() => {
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, []);
+
+  return html`
+    <div class="border-t border-amber-200 bg-amber-50">
+      <div class="container mx-auto px-4 py-4 flex items-center gap-3 text-amber-900">
+        <span class="text-lg font-semibold">New launches in</span>
+        <span class="inline-block rounded-md bg-amber-200/70 px-3 py-1 font-semibold">${timeLeft.hours} hours</span>
+        <span class="inline-block rounded-md bg-amber-200/70 px-3 py-1 font-semibold">${timeLeft.minutes} mins</span>
+        <span class="inline-block rounded-md bg-amber-200/70 px-3 py-1 font-semibold">${timeLeft.seconds} secs</span>
+        <span class="ml-auto text-xs text-amber-800">Resets daily at 12:00 AM PT</span>
+      </div>
+    </div>
+  `;
+};
 
 export const Content = () => {
   const [startups, setStartups] = useState([]);
@@ -123,7 +168,7 @@ export const Content = () => {
 
   return html`
     <main class="container mx-auto px-4 py-8">
-      <section class="text-center mb-12">
+      <section class="text-center mb-0">
         <h1 class="text-4xl font-bold mb-4">Discover the Best New Startups and AI Products</h1>
         <p class="text-xl text-gray-600 max-w-3xl mx-auto">
           Explore our curated collection of innovative startups and AI products that are redefining industries and pushing technological boundaries
@@ -137,6 +182,8 @@ export const Content = () => {
           </a>
         </div>
       </section>
+
+      ${HomeCountdown()}
 
       ${loading &&
       html`
