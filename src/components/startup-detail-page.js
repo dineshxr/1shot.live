@@ -1,5 +1,5 @@
 // Import Supabase client
-import { supabaseClient } from '../lib/supabase.js';
+import { supabaseClient } from '../lib/supabase-client.js';
 import { addReferralParam } from '../lib/url-utils.js';
 import { trackEvent, ANALYTICS_EVENTS } from '../lib/analytics.js';
 
@@ -26,13 +26,15 @@ export const StartupDetailPage = () => {
         const { data, error } = await supabase
           .from('startups')
           .select('*')
-          .eq('slug', slug)
-          .single();
+          .eq('slug', decodeURIComponent(slug))
+          .limit(1);
+          
+        const startup = data && data.length > 0 ? data[0] : null;
           
         if (error) throw error;
-        if (!data) throw new Error('Startup not found');
+        if (!startup) throw new Error('Startup not found');
         
-        setStartup(data);
+        setStartup(startup);
       } catch (err) {
         console.error('Error fetching startup details:', err);
         setError(err.message || 'Failed to load startup details');

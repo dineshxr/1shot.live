@@ -1,4 +1,4 @@
-import { createClient } from '@supabase/supabase-js';
+import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.38.4/+esm';
 
 // Supabase client for auth operations - singleton pattern to prevent multiple instances
 const supabaseUrl = window.PUBLIC_ENV?.supabaseUrl || 'https://lbayphzxmdtdmrqmeomt.supabase.co';

@@ -60,6 +60,11 @@ export const App = () => {
     // Add listener for custom event from the new CTA button
     window.addEventListener("open-submit-form", openForm);
     
+    // Add listener for login modal from upvote button
+    window.addEventListener("open-login-modal", () => {
+      setIsLoginModalOpen(true);
+    });
+    
     // Handle routing changes
     const handleRouteChange = () => {
       setCurrentRoute(window.location.pathname);
@@ -70,6 +75,9 @@ export const App = () => {
     return () => {
       submitButton?.removeEventListener("click", openForm);
       window.removeEventListener("open-submit-form", openForm);
+      window.removeEventListener("open-login-modal", () => {
+        setIsLoginModalOpen(true);
+      });
       window.removeEventListener('popstate', handleRouteChange);
     };
   }, []);

@@ -1,0 +1,41 @@
+# Cron job configuration for sending live notifications
+# This will run the send-live-notifications function daily at 8:00 AM PST
+# 
+# To set this up in production:
+# 1. Deploy the function: supabase functions deploy send-live-notifications
+# 2. Set up a cron job service (like GitHub Actions, Vercel Cron, or cron-job.org)
+# 3. Configure it to make a POST request to your function URL daily at 8 AM PST
+#
+# Example GitHub Actions workflow (.github/workflows/daily-notifications.yml):
+
+name: Daily Live Notifications
+on:
+  schedule:
+    # Run at 8:00 AM PST (16:00 UTC during standard time, 15:00 UTC during daylight time)
+    # Using 15:00 UTC to account for PST/PDT differences
+    - cron: '0 15 * * *'
+  workflow_dispatch: # Allow manual triggering
+
+jobs:
+  send-notifications:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send Live Notifications
+        run: |
+          curl -X POST \
+            -H "Authorization: Bearer ${{ secrets.SUPABASE_ANON_KEY }}" \
+            -H "Content-Type: application/json" \
+            https://your-project-id.supabase.co/functions/v1/send-live-notifications
+
+# Alternative: Use a service like cron-job.org
+# URL: https://your-project-id.supabase.co/functions/v1/send-live-notifications
+# Method: POST
+# Headers: 
+#   Authorization: Bearer YOUR_SUPABASE_ANON_KEY
+#   Content-Type: application/json
+# Schedule: Daily at 8:00 AM America/Los_Angeles
+
+# Environment variables needed:
+# SUPABASE_URL - Your Supabase project URL
+# SUPABASE_SERVICE_ROLE_KEY - Service role key for database access
+# RESEND_API_KEY - API key for Resend email service

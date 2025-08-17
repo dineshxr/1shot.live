@@ -4,6 +4,7 @@ import { supabaseClient } from "../lib/supabase-client.js";
 import { placeholderProjects as placeholderProducts } from "../lib/placeholder-data.js";
 import { StartupCard } from "./startup-card.js";
 import { StartupModal } from "./startup-modal.js";
+import { LaunchCountdown } from "./launch-countdown.js";
 
 // These are already defined globally in main.js
 // Using the global variables directly
@@ -57,6 +58,7 @@ export const Content = () => {
   const [error, setError] = useState(null);
   const [selectedStartup, setSelectedStartup] = useState(null);
   const [groupedStartups, setGroupedStartups] = useState({});
+  const [user, setUser] = useState(null);
 
   const fetchStartups = async () => {
     try {
@@ -69,19 +71,21 @@ export const Content = () => {
                       String(today.getMonth() + 1).padStart(2, '0') + '-' + 
                       String(today.getDate()).padStart(2, '0');
         
+        // Get user email for vote checking
+        const userEmail = user?.email || null;
+        
         const { data, error } = await supabase
-          .from("startups")
-          .select("*")
-          // Only show startups that are scheduled to launch today or earlier
-          .lte('launch_date', todayStr)
-          .order("launch_date", { ascending: false }); // Sort by launch date, newest first
+          .rpc('get_startups_with_votes', { user_email_param: userEmail });
+        
+        // Filter results to only show startups launched today or earlier
+        const filteredData = data?.filter(startup => startup.launch_date <= todayStr) || [];
 
-        if (!error && data && data.length > 0) {
-          setStartups(data);
+        if (!error && filteredData && filteredData.length > 0) {
+          setStartups(filteredData);
           
           // Group startups by launch date
           const grouped = {};
-          data.forEach(startup => {
+          filteredData.forEach(startup => {
             const launchDate = startup.launch_date;
             // Ensure we're using the correct date in PDT time zone
             const adjustedDate = launchDate;
@@ -133,10 +137,27 @@ export const Content = () => {
   };
 
   useEffect(() => {
+    // Check for authenticated user
+    if (window.auth && window.auth.user) {
+      setUser(window.auth.user);
+    }
+
     fetchStartups();
 
     // Listen for refresh requests
     window.addEventListener("refresh-startups", fetchStartups);
+
+    // Listen for auth changes
+    const handleAuthChange = () => {
+      if (window.auth && window.auth.user) {
+        setUser(window.auth.user);
+        fetchStartups(); // Refetch with user context
+      } else {
+        setUser(null);
+        fetchStartups(); // Refetch without user context
+      }
+    };
+    window.addEventListener("auth-changed", handleAuthChange);
 
     // Listen for hash changes
     const handleHashChange = () => {
@@ -152,9 +173,41 @@ export const Content = () => {
 
     return () => {
       window.removeEventListener("refresh-startups", fetchStartups);
+      window.removeEventListener("auth-changed", handleAuthChange);
       window.removeEventListener("hashchange", handleHashChange);
     };
   }, []);
+
+  const handleUpvoteChange = (startupId, newUpvoteCount, userVoted) => {
+    // Update the startup in the local state
+    setStartups(prevStartups => 
+      prevStartups.map(startup => 
+        startup.id === startupId 
+          ? { ...startup, upvote_count: newUpvoteCount, user_voted: userVoted }
+          : startup
+      )
+    );
+
+    // Update grouped startups as well
+    setGroupedStartups(prevGrouped => {
+      const newGrouped = { ...prevGrouped };
+      Object.keys(newGrouped).forEach(date => {
+        newGrouped[date] = newGrouped[date].map(startup =>
+          startup.id === startupId
+            ? { ...startup, upvote_count: newUpvoteCount, user_voted: userVoted }
+            : startup
+        );
+      });
+      return newGrouped;
+    });
+
+    // Update daily rankings
+    const supabase = supabaseClient();
+    supabase.rpc('update_daily_rankings').then(() => {
+      // Refetch startups to get updated rankings
+      setTimeout(fetchStartups, 1000);
+    });
+  };
 
   const closeModal = () => {
     setSelectedStartup(null);
@@ -183,7 +236,7 @@ export const Content = () => {
         </div>
       </section>
 
-      ${HomeCountdown()}
+      ${LaunchCountdown()}
 
       ${loading &&
       html`
@@ -232,7 +285,7 @@ export const Content = () => {
                 
                 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 mb-8">
                   ${startupsForDate.map(
-                    (startup) => html`<${StartupCard} key=${startup.id} startup=${startup} />`
+                    (startup) => html`<${StartupCard} key=${startup.id} startup=${startup} user=${user} onUpvoteChange=${handleUpvoteChange} />`
                   )}
                 </div>
               </div>

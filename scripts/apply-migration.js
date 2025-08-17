@@ -9,7 +9,7 @@ const https = require('https');
 
 // Read environment variables from .env file
 const envFile = fs.readFileSync(path.join(__dirname, '../.env'), 'utf8');
-const envVars: Record<string, string | undefined> = {};
+const envVars = {};
 envFile.split('\n').forEach(line => {
   const match = line.match(/^([^=]+)=(.*)$/);
   if (match) {
@@ -34,7 +34,7 @@ ALTER TABLE public.startups ADD COLUMN IF NOT EXISTS screenshot_url TEXT;
 // Function to execute SQL using Supabase REST API
 async function executeSql(sql) {
   return new Promise((resolve, reject) => {
-    const url = new URL(SUPABASE_URL as string);
+    const url = new URL(SUPABASE_URL);
     
     const options = {
       hostname: url.hostname,
@@ -79,7 +79,7 @@ async function executeSql(sql) {
 // Create a custom function to add a column if it doesn't exist
 async function createCustomFunction() {
   return new Promise((resolve, reject) => {
-    const url = new URL(SUPABASE_URL as string);
+    const url = new URL(SUPABASE_URL);
     
     const options = {
       hostname: url.hostname,

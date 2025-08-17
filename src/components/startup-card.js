@@ -1,8 +1,10 @@
 // Import analytics functions and constants
 import { trackEvent, ANALYTICS_EVENTS } from '../lib/analytics.js';
 import { addReferralParam } from '../lib/url-utils.js';
+import { UpvoteButton } from './upvote-button.js';
+import { RankingBadge } from './ranking-badge.js';
 
-export const StartupCard = ({ startup }) => {
+export const StartupCard = ({ startup, user, onUpvoteChange }) => {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
   const copyStartupLinkLabel = `Copy project link: Submit Hunt/#${startup.slug}`;
@@ -204,6 +206,7 @@ export const StartupCard = ({ startup }) => {
         }}
       >
         <div class="relative">
+          ${RankingBadge({ rank: startup.daily_rank })}
           <img
             src=${getCurrentImage()}
             alt=${`Screenshot of ${startup.title} - ${startup.description?.substring(0, 50) || 'Innovative startup'}`}
@@ -320,19 +323,22 @@ export const StartupCard = ({ startup }) => {
               <span class="text-xs text-gray-600 font-mono truncate">
                 ${getHostname(startup.url)}
               </span>
-              <button
-                onClick=${handleShareOnX}
-                class="group relative p-1 hover:bg-gray-100 rounded flex items-center"
-                aria-label="Share on X"
-              >
-                <i class="fab fa-x-twitter text-sm mr-1"></i>
-                <span class="text-xs">Share</span>
-                <div
-                  class="absolute -top-8 left-1/2 -translate-x-1/2 hidden group-hover:block bg-black text-white text-xs px-2 py-1 rounded whitespace-nowrap"
+              <div class="flex items-center gap-2">
+                ${UpvoteButton({ startup, user, onUpvoteChange })}
+                <button
+                  onClick=${handleShareOnX}
+                  class="group relative p-1 hover:bg-gray-100 rounded flex items-center"
+                  aria-label="Share on X"
                 >
-                  Share on X
-                </div>
-              </button>
+                  <i class="fab fa-x-twitter text-sm mr-1"></i>
+                  <span class="text-xs">Share</span>
+                  <div
+                    class="absolute -top-8 left-1/2 -translate-x-1/2 hidden group-hover:block bg-black text-white text-xs px-2 py-1 rounded whitespace-nowrap"
+                  >
+                    Share on X
+                  </div>
+                </button>
+              </div>
             </div>
 
             ${startup.author &&

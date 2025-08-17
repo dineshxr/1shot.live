@@ -234,32 +234,33 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
     }
   };
 
-  // Check if user already has a free submission
+  // Check if user already has any active submission (one per email limit)
   const checkExistingSubmission = async () => {
-    if (!formData.xProfile) return;
+    if (!window.auth?.getCurrentUser()?.email) return;
     
     try {
-      // Query Supabase for existing free submissions with this X profile
-      // Fix TypeScript error by using proper client typing
       const supabase = supabaseClient();
-      const { data, error, count } = await supabase
-        .from('startups')
-        .select('id', { count: 'exact' })
-        .eq('plan', 'free')
-        .filter('author->name', 'eq', formData.xProfile.replace('@', ''));
+      const userEmail = window.auth.getCurrentUser().email;
+      
+      // Use the database function to check listing limit
+      const { data, error } = await supabase.rpc('check_user_listing_limit', { 
+        user_email: userEmail 
+      });
       
       if (error) throw error;
       
-      // Set flag if user already has a submission
-      if (count > 0) {
+      // If data is false, user already has an active listing
+      if (!data) {
         setHasExistingSubmission(true);
-        // Auto-select premium plan if user already has a free submission
-        setFormData(prev => ({ ...prev, plan: 'premium' }));
+        setError('You already have an active listing. Each user can only have one active listing at a time. You can upgrade to featured or edit your existing listing from your dashboard.');
+        return;
       } else {
         setHasExistingSubmission(false);
+        setError(null);
       }
     } catch (error) {
       console.error('Error checking existing submission:', error);
+      setError('Unable to verify your submission status. Please try again.');
     }
   };
 
@@ -498,12 +499,21 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
                 author: authorInfo,
                 screenshot_url: screenshotUrl,
                 plan: formData.plan,
-                launch_date: formData.launchDate || (() => {
-                  const pdt = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Los_Angeles' }));
-                  return pdt.getFullYear() + '-' + 
-                         String(pdt.getMonth() + 1).padStart(2, '0') + '-' + 
-                         String(pdt.getDate()).padStart(2, '0');
-                })() // Store launch date in PDT
+                launch_date: formData.launchDate || await (async () => {
+                  // Use database function to get next available launch date
+                  const { data: nextDate, error: dateError } = await supabase.rpc('get_next_launch_date', { 
+                    plan_type: formData.plan 
+                  });
+                  if (dateError) {
+                    console.error('Error getting next launch date:', dateError);
+                    // Fallback to current date
+                    const pdt = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Los_Angeles' }));
+                    return pdt.getFullYear() + '-' + 
+                           String(pdt.getMonth() + 1).padStart(2, '0') + '-' + 
+                           String(pdt.getDate()).padStart(2, '0');
+                  }
+                  return nextDate;
+                })()
               }
             ])
             .select('id, title, url, description, slug, author, screenshot_url, plan, launch_date')
