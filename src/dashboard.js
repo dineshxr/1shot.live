@@ -70,11 +70,14 @@ class Dashboard {
             const supabase = supabaseClient();
             
             // Get user's listings based on their email
+            console.log('Loading listings for user:', this.currentUser.email);
             const { data, error } = await supabase
                 .from('startups')
                 .select('*')
                 .contains('author', { email: this.currentUser.email })
                 .order('created_at', { ascending: false });
+            
+            console.log('Listings query result:', { data, error });
 
             if (error) {
                 console.error('Error fetching listings:', error);
@@ -125,13 +128,24 @@ class Dashboard {
     async loadUpvotedStartups() {
         try {
             const supabase = supabaseClient();
+            
+            // Check if user is authenticated
+            if (!this.currentUser || !this.currentUser.email) {
+                console.log('No authenticated user for upvoted startups');
+                this.upvotedStartups = [];
+                return;
+            }
+            
+            console.log('Loading upvoted startups for user:', this.currentUser.email);
             const { data, error } = await supabase.rpc('get_user_upvoted_startups');
 
             if (error) {
                 console.error('Error fetching upvoted startups:', error);
+                console.error('Error details:', JSON.stringify(error, null, 2));
                 return;
             }
 
+            console.log('Upvoted startups data:', data);
             this.upvotedStartups = data || [];
         } catch (error) {
             console.error('Failed to load upvoted startups:', error);

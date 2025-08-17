@@ -501,13 +501,12 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
                 plan: formData.plan,
                 launch_date: formData.launchDate || await (async () => {
                   // Use database function to get next available launch date
-                  const { data: nextDate, error: dateError } = await supabase.rpc('get_next_launch_date', { 
-                    plan_type: formData.plan 
-                  });
+                  const { data: nextDate, error: dateError } = await supabase.rpc('get_next_launch_date');
                   if (dateError) {
                     console.error('Error getting next launch date:', dateError);
-                    // Fallback to current date
+                    // Fallback to tomorrow instead of today to prevent immediate listing
                     const pdt = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Los_Angeles' }));
+                    pdt.setDate(pdt.getDate() + 1); // Add 1 day
                     return pdt.getFullYear() + '-' + 
                            String(pdt.getMonth() + 1).padStart(2, '0') + '-' + 
                            String(pdt.getDate()).padStart(2, '0');
