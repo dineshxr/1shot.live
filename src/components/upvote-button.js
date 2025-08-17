@@ -24,8 +24,19 @@ export const UpvoteButton = ({ startup, user, onUpvoteChange }) => {
     
     try {
       const supabase = supabaseClient();
+      
+      // Check if we have a user session
+      const { data: { session } } = await supabase.auth.getSession();
+      console.log('Current session:', session);
+      
+      if (!session || !session.user) {
+        alert('Please log in to upvote');
+        return;
+      }
+      
       const { data, error } = await supabase.rpc('upvote_startup', {
-        startup_id_param: startup.id
+        startup_id_param: startup.id,
+        user_email_param: session.user.email
       });
 
       if (error) throw error;
@@ -46,7 +57,10 @@ export const UpvoteButton = ({ startup, user, onUpvoteChange }) => {
 
     } catch (error) {
       console.error('Error upvoting:', error);
-      alert('Failed to upvote. Please try again.');
+      console.error('Error details:', JSON.stringify(error, null, 2));
+      console.error('Startup ID:', startup.id);
+      console.error('User:', user);
+      alert(`Failed to upvote: ${error.message || 'Unknown error'}. Please try again.`);
     } finally {
       setIsVoting(false);
     }
