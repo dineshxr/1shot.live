@@ -53,10 +53,12 @@ function updateAuthState(user, session, loading = false) {
 async function initAuth() {
   try {
     const { data: { session } } = await supabase.auth.getSession();
+    console.log('Initial session:', session);
     updateAuthState(session?.user || null, session, false);
 
     // Listen for auth changes
     supabase.auth.onAuthStateChange((event, session) => {
+      console.log('Auth state change:', event, session);
       updateAuthState(session?.user || null, session, false);
     });
 
@@ -171,13 +173,16 @@ export const auth = {
   },
 
   // Compatibility methods
-  getCurrentUser: getCurrentUser,
-  getCurrentSession: getCurrentSession,
-  isAuthenticated: isAuthenticated,
-  getAuthState: getAuthState,
-  subscribe: subscribe,
-  initAuth: initAuth
+  getCurrentUser,
+  getCurrentSession,
+  isAuthenticated,
+  getAuthState,
+  subscribe,
+  initAuth
 };
+
+// Make auth available globally for debugging
+window.auth = auth;
 
 // Initialize auth on load
 initAuth();
