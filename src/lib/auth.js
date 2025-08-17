@@ -95,7 +95,7 @@ export const auth = {
         email: email,
         options: {
           shouldCreateUser: true,
-          emailRedirectTo: `${window.location.origin}/auth/callback`
+          emailRedirectTo: `${window.location.origin}/auth/callback.html`
         }
       });
       
