@@ -1,10 +1,15 @@
 import { createClient } from '@supabase/supabase-js';
 
-// Supabase client for auth operations
+// Supabase client for auth operations - singleton pattern to prevent multiple instances
 const supabaseUrl = window.PUBLIC_ENV?.supabaseUrl || 'https://lbayphzxmdtdmrqmeomt.supabase.co';
 const supabaseKey = window.PUBLIC_ENV?.supabaseKey || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxiYXlwaHp4bWR0ZG1ycW1lb210Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDA5NTAyNTYsImV4cCI6MjA1NjUyNjI1Nn0.uSt7ll1Gy_TtbHxTyRtkyToZBIbW7ud18X45k5BdzKo';
 
-const supabase = createClient(supabaseUrl, supabaseKey);
+// Create a single global Supabase instance
+let supabase;
+if (!window.supabaseClient) {
+  window.supabaseClient = createClient(supabaseUrl, supabaseKey);
+}
+supabase = window.supabaseClient;
 
 // Auth state management
 let authState = {

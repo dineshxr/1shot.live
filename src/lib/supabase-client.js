@@ -1,29 +1,34 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.38.4/+esm';
 
 /**
- * Create and return a Supabase client instance with better error handling
+ * Get or create a singleton Supabase client instance
  * @returns {Object} Supabase client
  */
 export const supabaseClient = () => {
+  // Use the global singleton instance from auth.js
+  if (window.supabaseClient) {
+    return window.supabaseClient;
+  }
+  
   try {
     // Get environment variables from window.PUBLIC_ENV
     const { supabaseUrl, supabaseKey } = window.PUBLIC_ENV || {};
     
-    // Validate URL and key
-    if (!supabaseUrl || !supabaseKey) {
-      console.error('Supabase URL or key is missing. Check your environment variables.');
-      throw new Error('Supabase configuration is incomplete');
-    }
+    // Fallback to hardcoded values if env vars not available
+    const url = supabaseUrl || 'https://lbayphzxmdtdmrqmeomt.supabase.co';
+    const key = supabaseKey || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxiYXlwaHp4bWR0ZG1ycW1lb210Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDA5NTAyNTYsImV4cCI6MjA1NjUyNjI1Nn0.uSt7ll1Gy_TtbHxTyRtkyToZBIbW7ud18X45k5BdzKo';
     
     // Log connection attempt for debugging
-    console.log(`Connecting to Supabase at: ${supabaseUrl}`);
+    console.log(`Connecting to Supabase at: ${url}`);
     
-    // Create and return the client
-    return createClient(supabaseUrl, supabaseKey, {
+    // Create and store the global client
+    window.supabaseClient = createClient(url, key, {
       auth: {
         persistSession: false // Don't persist auth state for this simple app
       }
     });
+    
+    return window.supabaseClient;
   } catch (error) {
     console.error('Error initializing Supabase client:', error);
     throw error;
@@ -33,23 +38,10 @@ export const supabaseClient = () => {
 // Initialize presence channel
 export const initPresence = async ({ sessionId, countryFlag, countryName }) => {
   try {
-    // Get environment variables from window.PUBLIC_ENV
-    const { supabaseUrl, supabaseKey } = window.PUBLIC_ENV || {};
+    // Use the singleton Supabase client
+    const supabase = supabaseClient();
     
-    // Validate URL and key
-    if (!supabaseUrl || !supabaseKey) {
-      console.error('Supabase URL or key is missing for presence channel');
-      return;
-    }
-    
-    console.log(`Initializing presence channel with Supabase at: ${supabaseUrl}`);
-    
-    // Create Supabase client
-    const supabase = createClient(supabaseUrl, supabaseKey, {
-      auth: {
-        persistSession: false // Don't persist auth state for this simple app
-      }
-    });
+    console.log(`Initializing presence channel with existing Supabase client`);
     
     // Initialize anonymous session
     await supabase.auth.getSession();
