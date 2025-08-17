@@ -46,8 +46,7 @@ export const App = () => {
   // Handle successful login
   const handleLoginSuccess = () => {
     setIsLoginModalOpen(false);
-    // Open the form after successful login
-    setIsFormOpen(true);
+    // Don't automatically open form - let user decide what to do next
   };
 
   // Expose functions globally
@@ -90,7 +89,7 @@ export const App = () => {
       <${Header} user=${user} />
       ${isStartupDetailPage
         ? html`<${StartupDetailPage} />`
-        : html`<${Content} />`
+        : html`<${Content} user=${user} />`
       }
       <${Footer} />
       <${SubmitStartupForm} isOpen=${isFormOpen} onClose=${closeForm} />

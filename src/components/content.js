@@ -52,13 +52,12 @@ const HomeCountdown = () => {
   `;
 };
 
-export const Content = () => {
+export const Content = ({ user }) => {
   const [startups, setStartups] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [selectedStartup, setSelectedStartup] = useState(null);
   const [groupedStartups, setGroupedStartups] = useState({});
-  const [user, setUser] = useState(null);
 
   const fetchStartups = async () => {
     try {
@@ -137,11 +136,6 @@ export const Content = () => {
   };
 
   useEffect(() => {
-    // Check for authenticated user
-    if (window.auth && window.auth.user) {
-      setUser(window.auth.user);
-    }
-
     fetchStartups();
 
     // Listen for refresh requests
@@ -149,13 +143,7 @@ export const Content = () => {
 
     // Listen for auth changes
     const handleAuthChange = () => {
-      if (window.auth && window.auth.user) {
-        setUser(window.auth.user);
-        fetchStartups(); // Refetch with user context
-      } else {
-        setUser(null);
-        fetchStartups(); // Refetch without user context
-      }
+      fetchStartups(); // Refetch with user context
     };
     window.addEventListener("auth-changed", handleAuthChange);
 
