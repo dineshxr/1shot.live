@@ -17,6 +17,8 @@ import htm from "https://unpkg.com/htm@3.1.1/dist/htm.module.js";
 import { Footer } from "./components/footer.js";
 import { OnlineVisitors } from "./components/online-visitors.js";
 import { SubmitStartupForm } from "./components/submit-startup-form.js";
+import { LoginModal } from "./components/login-modal.js";
+import { auth } from "./lib/auth.js";
 
 // Import analytics
 import { trackPageView, trackEvent, ANALYTICS_EVENTS } from './lib/analytics.js';
@@ -78,12 +80,28 @@ const Countdown = () => {
 // Featured Page Component
 const FeaturedPage = () => {
   const [showSubmitForm, setShowSubmitForm] = useState(false);
+  const [showLoginModal, setShowLoginModal] = useState(false);
+  const [user, setUser] = useState(null);
+  const [authLoading, setAuthLoading] = useState(true);
 
   useEffect(() => {
     document.title = "Featured Submissions | SubmitHunt";
     
     // Track page view with custom event
     trackEvent("FEATURED_PAGE_VIEW");
+
+    // Subscribe to auth state changes
+    const unsubscribe = auth.subscribe((authState) => {
+      setUser(authState.user);
+      setAuthLoading(authState.loading);
+    });
+
+    // Set initial user state
+    const currentAuthState = auth.getAuthState();
+    setUser(currentAuthState.user);
+    setAuthLoading(currentAuthState.loading);
+
+    return unsubscribe;
   }, []);
 
   const handleContactClick = () => {
@@ -92,6 +110,21 @@ const FeaturedPage = () => {
     
     // Open Twitter in a new tab
     window.open("https://x.com/submithunt", "_blank");
+  };
+
+  // Handle submit button click with authentication check
+  const handleSubmitClick = () => {
+    if (auth.isAuthenticated()) {
+      setShowSubmitForm(true);
+    } else {
+      setShowLoginModal(true);
+    }
+  };
+
+  // Handle successful login
+  const handleLoginSuccess = () => {
+    setShowLoginModal(false);
+    setShowSubmitForm(true);
   };
 
   return html`
@@ -112,12 +145,23 @@ const FeaturedPage = () => {
               class="mt-4 md:mt-0 flex flex-col md:flex-row items-center gap-4"
             >
               <${OnlineVisitors} />
-              <button
-                onClick=${() => setShowSubmitForm(true)}
-                class="neo-button inline-flex items-center px-4 py-2 bg-purple-400 border-2 border-black rounded shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:bg-purple-500 font-bold"
-              >
-                <i class="fas fa-plus mr-2"></i> Submit Product
-              </button>
+              ${user ? html`
+                <!-- Authenticated user - prominent submit button -->
+                <button
+                  onClick=${handleSubmitClick}
+                  class="neo-button inline-flex items-center px-6 py-3 bg-green-400 border-2 border-black rounded shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:bg-green-500 font-bold text-lg animate-pulse"
+                >
+                  <i class="fas fa-rocket mr-2"></i> Submit Your Product
+                </button>
+              ` : html`
+                <!-- Not authenticated - login to submit -->
+                <button
+                  onClick=${handleSubmitClick}
+                  class="neo-button inline-flex items-center px-4 py-2 bg-purple-400 border-2 border-black rounded shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:bg-purple-500 font-bold"
+                >
+                  <i class="fas fa-plus mr-2"></i> Submit Product
+                </button>
+              `}
             </div>
           </div>
         </div>
@@ -125,6 +169,13 @@ const FeaturedPage = () => {
 
       <!-- Submit Startup Form Modal -->
       <${SubmitStartupForm} isOpen=${showSubmitForm} onClose=${() => setShowSubmitForm(false)} />
+      
+      <!-- Login Modal -->
+      <${LoginModal} 
+        isOpen=${showLoginModal} 
+        onClose=${() => setShowLoginModal(false)}
+        onLoginSuccess=${handleLoginSuccess}
+      />
       
       <main class="flex-grow">
         <!-- Hero Section -->

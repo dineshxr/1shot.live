@@ -471,14 +471,15 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
             avatar: `https://unavatar.io/twitter/${formData.xProfile.replace('@', '')}`
           };
           
-          // If user is authenticated via Supabase, use their X profile info
-          if (window.auth && window.auth.getUser()) {
-            const authUser = window.auth.getUser();
-            if (authUser.user_metadata) {
+          // If user is authenticated via Supabase, use their email info
+          if (window.auth && window.auth.isAuthenticated()) {
+            const authUser = window.auth.getCurrentUser();
+            if (authUser) {
               authorInfo = {
-                name: authUser.user_metadata.full_name || formData.xProfile.replace('@', ''),
-                profile_url: authUser.user_metadata.custom_claims?.twitter_url || `https://x.com/${formData.xProfile.replace('@', '')}`,
-                avatar: authUser.user_metadata.avatar_url || `https://unavatar.io/twitter/${formData.xProfile.replace('@', '')}`
+                name: authUser.email?.split('@')[0] || formData.xProfile.replace('@', ''),
+                profile_url: `https://x.com/${formData.xProfile.replace('@', '')}`,
+                avatar: `https://unavatar.io/twitter/${formData.xProfile.replace('@', '')}`,
+                email: authUser.email
               };
             }
           }

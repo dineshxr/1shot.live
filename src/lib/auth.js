@@ -1,4 +1,10 @@
-// Authentication service using ClerkJS (browser) and X (Twitter) login
+import { createClient } from '@supabase/supabase-js';
+
+// Supabase client for auth operations
+const supabaseUrl = window.PUBLIC_ENV?.supabaseUrl || 'https://lbayphzxmdtdmrqmeomt.supabase.co';
+const supabaseKey = window.PUBLIC_ENV?.supabaseKey || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxiYXlwaHp4bWR0ZG1ycW1lb210Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDA5NTAyNTYsImV4cCI6MjA1NjUyNjI1Nn0.uSt7ll1Gy_TtbHxTyRtkyToZBIbW7ud18X45k5BdzKo';
+
+const supabase = createClient(supabaseUrl, supabaseKey);
 
 // Auth state management
 let authState = {
@@ -24,104 +30,35 @@ function notifyListeners() {
   listeners.forEach(listener => listener(authState));
 }
 
-// Helper: wait for Clerk to be available
-async function waitForClerk() {
-  if (typeof window === 'undefined') return null;
-  if (window.clerk) return window.clerk;
-  await new Promise((resolve) => {
-    const onReady = () => {
-      window.removeEventListener('clerk-ready', onReady);
-      resolve();
-    };
-    window.addEventListener('clerk-ready', onReady);
-  });
-  return window.clerk;
-}
-
-// Map Clerk user to previous UI shape for compatibility
-function mapClerkUser(clerkUser) {
-  if (!clerkUser) return null;
-  const external = (clerkUser.externalAccounts && clerkUser.externalAccounts[0]) || {};
-  const username = clerkUser.username || external.username || null;
-  const avatarUrl = clerkUser.imageUrl || null;
-  return {
-    ...clerkUser,
-    user_metadata: {
-      avatar_url: avatarUrl,
-      user_name: username,
-    },
-    email: clerkUser.primaryEmailAddress?.emailAddress || null,
-  };
-}
-
-let _clerkPoll = null;
-
-// Initialize auth state
-async function initAuth() {
-  try {
-    const clerk = await waitForClerk();
-
-    const setFromClerk = () => {
-      const mapped = mapClerkUser(clerk.user || null);
-      authState = {
-        user: mapped,
-        session: clerk.session || null,
-        loading: false,
-        initialized: true
-      };
-      notifyListeners();
-      window.dispatchEvent(new CustomEvent('auth-state-change', { 
-        detail: { user: authState.user, session: authState.session } 
-      }));
-    };
-
-    // Initial state
-    setFromClerk();
-
-    // Poll for changes (works across redirects)
-    if (_clerkPoll) clearInterval(_clerkPoll);
-    let lastId = clerk.user?.id || null;
-    _clerkPoll = setInterval(() => {
-      const currId = clerk.user?.id || null;
-      if (currId !== lastId) {
-        lastId = currId;
-        setFromClerk();
-      }
-    }, 1000);
-
-  } catch (error) {
-    console.error('Error initializing auth (Clerk):', error);
-    authState = {
-      user: null,
-      session: null,
-      loading: false,
-      initialized: true
-    };
-    notifyListeners();
-  }
-}
-
-// Sign in with X (Twitter) via Clerk modal (ensure provider enabled in Clerk Dashboard)
-async function signInWithX() {
-  const clerk = await waitForClerk();
-  await clerk.openSignIn({
-    afterSignInUrl: '/',
-    afterSignUpUrl: '/',
-  });
-}
-
-// Sign out
-async function signOut() {
-  const clerk = await waitForClerk();
-  await clerk.signOut();
+// Update auth state and notify listeners
+function updateAuthState(user, session, loading = false) {
   authState = {
-    user: null,
-    session: null,
-    loading: false,
+    user: user,
+    session: session,
+    loading: loading,
     initialized: true
   };
   notifyListeners();
-  return true;
+  window.dispatchEvent(new CustomEvent('auth-state-change', { 
+    detail: { user: authState.user, session: authState.session } 
+  }));
+}
+
+// Initialize auth state from Supabase
+async function initAuth() {
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    updateAuthState(session?.user || null, session, false);
+
+    // Listen for auth changes
+    supabase.auth.onAuthStateChange((event, session) => {
+      updateAuthState(session?.user || null, session, false);
+    });
+
+  } catch (error) {
+    console.error('Error initializing auth:', error);
+    updateAuthState(null, null, false);
+  }
 }
 
 // Get current user
@@ -144,17 +81,98 @@ function getAuthState() {
   return { ...authState };
 }
 
-// Initialize auth on module load
-initAuth();
-
-// Export auth service
+// Auth service using Supabase Auth
 export const auth = {
-  signInWithX,
-  signOut,
-  getCurrentUser,
-  getCurrentSession,
-  isAuthenticated,
-  getAuthState,
-  subscribe,
-  initAuth
+  // Sign in with email (sends magic link)
+  async signInWithEmail(email) {
+    try {
+      const { data, error } = await supabase.auth.signInWithOtp({
+        email: email,
+        options: {
+          shouldCreateUser: true,
+          emailRedirectTo: window.location.origin
+        }
+      });
+      
+      if (error) {
+        throw error;
+      }
+      
+      return { success: true, data };
+    } catch (error) {
+      console.error('Sign in error:', error);
+      throw new Error(error.message || 'Failed to send magic link');
+    }
+  },
+
+  // Get current user
+  async getCurrentUser() {
+    const { data: { user } } = await supabase.auth.getUser();
+    return user;
+  },
+
+  // Check if user is signed in
+  async isSignedIn() {
+    const { data: { session } } = await supabase.auth.getSession();
+    return !!session;
+  },
+
+  // Sign out
+  async signOut() {
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) {
+        throw error;
+      }
+      return { success: true };
+    } catch (error) {
+      console.error('Sign out error:', error);
+      throw new Error('Failed to sign out');
+    }
+  },
+
+  // Listen for auth state changes
+  onAuthStateChange(callback) {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      updateAuthState(session?.user || null, session, false);
+      callback(session?.user || null);
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  },
+
+  // Subscribe to auth state changes (alias for compatibility)
+  subscribe(callback) {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      const authState = {
+        user: session?.user || null,
+        loading: false
+      };
+      updateAuthState(authState.user, authState.loading);
+      callback(authState);
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  },
+
+  // Get current session
+  async getSession() {
+    const { data: { session } } = await supabase.auth.getSession();
+    return session;
+  },
+
+  // Compatibility methods
+  getCurrentUser: getCurrentUser,
+  getCurrentSession: getCurrentSession,
+  isAuthenticated: isAuthenticated,
+  getAuthState: getAuthState,
+  subscribe: subscribe,
+  initAuth: initAuth
 };
+
+// Initialize auth on load
+initAuth();

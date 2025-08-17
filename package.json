@@ -9,6 +9,7 @@
     "@supabase/supabase-js": "^2.49.1"
   },
   "dependencies": {
+    "@clerk/clerk-react": "^5.42.1",
     "@vercel/analytics": "^1.1.1",
     "dotenv": "^16.5.0"
   }

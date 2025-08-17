@@ -32,6 +32,12 @@ export const Header = ({ user }) => {
                   </span>
                 </div>
                 <button
+                  onClick=${() => window.openSubmitForm()}
+                  class="neo-button inline-flex items-center px-4 py-2 bg-green-400 border-2 border-black rounded shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:bg-green-500 font-bold animate-pulse"
+                >
+                  <i class="fas fa-rocket mr-2"></i> Submit Product
+                </button>
+                <button
                   onClick=${() => window.auth.signOut()}
                   class="neo-button inline-flex items-center px-3 py-1 bg-red-400 border-2 border-black rounded shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:bg-red-500 font-bold text-sm"
                 >

@@ -1,28 +1,55 @@
+import { html } from 'htm/preact';
+import { useState, useEffect } from 'preact/hooks';
 import { auth } from '../lib/auth.js';
 
-// Login modal component
+// Login modal component using email magic link authentication
 /* global useState, useEffect, html, useLayoutEffect, useMemo, useCallback, useRef, useReducer */
-export const LoginModal = ({ isOpen, onClose, onLogin }) => {
-  /* global useState, useEffect, html, useLayoutEffect, useMemo, useCallback, useRef, useReducer */
+export const LoginModal = ({ isOpen, onClose, onLoginSuccess }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [email, setEmail] = useState('');
+  const [step, setStep] = useState('email'); // 'email' or 'sent'
 
-  // Handle X login
-  const handleXLogin = async () => {
+  // Handle email submission
+  const handleEmailSubmit = async (e) => {
+    e.preventDefault();
+    if (!email.trim()) return;
+
+    setLoading(true);
+    setError(null);
+
     try {
-      setLoading(true);
-      setError(null);
-      
-      await auth.signInWithX();
-      
-      // The OAuth flow will handle redirect, so we'll wait for the callback
-      // The auth state change will be handled by the auth service
-      
-    } catch (err) {
-      setError(err.message || 'Failed to sign in with X');
+      const result = await auth.signInWithEmail(email);
+      if (result.success) {
+        setStep('sent');
+      }
+    } catch (error) {
+      setError(error.message);
+    } finally {
       setLoading(false);
     }
   };
+
+  // Reset modal state when opening
+  useEffect(() => {
+    if (isOpen) {
+      setStep('email');
+      setEmail('');
+      setError(null);
+    }
+  }, [isOpen]);
+
+  // Listen for auth state changes to auto-close modal on successful login
+  useEffect(() => {
+    const unsubscribe = auth.onAuthStateChange((user) => {
+      if (user && isOpen) {
+        onLoginSuccess?.(user);
+        onClose();
+      }
+    });
+
+    return unsubscribe;
+  }, [isOpen, onLoginSuccess, onClose]);
 
   // Close modal on escape key
   useEffect(() => {
@@ -62,42 +89,75 @@ export const LoginModal = ({ isOpen, onClose, onLogin }) => {
           </button>
         </div>
         
-        <div class="mb-6">
-          <p class="text-gray-700 mb-4">
-            To submit your startup, please log in with your X (Twitter) account.
-            This helps us maintain quality and prevent spam submissions.
-          </p>
+        <form onSubmit=${handleEmailSubmit}>
+          <div class="mb-6">
+            <p class="text-gray-700 mb-4">
+              To submit your startup, please log in with your account.
+            </p>
+          </div>
           
-          ${error && html`
-            <div class="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
-              ${error}
+          ${step === 'email' ? html`
+          <!-- Email Input Step -->
+          <div class="space-y-4">
+            <div>
+              <label for="email" class="block text-sm font-medium text-gray-700 mb-2">
+                Email Address
+              </label>
+              <input
+                type="email"
+                id="email"
+                value=${email}
+                onInput=${(e) => setEmail(e.target.value)}
+                placeholder="Enter your email"
+                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                required
+                disabled=${loading}
+              />
             </div>
-          `}
-        </div>
-        
-        <div class="space-y-4">
-          <button
-            onClick=${handleXLogin}
-            disabled=${loading}
-            class="w-full flex items-center justify-center px-4 py-3 bg-black text-white rounded-lg hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            ${loading ? html`
-              <i class="fas fa-spinner fa-spin mr-2"></i>
-              Connecting...
-            ` : html`
-              <i class="fab fa-x-twitter mr-2 text-xl"></i>
-              Continue with X
+            
+            ${error && html`
+              <div class="text-red-600 text-sm bg-red-50 p-3 rounded-md">
+                ${error}
+              </div>
             `}
-          </button>
-          
-          <button
-            onClick=${onClose}
-            disabled=${loading}
-            class="w-full px-4 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors disabled:opacity-50"
-          >
-            Cancel
-          </button>
-        </div>
+            
+            <button
+              type="submit"
+              disabled=${loading || !email.trim()}
+              class="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              ${loading ? 'Sending...' : 'Send Magic Link'}
+            </button>
+          </div>
+        ` : html`
+          <!-- Magic Link Sent Step -->
+          <div class="space-y-4">
+            <div class="text-center">
+              <div class="mb-4">
+                <div class="mx-auto w-16 h-16 bg-green-100 rounded-full flex items-center justify-center">
+                  <i class="fas fa-envelope text-green-600 text-2xl"></i>
+                </div>
+              </div>
+              <h3 class="text-lg font-semibold text-gray-900 mb-2">Check your email</h3>
+              <p class="text-sm text-gray-600 mb-4">
+                We've sent a magic link to <strong>${email}</strong>
+              </p>
+              <p class="text-sm text-gray-500">
+                Click the link in your email to sign in. You can close this window.
+              </p>
+            </div>
+            
+            <button
+              type="button"
+              onClick=${() => setStep('email')}
+              class="w-full text-blue-600 hover:text-blue-800 text-sm"
+              disabled=${loading}
+            >
+              ← Use a different email
+            </button>
+          </div>
+        `}
+        </form>
         
         <div class="mt-4 text-center">
           <p class="text-xs text-gray-500">
