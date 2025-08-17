@@ -30,9 +30,19 @@ function subscribe(listener) {
   };
 }
 
+// Debounce timeout for notifications
+let notifyTimeout = null;
+
 // Notify all listeners of auth state changes
 function notifyListeners() {
-  listeners.forEach(listener => listener(authState));
+  // Add debouncing to prevent rapid-fire notifications
+  if (notifyTimeout) {
+    clearTimeout(notifyTimeout);
+  }
+  
+  notifyTimeout = setTimeout(() => {
+    listeners.forEach(listener => listener(authState));
+  }, 100);
 }
 
 // Update auth state and notify listeners
@@ -59,7 +69,12 @@ async function initAuth() {
     // Listen for auth changes
     supabase.auth.onAuthStateChange((event, session) => {
       console.log('Auth state change:', event, session);
-      updateAuthState(session?.user || null, session, false);
+      
+      // Prevent infinite loops by checking if state actually changed
+      if (authState.user?.id !== session?.user?.id || 
+          authState.session?.access_token !== session?.access_token) {
+        updateAuthState(session?.user || null, session, false);
+      }
     });
 
   } catch (error) {
