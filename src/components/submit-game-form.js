@@ -33,19 +33,40 @@ export const SubmitGameForm = ({ isOpen, onClose }) => {
         
         // Only render if turnstile is available and the container is empty
         if (window.turnstile && turnstileContainer.children.length === 0) {
-          const sitekey = window.PUBLIC_ENV?.turnstileSiteKey || "0x4AAAAAAA_Rl5VDA4u6EMKm";
-          console.log('Turnstile sitekey:', sitekey, 'Type:', typeof sitekey);
+          // Get sitekey with multiple fallbacks and validation
+          let sitekey = "0x4AAAAAAA_Rl5VDA4u6EMKm"; // Default fallback
           
-          // Ensure sitekey is a string and not an object
-          const sitekeyString = typeof sitekey === 'string' ? sitekey : String(sitekey);
+          try {
+            if (window.PUBLIC_ENV && window.PUBLIC_ENV.turnstileSiteKey) {
+              sitekey = window.PUBLIC_ENV.turnstileSiteKey;
+            }
+          } catch (e) {
+            console.warn('Error accessing PUBLIC_ENV:', e);
+          }
           
-          window.turnstile.render(turnstileContainer, {
-            sitekey: sitekeyString,
-            theme: "light",
-            callback: function (token) {
-              setTurnstileToken(token);
-            },
-          });
+          // Ensure sitekey is always a string and not undefined/null/object
+          if (typeof sitekey !== 'string' || !sitekey) {
+            sitekey = "0x4AAAAAAA_Rl5VDA4u6EMKm";
+          }
+          
+          console.log('Turnstile sitekey:', sitekey, 'Type:', typeof sitekey, 'Length:', sitekey.length);
+          
+          try {
+            window.turnstile.render(turnstileContainer, {
+              sitekey: sitekey,
+              theme: "light",
+              callback: function (token) {
+                setTurnstileToken(token);
+              },
+              'error-callback': function (error) {
+                console.error('Turnstile error:', error);
+                setError('Captcha verification failed. Please refresh the page and try again.');
+              }
+            });
+          } catch (renderError) {
+            console.error('Turnstile render error:', renderError);
+            setError('Failed to load captcha. Please refresh the page and try again.');
+          }
         }
       }
     };
@@ -183,7 +204,7 @@ export const SubmitGameForm = ({ isOpen, onClose }) => {
         <h2 class="text-2xl font-bold mb-2 text-black">Submit Your Project</h2>
         <div class="mb-4 bg-yellow-300 p-3 border border-black rounded">
           <p class="font-bold flex items-center">
-            <span class="mr-2">🚀</span> Launch Today, Get a 36+ DR Backlink
+            <span class="mr-2">🚀</span> Launch Today, Get a 37+ DR Backlink
           </p>
         </div>
 

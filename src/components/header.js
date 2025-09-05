@@ -12,7 +12,7 @@ export const Header = ({ user }) => {
               Discover Startups and AI projects
             </p>
             <p class="mt-1 text-black font-bold bg-yellow-300 inline-block px-2 py-1 rounded border border-black">
-              🚀 Launch Today, Get a 36+ DR Backlink
+              🚀 Launch Today, Get a 37+ DR Backlink
             </p>
           </div>
           <div

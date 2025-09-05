@@ -119,19 +119,40 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
         
         // Only render if turnstile is available and the container is empty
         if (window.turnstile && turnstileContainer.children.length === 0) {
-          const sitekey = window.PUBLIC_ENV?.turnstileSiteKey || "0x4AAAAAAA_Rl5VDA4u6EMKm";
-          console.log('Turnstile sitekey:', sitekey, 'Type:', typeof sitekey);
+          // Get sitekey with multiple fallbacks and validation
+          let sitekey = "0x4AAAAAAA_Rl5VDA4u6EMKm"; // Default fallback
           
-          // Ensure sitekey is a string and not an object
-          const sitekeyString = typeof sitekey === 'string' ? sitekey : String(sitekey);
+          try {
+            if (window.PUBLIC_ENV && window.PUBLIC_ENV.turnstileSiteKey) {
+              sitekey = window.PUBLIC_ENV.turnstileSiteKey;
+            }
+          } catch (e) {
+            console.warn('Error accessing PUBLIC_ENV:', e);
+          }
           
-          window.turnstile.render(turnstileContainer, {
-            sitekey: sitekeyString,
-            theme: "light",
-            callback: function (token) {
-              setTurnstileToken(token);
-            },
-          });
+          // Ensure sitekey is always a string and not undefined/null/object
+          if (typeof sitekey !== 'string' || !sitekey) {
+            sitekey = "0x4AAAAAAA_Rl5VDA4u6EMKm";
+          }
+          
+          console.log('Turnstile sitekey:', sitekey, 'Type:', typeof sitekey, 'Length:', sitekey.length);
+          
+          try {
+            window.turnstile.render(turnstileContainer, {
+              sitekey: sitekey,
+              theme: "light",
+              callback: function (token) {
+                setTurnstileToken(token);
+              },
+              'error-callback': function (error) {
+                console.error('Turnstile error:', error);
+                setError('Captcha verification failed. Please refresh the page and try again.');
+              }
+            });
+          } catch (renderError) {
+            console.error('Turnstile render error:', renderError);
+            setError('Failed to load captcha. Please refresh the page and try again.');
+          }
         }
       }
     };
@@ -676,10 +697,125 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
             </div>
           `}
           
+          <!-- Badge and Embed Section -->
+          <div class="mt-6 p-4 border-2 border-black rounded bg-orange-50">
+            <h3 class="font-bold text-lg mb-2 flex items-center">
+              <i class="fas fa-award mr-2 text-orange-600"></i>
+              Get Your Badge & Keep Your 37+ DR Backlink!
+            </h3>
+            <div class="mb-4 p-3 bg-yellow-100 border border-yellow-400 rounded">
+              <p class="text-sm font-bold text-yellow-800 mb-1">⚠️ Important:</p>
+              <p class="text-sm text-yellow-800">Add our badge to your website to make your listing <strong>permanent</strong> and keep your 37+ DR backlink as <strong>dofollow</strong>. Without the badge, your backlink will become nofollow after 30 days.</p>
+            </div>
+            
+            <div class="space-y-4">
+              <!-- Download Badge Option -->
+              <div class="border border-gray-300 rounded p-3">
+                <h4 class="font-bold mb-2">📥 Download Badge</h4>
+                <p class="text-sm text-gray-600 mb-3">Download our badge image and add it to your website manually.</p>
+                <button 
+                  onClick=${() => {
+                    // Create badge download
+                    const canvas = document.createElement('canvas');
+                    const ctx = canvas.getContext('2d');
+                    canvas.width = 200;
+                    canvas.height = 60;
+                    
+                    // Draw badge background
+                    ctx.fillStyle = '#3B82F6';
+                    ctx.fillRect(0, 0, 200, 60);
+                    
+                    // Draw text
+                    ctx.fillStyle = 'white';
+                    ctx.font = 'bold 12px Arial';
+                    ctx.textAlign = 'center';
+                    ctx.fillText('Featured on', 100, 20);
+                    ctx.font = 'bold 16px Arial';
+                    ctx.fillText('SubmitHunt', 100, 40);
+                    
+                    // Download
+                    const link = document.createElement('a');
+                    link.download = 'submithunt-badge.png';
+                    link.href = canvas.toDataURL();
+                    link.click();
+                  }}
+                  class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 font-bold"
+                >
+                  Download Badge PNG
+                </button>
+              </div>
+              
+              <!-- Embed Code Option -->
+              <div class="border border-gray-300 rounded p-3">
+                <h4 class="font-bold mb-2">🔗 Embed Code</h4>
+                <p class="text-sm text-gray-600 mb-3">Copy and paste this code into your website's HTML.</p>
+                <div class="bg-gray-100 p-3 rounded text-xs font-mono mb-3 overflow-x-auto">
+                  <code id="embed-code">
+&lt;a href="https://submithunt.com" target="_blank" rel="noopener"&gt;
+  &lt;img src="https://submithunt.com/badge.png" alt="Featured on SubmitHunt" width="150" height="45" /&gt;
+&lt;/a&gt;
+                  </code>
+                </div>
+                <button 
+                  onClick=${() => {
+                    const embedCode = document.getElementById('embed-code').textContent;
+                    navigator.clipboard.writeText(embedCode).then(() => {
+                      // Show copied feedback
+                      const btn = event.target;
+                      const originalText = btn.textContent;
+                      btn.textContent = 'Copied!';
+                      btn.classList.add('bg-green-500');
+                      btn.classList.remove('bg-gray-500');
+                      setTimeout(() => {
+                        btn.textContent = originalText;
+                        btn.classList.remove('bg-green-500');
+                        btn.classList.add('bg-gray-500');
+                      }, 2000);
+                    });
+                  }}
+                  class="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600 font-bold"
+                >
+                  Copy Embed Code
+                </button>
+              </div>
+              
+              <!-- WordPress Shortcode Option -->
+              <div class="border border-gray-300 rounded p-3">
+                <h4 class="font-bold mb-2">🔌 WordPress Shortcode</h4>
+                <p class="text-sm text-gray-600 mb-3">For WordPress sites, use this shortcode.</p>
+                <div class="bg-gray-100 p-3 rounded text-xs font-mono mb-3 overflow-x-auto">
+                  <code id="wp-shortcode">[submithunt_badge]</code>
+                </div>
+                <button 
+                  onClick=${() => {
+                    const shortcode = document.getElementById('wp-shortcode').textContent;
+                    navigator.clipboard.writeText(shortcode).then(() => {
+                      // Show copied feedback
+                      const btn = event.target;
+                      const originalText = btn.textContent;
+                      btn.textContent = 'Copied!';
+                      btn.classList.add('bg-green-500');
+                      btn.classList.remove('bg-purple-500');
+                      setTimeout(() => {
+                        btn.textContent = originalText;
+                        btn.classList.remove('bg-green-500');
+                        btn.classList.add('bg-purple-500');
+                      }, 2000);
+                    });
+                  }}
+                  class="px-4 py-2 bg-purple-500 text-white rounded hover:bg-purple-600 font-bold"
+                >
+                  Copy Shortcode
+                </button>
+              </div>
+            </div>
+          </div>
+          
           <div class="mt-6 p-4 border-2 border-black rounded bg-gray-50">
             <h3 class="font-bold text-lg mb-2">What's Next?</h3>
-            <p class="mb-2">Share your startup submission on social media for maximum exposure and tag @submithunt</p>
-            <p class="mb-2">Tell others about your experience with our Product Hunt alternative platform</p>
+            <p class="mb-2">1. Add the badge to your website to keep your dofollow backlink</p>
+            <p class="mb-2">2. Share your startup submission on social media and tag @submithunt</p>
+            <p class="mb-2">3. Tell others about your experience with our Product Hunt alternative platform</p>
           </div>
           
           <div class="mt-6 flex flex-col items-center">
@@ -740,7 +876,7 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
         ` : html`
           <div class="mb-4 bg-yellow-300 p-3 border border-black rounded">
             <p class="font-bold flex items-center">
-              <span class="mr-2">🚀</span> Submit Your Startup, Get a 36+ DR Backlink
+              <span class="mr-2">🚀</span> Submit Your Startup, Get a 37+ DR Backlink
             </p>
             <p class="text-sm mt-1">Join hundreds of founders who chose SubmitHunt as their Product Hunt alternative</p>
           </div>

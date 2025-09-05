@@ -145,7 +145,7 @@ export const StartupCard = ({ startup, user, onUpvoteChange }) => {
     }
     
     // Add the free backlink message
-    shareText += `\n\nEarning free DR 36+ backlink on submithunt`;
+    shareText += `\n\nEarning free DR 37+ backlink on submithunt`;
     
     // Add creator tag if available
     if (startup.author && startup.author.name) {
