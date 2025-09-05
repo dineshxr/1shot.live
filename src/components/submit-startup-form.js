@@ -18,7 +18,6 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [turnstileToken, setTurnstileToken] = useState(null);
   const [success, setSuccess] = useState(false);
   const [currentPage, setCurrentPage] = useState(1); // Track which page of the form we're on
   const [showSuccessPage, setShowSuccessPage] = useState(false); // New state to control success page visibility
@@ -105,84 +104,7 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
     
     loadLaunchDates();
     
-    // Check if Turnstile script is already loaded
-    const existingScript = document.querySelector('script[src="https://challenges.cloudflare.com/turnstile/v0/api.js"]');
-    let script;
-    
-    // Function to render Turnstile when script is loaded
-    const renderTurnstile = () => {
-      // Clear any existing Turnstile widgets first
-      const turnstileContainer = document.querySelector('.cf-turnstile');
-      if (turnstileContainer) {
-        // Remove any existing Turnstile widgets
-        turnstileContainer.innerHTML = '';
-        
-        // Only render if turnstile is available and the container is empty
-        if (window.turnstile && turnstileContainer.children.length === 0) {
-          // Get sitekey with multiple fallbacks and validation
-          let sitekey = "0x4AAAAAAA_Rl5VDA4u6EMKm"; // Default fallback
-          
-          try {
-            if (window.PUBLIC_ENV && window.PUBLIC_ENV.turnstileSiteKey) {
-              sitekey = window.PUBLIC_ENV.turnstileSiteKey;
-            }
-          } catch (e) {
-            console.warn('Error accessing PUBLIC_ENV:', e);
-          }
-          
-          // Ensure sitekey is always a string and not undefined/null/object
-          if (typeof sitekey !== 'string' || !sitekey) {
-            sitekey = "0x4AAAAAAA_Rl5VDA4u6EMKm";
-          }
-          
-          console.log('Turnstile sitekey:', sitekey, 'Type:', typeof sitekey, 'Length:', sitekey.length);
-          
-          try {
-            window.turnstile.render(turnstileContainer, {
-              sitekey: sitekey,
-              theme: "light",
-              callback: function (token) {
-                setTurnstileToken(token);
-              },
-              'error-callback': function (error) {
-                console.error('Turnstile error:', error);
-                setError('Captcha verification failed. Please refresh the page and try again.');
-              }
-            });
-          } catch (renderError) {
-            console.error('Turnstile render error:', renderError);
-            setError('Failed to load captcha. Please refresh the page and try again.');
-          }
-        }
-      }
-    };
-    
-    if (existingScript) {
-      // If script already exists, just render the Turnstile
-      renderTurnstile();
-    } else {
-      // Load Turnstile script when component mounts
-      script = document.createElement("script");
-      script.src = "https://challenges.cloudflare.com/turnstile/v0/api.js";
-      script.async = true;
-      
-      // Set up event listener for script load
-      script.onload = renderTurnstile;
-      
-      document.body.appendChild(script);
-    }
-    
-    return () => {
-      // Clean up only if we created the script
-      if (script && script.parentNode) {
-        document.body.removeChild(script);
-      }
-      
-      // Reset Turnstile if it exists
-      if (window.turnstile) {
-        window.turnstile.reset();
-      }
-    };
+    // Removed Turnstile captcha integration
   }, [isOpen]); // Re-run when modal opens
 
   // Generate a slug from the project name
@@ -256,11 +178,6 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
   const goToNextPage = async () => {
     // Validate current page before proceeding
     if (currentPage === 1) {
-      // Validate first page fields
-      if (!formData.projectName) {
-        setError("Please enter a product name");
-        return;
-      }
       if (!formData.url) {
         setError("Please enter a valid URL");
         return;
@@ -273,6 +190,7 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
         setError("Please enter your X username");
         return;
       }
+    }
 
       // Check for duplicate URL
       await checkDuplicateUrl();
@@ -305,11 +223,6 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
     window.trackEvent(window.ANALYTICS_EVENTS.FORM_SUBMIT);
 
     try {
-      if (!turnstileToken) {
-        throw new Error(
-          "Please complete the Turnstile challenge. If it's not showing, please refresh the page."
-        );
-      }
 
       // Validate form data before submission
       if (!formData.url) {
