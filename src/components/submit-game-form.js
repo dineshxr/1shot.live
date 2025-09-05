@@ -33,8 +33,14 @@ export const SubmitGameForm = ({ isOpen, onClose }) => {
         
         // Only render if turnstile is available and the container is empty
         if (window.turnstile && turnstileContainer.children.length === 0) {
+          const sitekey = window.PUBLIC_ENV?.turnstileSiteKey || "0x4AAAAAAA_Rl5VDA4u6EMKm";
+          console.log('Turnstile sitekey:', sitekey, 'Type:', typeof sitekey);
+          
+          // Ensure sitekey is a string and not an object
+          const sitekeyString = typeof sitekey === 'string' ? sitekey : String(sitekey);
+          
           window.turnstile.render(turnstileContainer, {
-            sitekey: window.PUBLIC_ENV.turnstileSiteKey,
+            sitekey: sitekeyString,
             theme: "light",
             callback: function (token) {
               setTurnstileToken(token);

@@ -22,9 +22,7 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
   const [success, setSuccess] = useState(false);
   const [currentPage, setCurrentPage] = useState(1); // Track which page of the form we're on
   const [showSuccessPage, setShowSuccessPage] = useState(false); // New state to control success page visibility
-  const [hasExistingSubmission, setHasExistingSubmission] = useState(false); // Track if user already has a free submission
-  const [dailySubmissionCount, setDailySubmissionCount] = useState(0); // Track daily free submission count
-  const [dailyLimitReached, setDailyLimitReached] = useState(false); // Track if daily limit is reached
+  // Removed submission limits - users can now submit multiple times
   const [isDuplicate, setIsDuplicate] = useState(false); // Track if the URL is a duplicate
   const [availableLaunchDates, setAvailableLaunchDates] = useState([]); // Available launch dates
 
@@ -64,9 +62,8 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
           console.error('Error checking launch date availability:', error);
         }
         
-        // Each day can have up to 6 free submissions
-        // If we have 6 or more, mark as unavailable for free tier
-        const freeAvailable = !count || count < 6;
+        // Allow unlimited submissions - always available
+        const freeAvailable = true;
         
         dates.push({
           date: formattedDate,
@@ -90,43 +87,7 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
     setFormData(prev => ({ ...prev, launchDate: dateValue }));
   };
   
-  // Check daily submission limit
-  const checkDailySubmissionLimit = async () => {
-    try {
-      setLoading(true);
-      
-      // Get today's date in YYYY-MM-DD format using PDT time zone
-      const today = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Los_Angeles' }));
-      const todayStr = today.getFullYear() + '-' + 
-                    String(today.getMonth() + 1).padStart(2, '0') + '-' + 
-                    String(today.getDate()).padStart(2, '0');
-      
-      // Query Supabase for free submissions made today
-      // Fix TypeScript error by using proper client typing
-      const supabase = supabaseClient();
-      const { data, error, count } = await supabase
-        .from('startups')
-        .select('id', { count: 'exact' })
-        .eq('plan', 'free')
-        .gte('created_at', todayStr);
-      
-      if (error) throw error;
-      
-      // Set the daily submission count
-      setDailySubmissionCount(count || 0);
-      
-      // Check if we've reached the daily limit (6)
-      if (count >= 6) {
-        setDailyLimitReached(true);
-        // Auto-select premium plan if daily limit is reached
-        setFormData(prev => ({ ...prev, plan: 'premium' }));
-      }
-    } catch (error) {
-      console.error('Error checking daily submission limit:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  // Removed daily submission limit check - users can submit unlimited times
 
   useEffect(() => {
     if (!isOpen) return;
@@ -144,9 +105,6 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
     
     loadLaunchDates();
     
-    // Check daily submission limit
-    checkDailySubmissionLimit();
-    
     // Check if Turnstile script is already loaded
     const existingScript = document.querySelector('script[src="https://challenges.cloudflare.com/turnstile/v0/api.js"]');
     let script;
@@ -163,8 +121,12 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
         if (window.turnstile && turnstileContainer.children.length === 0) {
           const sitekey = window.PUBLIC_ENV?.turnstileSiteKey || "0x4AAAAAAA_Rl5VDA4u6EMKm";
           console.log('Turnstile sitekey:', sitekey, 'Type:', typeof sitekey);
+          
+          // Ensure sitekey is a string and not an object
+          const sitekeyString = typeof sitekey === 'string' ? sitekey : String(sitekey);
+          
           window.turnstile.render(turnstileContainer, {
-            sitekey: String(sitekey),
+            sitekey: sitekeyString,
             theme: "light",
             callback: function (token) {
               setTurnstileToken(token);
@@ -234,35 +196,7 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
     }
   };
 
-  // Check if user already has any active submission (one per email limit)
-  const checkExistingSubmission = async () => {
-    if (!window.auth?.getCurrentUser()?.email) return;
-    
-    try {
-      const supabase = supabaseClient();
-      const userEmail = window.auth.getCurrentUser().email;
-      
-      // Use the database function to check listing limit
-      const { data, error } = await supabase.rpc('check_user_listing_limit', { 
-        user_email: userEmail 
-      });
-      
-      if (error) throw error;
-      
-      // If data is false, user already has an active listing
-      if (!data) {
-        setHasExistingSubmission(true);
-        setError('You already have an active listing. Each user can only have one active listing at a time. You can upgrade to featured or edit your existing listing from your dashboard.');
-        return;
-      } else {
-        setHasExistingSubmission(false);
-        setError(null);
-      }
-    } catch (error) {
-      console.error('Error checking existing submission:', error);
-      setError('Unable to verify your submission status. Please try again.');
-    }
-  };
+  // Removed existing submission check - users can submit multiple startups
 
   // Check for duplicate URL
   const checkDuplicateUrl = async () => {
@@ -323,14 +257,6 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
       await checkDuplicateUrl();
       if (isDuplicate) {
         return; // Stop if it's a duplicate
-      }
-      
-      // Check if user already has a free submission
-      await checkExistingSubmission();
-      
-      if (hasExistingSubmission) {
-        // If they already have a submission, automatically set plan to featured
-        setFormData(prev => ({ ...prev, plan: 'premium' }));
       }
       
       // Clear any existing errors and proceed to next page
@@ -500,16 +426,23 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
                 screenshot_url: screenshotUrl,
                 plan: formData.plan,
                 launch_date: formData.launchDate || await (async () => {
-                  // Use database function to get next available launch date
+                  // Always use database function to get next available launch date
                   const { data: nextDate, error: dateError } = await supabase.rpc('get_next_launch_date');
                   if (dateError) {
                     console.error('Error getting next launch date:', dateError);
-                    // Fallback to tomorrow instead of today to prevent immediate listing
+                    // Fallback to next weekday
                     const pdt = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Los_Angeles' }));
-                    pdt.setDate(pdt.getDate() + 1); // Add 1 day
-                    return pdt.getFullYear() + '-' + 
-                           String(pdt.getMonth() + 1).padStart(2, '0') + '-' + 
-                           String(pdt.getDate()).padStart(2, '0');
+                    let nextDay = new Date(pdt);
+                    nextDay.setDate(pdt.getDate() + 1);
+                    
+                    // Find next weekday (Monday-Friday)
+                    while (nextDay.getDay() === 0 || nextDay.getDay() === 6) {
+                      nextDay.setDate(nextDay.getDate() + 1);
+                    }
+                    
+                    return nextDay.getFullYear() + '-' + 
+                           String(nextDay.getMonth() + 1).padStart(2, '0') + '-' + 
+                           String(nextDay.getDate()).padStart(2, '0');
                   }
                   return nextDate;
                 })()
@@ -550,10 +483,19 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
                     screenshot_url: screenshotUrl,
                     plan: formData.plan,
                     launch_date: formData.launchDate || (() => {
+                      // Fallback to next weekday
                       const pdt = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Los_Angeles' }));
-                      return pdt.getFullYear() + '-' + 
-                             String(pdt.getMonth() + 1).padStart(2, '0') + '-' + 
-                             String(pdt.getDate()).padStart(2, '0');
+                      let nextDay = new Date(pdt);
+                      nextDay.setDate(pdt.getDate() + 1);
+                      
+                      // Find next weekday (Monday-Friday)
+                      while (nextDay.getDay() === 0 || nextDay.getDay() === 6) {
+                        nextDay.setDate(nextDay.getDate() + 1);
+                      }
+                      
+                      return nextDay.getFullYear() + '-' + 
+                             String(nextDay.getMonth() + 1).padStart(2, '0') + '-' + 
+                             String(nextDay.getDate()).padStart(2, '0');
                     })(),
                   }])
                   .select('id, title, url, description, slug, author, screenshot_url, plan, launch_date')
@@ -811,21 +753,7 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
           `}
 
           <form onSubmit=${handleSubmit}>
-          ${hasExistingSubmission ? html`
-          <div class="mb-6 p-4 bg-yellow-100 border-2 border-yellow-500 rounded">
-            <p class="text-yellow-800 font-bold">You already have a free submission!</p>
-            <p class="text-yellow-800 mt-2">We've detected that you already have a free submission with this X username. You can only have one free submission at a time.</p>
-            <p class="text-yellow-800 mt-2">Please use our Featured option to submit another product, or <a href="https://submit.gumroad.com/l/featured" target="_blank" class="underline hover:text-blue-700">click here</a> to purchase a Featured spot directly.</p>
-          </div>
-          `:''}  
-          
-          ${dailyLimitReached ? html`
-          <div class="mb-6 p-4 bg-yellow-100 border-2 border-yellow-500 rounded">
-            <p class="text-yellow-800 font-bold">Daily Free Submission Limit Reached!</p>
-            <p class="text-yellow-800 mt-2">We've reached our limit of 5 free submissions for today. Please use our Featured option to submit your product immediately, or schedule a free submission for a future date.</p>
-            <p class="text-yellow-800 mt-2">Featured submissions are prioritized and displayed immediately.</p>
-          </div>
-          `:''}          
+                  
           ${currentPage === 1 ? html`
           <div class="mb-4">
             <label class="block text-black font-bold mb-2" for="projectName">
@@ -947,8 +875,8 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
                 <div class="flex flex-col space-y-6">
                   <!-- Free Option -->
                   <div 
-                    class="border-4 ${formData.plan === 'free' ? 'border-blue-500' : 'border-black'} p-4 rounded-lg ${hasExistingSubmission || dailyLimitReached ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:bg-gray-50'} transition-all"
-                    onClick=${hasExistingSubmission || dailyLimitReached ? null : () => selectPlan('free')}
+                    class="border-4 ${formData.plan === 'free' ? 'border-blue-500' : 'border-black'} p-4 rounded-lg cursor-pointer hover:bg-gray-50 transition-all"
+                    onClick=${() => selectPlan('free')}
                   >
                     <div class="flex justify-between items-center mb-2">
                       <h4 class="text-lg font-bold">Free</h4>
@@ -959,15 +887,7 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
                       <li>High authority backlink (for verified submissions)</li>
                       <li>Standard launch queue</li>
                     </ul>
-                    ${hasExistingSubmission ? html`
-                      <div class="bg-red-100 text-red-800 text-sm font-bold py-1 px-2 rounded inline-block">
-                        <i class="fas fa-times mr-1"></i> Username Limit Reached
-                      </div>
-                    ` : dailyLimitReached ? html`
-                      <div class="bg-red-100 text-red-800 text-sm font-bold py-1 px-2 rounded inline-block">
-                        <i class="fas fa-times mr-1"></i> Daily Limit Reached (6/6)
-                      </div>
-                    ` : formData.plan === 'free' ? html`
+                    ${formData.plan === 'free' ? html`
                       <div class="bg-blue-100 text-blue-800 text-sm font-bold py-1 px-2 rounded inline-block">
                         <i class="fas fa-check mr-1"></i> Selected
                       </div>
@@ -998,7 +918,7 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
                 </div>
               </div>
               
-              ${formData.plan === 'free' && !hasExistingSubmission ? html`
+              ${formData.plan === 'free' ? html`
               <div class="mb-6">
                 <h3 class="text-xl font-bold mb-4 text-black">Choose Your Launch Date</h3>
                 <p class="text-gray-700 mb-3">Select from available launch dates:</p>
