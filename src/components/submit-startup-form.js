@@ -579,6 +579,10 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
       >
         <div
           class="bg-white border-4 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] p-6 w-full max-w-md rounded relative my-8 max-h-[90vh] overflow-y-auto"
+          onClick=${(e) => {
+            // Prevent modal close when clicking inside the content
+            e.stopPropagation();
+          }}
         >
           <button
             onClick=${onClose}
@@ -769,6 +773,10 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
     >
       <div
         class="bg-white border-4 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] p-6 w-full max-w-md rounded relative my-8 max-h-[90vh] overflow-y-auto"
+        onClick=${(e) => {
+          // Prevent modal close when clicking inside the form
+          e.stopPropagation();
+        }}
       >
         <button
           onClick=${onClose}
