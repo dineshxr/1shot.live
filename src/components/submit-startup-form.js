@@ -821,7 +821,7 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
               name="projectName"
               placeholder="My Awesome Startup"
               value=${formData.projectName}
-              onChange=${handleChange}
+              onInput=${handleChange}
               class="w-full px-3 py-2 border-2 border-black focus:outline-none focus:ring-2 focus:ring-blue-400"
               required
             />
@@ -836,7 +836,7 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
               id="url"
               name="url"
               value=${formData.url}
-              onChange=${handleChange}
+              onInput=${handleChange}
               class="w-full px-3 py-2 border-2 border-black focus:outline-none focus:ring-2 focus:ring-blue-400"
               placeholder="https://mystartup.com"
               required
@@ -852,7 +852,7 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
               id="slug"
               name="slug"
               value=${formData.slug}
-              onChange=${handleChange}
+              onInput=${handleChange}
               class="w-full px-3 py-2 border-2 border-black focus:outline-none focus:ring-2 focus:ring-blue-400"
               placeholder="my-awesome-startup"
               required
@@ -871,7 +871,7 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
               id="description"
               name="description"
               value=${formData.description}
-              onChange=${handleChange}
+              onInput=${handleChange}
               class="w-full px-3 py-2 border-2 border-black focus:outline-none focus:ring-2 focus:ring-blue-400"
               placeholder="A short description of the startup"
             />
@@ -886,7 +886,7 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
               id="xProfile"
               name="xProfile"
               value=${formData.xProfile}
-              onChange=${handleChange}
+              onInput=${handleChange}
               class="w-full px-3 py-2 border-2 border-black focus:outline-none focus:ring-2 focus:ring-blue-400"
               placeholder="jack"
               required
