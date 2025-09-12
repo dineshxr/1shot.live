@@ -190,7 +190,6 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
         setError("Please enter your X username");
         return;
       }
-    }
 
       // Check for duplicate URL
       await checkDuplicateUrl();
