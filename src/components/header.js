@@ -18,7 +18,7 @@ export const Header = ({ user }) => {
           <div
             class="mt-4 md:mt-0 flex flex-col md:flex-row items-center gap-4"
           >
-            <${OnlineVisitors} />
+            ${!user ? html`<${OnlineVisitors} />` : ''}
             ${user ? html`
               <div class="flex items-center gap-3">
                 <div class="flex items-center gap-2">

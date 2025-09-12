@@ -8,4 +8,7 @@ export const config = {
     url: "https://lbayphzxmdtdmrqmeomt.supabase.co",
     anonKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxiYXlwaHp4bWR0ZG1ycW1lb210Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDA5NTAyNTYsImV4cCI6MjA1NjUyNjI1Nn0.uSt7ll1Gy_TtbHxTyRtkyToZBIbW7ud18X45k5BdzKo"
   },
+  turnstile: {
+    siteKey: "0x4AAAAAAA_Rl5VDA4u6EMKm"
+  }
 };

@@ -52,6 +52,7 @@ import { config } from './config.js';
 window.PUBLIC_ENV = {
   supabaseUrl: config.supabase.url,
   supabaseKey: config.supabase.anonKey,
+  turnstileSiteKey: config.turnstile.siteKey,
 };
 
 
