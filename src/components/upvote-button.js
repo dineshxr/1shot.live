@@ -67,30 +67,30 @@ export const UpvoteButton = ({ startup, user, onUpvoteChange }) => {
   };
 
   return html`
-    <button
-      onclick=${handleUpvote}
-      disabled=${isVoting}
-      class="flex items-center gap-2 px-3 py-2 rounded-lg border-2 transition-all duration-200 ${
-        userVoted 
-          ? 'border-orange-500 bg-orange-50 text-orange-700 hover:bg-orange-100' 
-          : 'border-gray-300 bg-white text-gray-600 hover:border-orange-300 hover:bg-orange-50'
-      } ${isVoting ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}"
-      title=${user ? (userVoted ? 'Remove upvote' : 'Upvote this startup') : 'Login to upvote'}
-    >
-      <svg 
-        class="w-5 h-5 ${userVoted ? 'text-orange-500' : 'text-gray-400'}" 
-        fill=${userVoted ? 'currentColor' : 'none'} 
-        stroke="currentColor" 
-        viewBox="0 0 24 24"
+    <div class="flex items-center gap-1">
+      <button
+        onclick=${handleUpvote}
+        disabled=${isVoting}
+        class="p-2 text-gray-400 hover:text-gray-600 transition-colors rounded-lg hover:bg-gray-50 ${
+          userVoted ? 'text-orange-500 hover:text-orange-600' : ''
+        } ${isVoting ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}"
+        title=${user ? (userVoted ? 'Remove upvote' : 'Upvote this startup') : 'Login to upvote'}
       >
-        <path 
-          stroke-linecap="round" 
-          stroke-linejoin="round" 
-          stroke-width="2" 
-          d="M5 15l7-7 7 7"
-        />
-      </svg>
-      <span class="font-medium">${upvoteCount}</span>
-    </button>
+        <svg 
+          class="w-4 h-4" 
+          fill=${userVoted ? 'currentColor' : 'none'} 
+          stroke="currentColor" 
+          viewBox="0 0 24 24"
+        >
+          <path 
+            stroke-linecap="round" 
+            stroke-linejoin="round" 
+            stroke-width="2" 
+            d="M5 15l7-7 7 7"
+          />
+        </svg>
+      </button>
+      <span class="text-sm font-medium text-gray-600">${upvoteCount}</span>
+    </div>
   `;
 };

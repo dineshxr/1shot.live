@@ -177,24 +177,28 @@ export const Content = ({ user, onStartupsChange, selectedCategory, sortBy, sear
       filtered = filtered.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
     } else if (sortBy === 'oldest') {
       filtered = filtered.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+    } else if (sortBy === 'alphabetical') {
+      filtered = filtered.sort((a, b) => a.title.localeCompare(b.title));
+    } else if (sortBy === 'most_upvoted') {
+      filtered = filtered.sort((a, b) => (b.upvote_count || 0) - (a.upvote_count || 0));
     }
 
-    setFilteredStartups(filtered);
-  }, [startups, selectedCategory, sortBy, searchQuery, timeFilter]);
-
-  // Group startups by date
-  useEffect(() => {
+    // Group startups by launch date
     const grouped = {};
-    filteredStartups.forEach(startup => {
-      const date = startup.launch_date || startup.created_at;
-      const dateKey = new Date(date).toDateString();
+    filtered.forEach(startup => {
+      const launchDate = startup.launch_date || startup.created_at;
+      const dateKey = launchDate.split('T')[0]; // Use YYYY-MM-DD format from database
+      
       if (!grouped[dateKey]) {
         grouped[dateKey] = [];
       }
       grouped[dateKey].push(startup);
     });
+
     setGroupedStartups(grouped);
-  }, [filteredStartups]);
+    setFilteredStartups(filtered);
+  }, [startups, selectedCategory, sortBy, searchQuery, timeFilter]);
+
 
   const handleStartupClick = (startup) => {
     setSelectedStartup(startup);
@@ -394,7 +398,7 @@ export const Content = ({ user, onStartupsChange, selectedCategory, sortBy, sear
                 onClick=${() => setTimeFilter('daily')}
                 class="px-3 py-1 text-sm rounded-full font-medium ${
                   timeFilter === 'daily' 
-                    ? 'bg-orange-100 text-orange-600' 
+                    ? 'bg-black text-white' 
                     : 'text-gray-600 hover:bg-gray-100'
                 }"
               >
@@ -404,7 +408,7 @@ export const Content = ({ user, onStartupsChange, selectedCategory, sortBy, sear
                 onClick=${() => setTimeFilter('weekly')}
                 class="px-3 py-1 text-sm rounded-full ${
                   timeFilter === 'weekly' 
-                    ? 'bg-orange-100 text-orange-600 font-medium' 
+                    ? 'bg-black text-white font-medium' 
                     : 'text-gray-600 hover:bg-gray-100'
                 }"
               >
@@ -414,7 +418,7 @@ export const Content = ({ user, onStartupsChange, selectedCategory, sortBy, sear
                 onClick=${() => setTimeFilter('monthly')}
                 class="px-3 py-1 text-sm rounded-full ${
                   timeFilter === 'monthly' 
-                    ? 'bg-orange-100 text-orange-600 font-medium' 
+                    ? 'bg-black text-white font-medium' 
                     : 'text-gray-600 hover:bg-gray-100'
                 }"
               >
@@ -424,7 +428,7 @@ export const Content = ({ user, onStartupsChange, selectedCategory, sortBy, sear
                 onClick=${() => setTimeFilter('yearly')}
                 class="px-3 py-1 text-sm rounded-full ${
                   timeFilter === 'yearly' 
-                    ? 'bg-orange-100 text-orange-600 font-medium' 
+                    ? 'bg-black text-white font-medium' 
                     : 'text-gray-600 hover:bg-gray-100'
                 }"
               >
@@ -462,19 +466,107 @@ export const Content = ({ user, onStartupsChange, selectedCategory, sortBy, sear
       !error &&
       html`
         <section aria-labelledby="startups-heading" class="mt-8">
-          <div class="space-y-4">
-            ${filteredStartups.map(
-              (startup) => html`<${StartupCard} key=${startup.id} startup=${startup} user=${user} onUpvoteChange=${handleUpvoteChange} />`
-            )}
-          </div>
-          
-          ${filteredStartups.length === 0 && !loading && html`
-            <div class="text-center py-16">
-              <div class="text-6xl mb-4">🔍</div>
-              <h3 class="text-xl font-semibold text-gray-900 mb-2">No products found</h3>
-              <p class="text-gray-600">Try adjusting your filters or check back later for new launches.</p>
-            </div>
-          `}
+          ${Object.keys(groupedStartups).length > 0 ? 
+            (() => {
+              const sortedDateKeys = Object.keys(groupedStartups).sort((a, b) => new Date(b) - new Date(a));
+              let totalStartupsRendered = 0;
+              let featuredCardShown = false;
+              
+              return sortedDateKeys.map((dateKey, index) => {
+                const startups = groupedStartups[dateKey];
+                const date = new Date(dateKey);
+                const formattedDate = date.toLocaleDateString('en-US', {
+                  weekday: 'long',
+                  year: 'numeric',
+                  month: 'long',
+                  day: 'numeric'
+                });
+                
+                const shouldShowFeatured = !featuredCardShown && totalStartupsRendered + startups.length >= 6;
+                if (shouldShowFeatured) featuredCardShown = true;
+                
+                const result = html`
+                  <div class="mb-8">
+                    <div class="flex items-center mb-6">
+                      <h2 class="text-lg font-semibold text-gray-900">
+                        Launched on ${formattedDate} (${startups.length} startup${startups.length !== 1 ? 's' : ''})
+                      </h2>
+                      <div class="flex-1 ml-4 border-t border-black"></div>
+                    </div>
+                    <div class="space-y-4">
+                      ${startups.map(
+                        (startup) => html`<${StartupCard} key=${startup.id} startup=${startup} user=${user} onUpvoteChange=${handleUpvoteChange} />`
+                      )}
+                    </div>
+                  </div>
+                  
+                  <!-- Featured Product Placement Card - Show after 6 listings -->
+                  ${shouldShowFeatured ? html`
+                    <div class="startup-card bg-white border border-blue-500 rounded-xl p-6 hover:shadow-md transition-all duration-200 w-full max-w-4xl mb-4">
+                      <div class="flex items-start gap-4">
+                        <!-- Logo -->
+                        <div class="flex-shrink-0">
+                          <div class="w-12 h-12 rounded-lg border border-gray-200 overflow-hidden bg-gray-200 flex items-center justify-center">
+                            <span class="text-gray-500 text-xs">F</span>
+                          </div>
+                        </div>
+                        
+                        <!-- Content -->
+                        <div class="flex-1 min-w-0">
+                          <div class="flex items-start justify-between">
+                            <div class="flex-1 min-w-0 pr-4">
+                              <a href="/featured.html" class="group">
+                                <h3 class="text-lg font-semibold text-gray-900 group-hover:text-blue-600 transition-colors mb-1 truncate">
+                                  Your Product Here
+                                </h3>
+                              </a>
+                              
+                              <div class="flex items-center text-sm text-gray-600 mb-2">
+                                <span class="bg-yellow-400 text-black text-xs font-bold px-2 py-1 rounded mr-2">FEATURED</span>
+                                <span class="truncate">by SubmitHunt</span>
+                              </div>
+                              
+                              <p class="text-sm text-gray-700 leading-relaxed line-clamp-2 overflow-hidden">
+                                This premium spot will showcase your product to all SubmitHunt visitors.
+                              </p>
+                            </div>
+                            
+                            <!-- Actions -->
+                            <div class="flex items-center gap-2 ml-4">
+                              <div class="flex items-center gap-1">
+                                <button class="p-2 text-gray-400 hover:text-gray-600 transition-colors rounded-lg hover:bg-gray-50">
+                                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"/>
+                                  </svg>
+                                </button>
+                                <span class="text-sm font-medium text-gray-600">0</span>
+                              </div>
+                              
+                              <a href="/featured.html" class="p-2 text-gray-400 hover:text-gray-600 transition-colors rounded-lg hover:bg-gray-50">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
+                                </svg>
+                              </a>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ` : ''}
+                `;
+                
+                totalStartupsRendered += startups.length;
+                return result;
+              });
+            })()
+            : html`
+              <div class="text-center py-16">
+                <div class="text-6xl mb-4">🔍</div>
+                <h3 class="text-xl font-semibold text-gray-900 mb-2">No products found</h3>
+                <p class="text-gray-600">Try adjusting your filters or check back later for new launches.</p>
+              </div>
+            `
+          }
         </section>
       `}
       </div>

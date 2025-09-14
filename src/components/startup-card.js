@@ -11,13 +11,13 @@ export const StartupCard = ({ startup, user, onUpvoteChange }) => {
   const [tooltipText, setTooltipText] = useState(copyStartupLinkLabel);
 
   const handleImageError = (e) => {
-    // Use data URI instead of placeholder.com
-    e.target.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='225' viewBox='0 0 400 225'%3E%3Crect width='400' height='225' fill='%23f0f0f0'/%3E%3Ctext x='50%25' y='50%25' font-family='Arial' font-size='24' fill='%23999' text-anchor='middle' dominant-baseline='middle'%3EStartup Image%3C/text%3E%3C/svg%3E";
+    const firstLetter = startup.title?.charAt(0)?.toUpperCase() || 'S';
+    e.target.src = `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='225' viewBox='0 0 400 225'%3E%3Crect width='400' height='225' fill='%23f0f0f0'/%3E%3Ctext x='50%25' y='50%25' font-family='Arial' font-size='24' fill='%23999' text-anchor='middle' dominant-baseline='middle'%3E${firstLetter}%3C/text%3E%3C/svg%3E`;
   };
 
   const handleAvatarError = (e) => {
-    // Use data URI instead of placeholder.com
-    e.target.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40' viewBox='0 0 40 40'%3E%3Crect width='40' height='40' fill='%23f0f0f0'/%3E%3Ctext x='50%25' y='50%25' font-family='Arial' font-size='16' fill='%23999' text-anchor='middle' dominant-baseline='middle'%3EA%3C/text%3E%3C/svg%3E";
+    const firstLetter = startup.author?.name?.charAt(0)?.toUpperCase() || 'A';
+    e.target.src = `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40' viewBox='0 0 40 40'%3E%3Crect width='40' height='40' fill='%23f0f0f0'/%3E%3Ctext x='50%25' y='50%25' font-family='Arial' font-size='16' fill='%23999' text-anchor='middle' dominant-baseline='middle'%3E${firstLetter}%3C/text%3E%3C/svg%3E`;
   };
 
   // Ensure avatar URL has proper protocol
@@ -98,7 +98,8 @@ export const StartupCard = ({ startup, user, onUpvoteChange }) => {
     }
     
     // Fallback
-    return "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='225' viewBox='0 0 400 225'%3E%3Crect width='400' height='225' fill='%23f0f0f0'/%3E%3Ctext x='50%25' y='50%25' font-family='Arial' font-size='24' fill='%23999' text-anchor='middle' dominant-baseline='middle'%3EStartup Image%3C/text%3E%3C/svg%3E";
+    const firstLetter = startup.title?.charAt(0)?.toUpperCase() || 'S';
+    return `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='225' viewBox='0 0 400 225'%3E%3Crect width='400' height='225' fill='%23f0f0f0'/%3E%3Ctext x='50%25' y='50%25' font-family='Arial' font-size='24' fill='%23999' text-anchor='middle' dominant-baseline='middle'%3E${firstLetter}%3C/text%3E%3C/svg%3E`;
   };
 
   // Check if we should show navigation arrows
@@ -181,7 +182,7 @@ export const StartupCard = ({ startup, user, onUpvoteChange }) => {
   };
   
   return html`
-    <div class="startup-card bg-white border border-gray-200 rounded-xl p-6 hover:shadow-md transition-all duration-200">
+    <div class="startup-card bg-white border border-gray-200 rounded-xl p-6 hover:shadow-md transition-all duration-200 w-full max-w-4xl">
       <div class="flex items-start gap-4">
         <!-- Logo -->
         <div class="flex-shrink-0">
@@ -191,7 +192,8 @@ export const StartupCard = ({ startup, user, onUpvoteChange }) => {
               alt=${`${startup.title} logo`}
               class="w-full h-full object-cover"
               onError=${(e) => {
-                e.target.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='48' height='48' viewBox='0 0 48 48'%3E%3Crect width='48' height='48' fill='%23f0f0f0'/%3E%3Ctext x='50%25' y='50%25' font-family='Arial' font-size='20' fill='%23999' text-anchor='middle' dominant-baseline='middle'%3E${startup.title?.charAt(0) || 'S'}%3C/text%3E%3C/svg%3E";
+                const firstLetter = startup.title?.charAt(0)?.toUpperCase() || 'S';
+                e.target.src = `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='48' height='48' viewBox='0 0 48 48'%3E%3Crect width='48' height='48' fill='%23f0f0f0'/%3E%3Ctext x='50%25' y='50%25' font-family='Arial' font-size='20' fill='%23999' text-anchor='middle' dominant-baseline='middle'%3E${firstLetter}%3C/text%3E%3C/svg%3E`;
               }}
             />
           </div>
@@ -200,7 +202,7 @@ export const StartupCard = ({ startup, user, onUpvoteChange }) => {
         <!-- Content -->
         <div class="flex-1 min-w-0">
           <div class="flex items-start justify-between">
-            <div class="flex-1 min-w-0">
+            <div class="flex-1 min-w-0 pr-4">
               <a 
                 href=${getInternalDetailUrl()} 
                 class="block group" 
@@ -215,16 +217,16 @@ export const StartupCard = ({ startup, user, onUpvoteChange }) => {
                   window.dispatchEvent(new PopStateEvent('popstate'));
                 }}
               >
-                <h3 class="text-lg font-semibold text-gray-900 group-hover:text-blue-600 transition-colors mb-1">
+                <h3 class="text-lg font-semibold text-gray-900 group-hover:text-blue-600 transition-colors mb-1 truncate">
                   ${startup.title}
                 </h3>
               </a>
               
               <div class="flex items-center text-sm text-gray-600 mb-2">
-                <span>by ${startup.author?.name || 'Anonymous'}</span>
+                <span class="truncate">by ${startup.author?.name || 'Anonymous'}</span>
               </div>
               
-              <p class="text-sm text-gray-700 leading-relaxed">
+              <p class="text-sm text-gray-700 leading-relaxed line-clamp-2 overflow-hidden">
                 ${startup.description || ''}
               </p>
             </div>
@@ -251,7 +253,9 @@ export const StartupCard = ({ startup, user, onUpvoteChange }) => {
                 class="p-2 text-gray-400 hover:text-gray-600 transition-colors rounded-lg hover:bg-gray-50"
                 aria-label="Visit startup"
               >
-                <i class="fas fa-external-link-alt text-sm"></i>
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
+                </svg>
               </button>
             </div>
           </div>

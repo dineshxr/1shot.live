@@ -114,13 +114,13 @@ export const LaunchCountdown = () => {
   };
 
   return html`
-    <div class="border-t border-amber-200">
-      <div class="container mx-auto px-4 py-4 flex items-center gap-3 text-amber-900">
+    <div class="border-t border-black">
+      <div class="container mx-auto px-4 py-4 flex items-center gap-3 text-black">
         <span class="text-lg font-semibold">Next launch in</span>
-        ${timeLeft.days > 0 ? html`<span class="inline-block rounded-md bg-amber-200/70 px-3 py-1 font-semibold">${timeLeft.days}d</span>` : ''}
-        <span class="inline-block rounded-md bg-amber-200/70 px-3 py-1 font-semibold">${timeLeft.hours}h</span>
-        <span class="inline-block rounded-md bg-amber-200/70 px-3 py-1 font-semibold">${timeLeft.minutes}m</span>
-        <span class="inline-block rounded-md bg-amber-200/70 px-3 py-1 font-semibold">${timeLeft.seconds}s</span>
+        ${timeLeft.days > 0 ? html`<span class="inline-block rounded-md bg-black text-white px-3 py-1 font-semibold">${timeLeft.days}d</span>` : ''}
+        <span class="inline-block rounded-md bg-black text-white px-3 py-1 font-semibold">${timeLeft.hours}h</span>
+        <span class="inline-block rounded-md bg-black text-white px-3 py-1 font-semibold">${timeLeft.minutes}m</span>
+        <span class="inline-block rounded-md bg-black text-white px-3 py-1 font-semibold">${timeLeft.seconds}s</span>
       </div>
     </div>
   `;
