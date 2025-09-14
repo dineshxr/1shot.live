@@ -9,55 +9,16 @@ import { LaunchCountdown } from "./launch-countdown.js";
 // These are already defined globally in main.js
 // Using the global variables directly
 
-// Countdown to next midnight in America/Los_Angeles (PST/PDT)
-const HomeCountdown = () => {
-  const [timeLeft, setTimeLeft] = useState({ hours: 0, minutes: 0, seconds: 0 });
 
-  const nowInLA = () => new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Los_Angeles' }));
-
-  const getNextLAMidnight = () => {
-    const now = nowInLA();
-    const target = new Date(now);
-    target.setHours(24, 0, 0, 0); // next day at 00:00 in LA time
-    return target;
-  };
-
-  const tick = () => {
-    const nowLA = nowInLA();
-    const targetLA = getNextLAMidnight();
-    const diff = Math.max(0, targetLA - nowLA);
-    const total = Math.floor(diff / 1000);
-    const hours = Math.floor(total / 3600);
-    const minutes = Math.floor((total % 3600) / 60);
-    const seconds = total % 60;
-    setTimeLeft({ hours, minutes, seconds });
-  };
-
-  useEffect(() => {
-    tick();
-    const id = setInterval(tick, 1000);
-    return () => clearInterval(id);
-  }, []);
-
-  return html`
-    <div class="border-t border-amber-200 bg-amber-50">
-      <div class="container mx-auto px-4 py-4 flex items-center gap-3 text-amber-900">
-        <span class="text-lg font-semibold">New launches in</span>
-        <span class="inline-block rounded-md bg-amber-200/70 px-3 py-1 font-semibold">${timeLeft.hours} hours</span>
-        <span class="inline-block rounded-md bg-amber-200/70 px-3 py-1 font-semibold">${timeLeft.minutes} mins</span>
-        <span class="inline-block rounded-md bg-amber-200/70 px-3 py-1 font-semibold">${timeLeft.seconds} secs</span>
-        <span class="ml-auto text-xs text-amber-800">Resets daily at 12:00 AM PT</span>
-      </div>
-    </div>
-  `;
-};
-
-export const Content = ({ user }) => {
+export const Content = ({ user, onStartupsChange, selectedCategory, sortBy, searchQuery = '', onCategoryFilter, onSortChange }) => {
   const [startups, setStartups] = useState([]);
+  const [filteredStartups, setFilteredStartups] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [selectedStartup, setSelectedStartup] = useState(null);
   const [groupedStartups, setGroupedStartups] = useState({});
+  const [timeFilter, setTimeFilter] = useState('daily');
+  // Remove duplicate state - using props from parent
 
   const fetchStartups = async () => {
     try {
@@ -81,6 +42,8 @@ export const Content = ({ user }) => {
 
         if (!error && filteredData && filteredData.length > 0) {
           setStartups(filteredData);
+          setFilteredStartups(filteredData);
+          onStartupsChange?.(filteredData);
           
           // Group startups by launch date
           const grouped = {};
@@ -109,6 +72,8 @@ export const Content = ({ user }) => {
       
       // If Supabase fetch fails or returns no data, use placeholder data
       setStartups(placeholderProducts);
+      setFilteredStartups(placeholderProducts);
+      onStartupsChange?.(placeholderProducts);
       
       // Group placeholder startups by launch date
       const grouped = {};
@@ -166,11 +131,211 @@ export const Content = ({ user }) => {
     };
   }, []);
 
+  // Filter and sort startups based on selected category, sort option, search query, and time filter
+  useEffect(() => {
+    let filtered = startups;
+
+    // Filter by time period
+    if (timeFilter !== 'daily') {
+      const now = new Date();
+      const filterDate = new Date();
+      
+      if (timeFilter === 'weekly') {
+        filterDate.setDate(now.getDate() - 7);
+      } else if (timeFilter === 'monthly') {
+        filterDate.setMonth(now.getMonth() - 1);
+      } else if (timeFilter === 'yearly') {
+        filterDate.setFullYear(now.getFullYear() - 1);
+      }
+      
+      filtered = filtered.filter(startup => {
+        const launchDate = new Date(startup.launch_date || startup.created_at);
+        return launchDate >= filterDate;
+      });
+    }
+
+    // Filter by category
+    if (selectedCategory && selectedCategory !== 'all') {
+      filtered = filtered.filter(startup => startup.category === selectedCategory);
+    }
+
+    // Filter by search query
+    if (searchQuery && searchQuery.trim()) {
+      const query = searchQuery.toLowerCase().trim();
+      filtered = filtered.filter(startup => 
+        startup.title?.toLowerCase().includes(query) ||
+        startup.description?.toLowerCase().includes(query) ||
+        startup.category?.toLowerCase().includes(query) ||
+        startup.author?.name?.toLowerCase().includes(query)
+      );
+    }
+
+    // Sort startups
+    if (sortBy === 'trending') {
+      filtered = filtered.sort((a, b) => (b.upvote_count || 0) - (a.upvote_count || 0));
+    } else if (sortBy === 'newest') {
+      filtered = filtered.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+    } else if (sortBy === 'oldest') {
+      filtered = filtered.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+    }
+
+    setFilteredStartups(filtered);
+  }, [startups, selectedCategory, sortBy, searchQuery, timeFilter]);
+
+  // Group startups by date
+  useEffect(() => {
+    const grouped = {};
+    filteredStartups.forEach(startup => {
+      const date = startup.launch_date || startup.created_at;
+      const dateKey = new Date(date).toDateString();
+      if (!grouped[dateKey]) {
+        grouped[dateKey] = [];
+      }
+      grouped[dateKey].push(startup);
+    });
+    setGroupedStartups(grouped);
+  }, [filteredStartups]);
+
+  const handleStartupClick = (startup) => {
+    setSelectedStartup(startup);
+    // Update URL hash
+    window.location.hash = `startup-${startup.id}`;
+  };
+
+  const handleCloseModal = () => {
+    setSelectedStartup(null);
+    // Clear URL hash
+    window.location.hash = '';
+  };
+
+  const handleShare = (startup) => {
+    const url = `${window.location.origin}#startup-${startup.id}`;
+    if (navigator.share) {
+      navigator.share({
+        title: startup.title,
+        text: startup.description,
+        url: url
+      });
+    } else {
+      navigator.clipboard.writeText(url);
+      // You could add a toast notification here
+    }
+  };
+
+  const handleHashChange = () => {
+    const hash = window.location.hash;
+    if (hash.startsWith('#startup-')) {
+      const startupId = hash.replace('#startup-', '');
+      const startup = startups.find(s => s.id.toString() === startupId);
+      if (startup) {
+        setSelectedStartup(startup);
+      }
+    } else {
+      setSelectedStartup(null);
+    }
+  };
+
+  // Handle browser back/forward
+  useEffect(() => {
+    handleHashChange(); // Check initial hash
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
+  }, [startups]);
+
+  // Update parent component with startups
+  useEffect(() => {
+    if (onStartupsChange) {
+      onStartupsChange(startups);
+    }
+  }, [startups, onStartupsChange]);
+
+  const updateURL = () => {
+    const params = new URLSearchParams();
+    if (selectedCategory && selectedCategory !== 'all') {
+      params.set('category', selectedCategory);
+    }
+    if (sortBy && sortBy !== 'trending') {
+      params.set('sort', sortBy);
+    }
+    if (searchQuery) {
+      params.set('search', searchQuery);
+    }
+    
+    const newURL = params.toString() ? 
+      `${window.location.pathname}?${params.toString()}` : 
+      window.location.pathname;
+    
+    window.history.replaceState(
+      null, 
+      '', 
+      newURL + window.location.hash
+    );
+  };
+
+  // Update URL when filters change
+  useEffect(() => {
+    updateURL();
+  }, [selectedCategory, sortBy, searchQuery]);
+
+  // Parse URL parameters on component mount
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const categoryParam = urlParams.get('category');
+    const sortParam = urlParams.get('sort');
+    const searchParam = urlParams.get('search');
+    
+    if (categoryParam && onCategoryFilter) {
+      onCategoryFilter(categoryParam);
+    }
+    if (sortParam && onSortChange) {
+      onSortChange(sortParam);
+    }
+    
+    // Note: search is handled by parent component
+  }, []);
+
+  // Listen for URL changes (back/forward)
+  useEffect(() => {
+    const handlePopState = () => {
+      const urlParams = new URLSearchParams(window.location.search);
+      const categoryParam = urlParams.get('category') || 'all';
+      const sortParam = urlParams.get('sort') || 'trending';
+      
+      if (onCategoryFilter) {
+        onCategoryFilter(categoryParam);
+      }
+      if (onSortChange) {
+        onSortChange(sortParam);
+      }
+    };
+    
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [onCategoryFilter, onSortChange]);
+
+  // Sync URL with current state
+  useEffect(() => {
+    window.history.replaceState(
+      null,
+      '',
+      window.location.pathname + window.location.search
+    );
+  }, []);
+
   const handleUpvoteChange = (startupId, newUpvoteCount, userVoted) => {
     // Update the startup in the local state
     setStartups(prevStartups => 
       prevStartups.map(startup => 
         startup.id === startupId 
+          ? { ...startup, upvote_count: newUpvoteCount, user_voted: userVoted }
+          : startup
+      )
+    );
+
+    // Update filtered startups as well
+    setFilteredStartups(prevFiltered =>
+      prevFiltered.map(startup =>
+        startup.id === startupId
           ? { ...startup, upvote_count: newUpvoteCount, user_voted: userVoted }
           : startup
       )
@@ -208,23 +373,73 @@ export const Content = ({ user }) => {
   };
 
   return html`
-    <main class="container mx-auto px-4 py-8">
-      <section class="text-center mb-0">
-        <h1 class="text-4xl font-bold mb-4">Discover the Best New Startups and AI Products</h1>
-        <p class="text-xl text-gray-600 max-w-3xl mx-auto">
-          Explore our curated collection of innovative startups and AI products that are redefining industries and pushing technological boundaries
-        </p>
-        <div class="mt-6 flex justify-center">
-          <a 
-            href="/featured.html"
-            class="inline-flex items-center px-6 py-3 border-2 border-black text-base font-medium rounded-md shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] text-black bg-yellow-400 hover:bg-yellow-500 focus:outline-none transition duration-150"
-          >
-            <span class="mr-2">⭐</span> Get Featured
-          </a>
+    <div>
+      <div class="mb-8">
+        <div class="flex items-center justify-between mb-6">
+          <div>
+            <h1 class="text-3xl font-bold text-gray-900">
+              ${timeFilter === 'daily' ? 'Daily launches' : 
+                timeFilter === 'weekly' ? 'Weekly launches' :
+                timeFilter === 'monthly' ? 'Monthly launches' : 'Yearly launches'}
+            </h1>
+            <p class="text-gray-600 mt-1">
+              ${timeFilter === 'daily' ? 'Discover the best products launched today' : 
+                timeFilter === 'weekly' ? 'Discover the best products launched this week' :
+                timeFilter === 'monthly' ? 'Discover the best products launched this month' : 'Discover the best products launched this year'}
+            </p>
+          </div>
+          <div class="flex items-center gap-4">
+            <div class="flex gap-2">
+              <button 
+                onClick=${() => setTimeFilter('daily')}
+                class="px-3 py-1 text-sm rounded-full font-medium ${
+                  timeFilter === 'daily' 
+                    ? 'bg-orange-100 text-orange-600' 
+                    : 'text-gray-600 hover:bg-gray-100'
+                }"
+              >
+                Daily
+              </button>
+              <button 
+                onClick=${() => setTimeFilter('weekly')}
+                class="px-3 py-1 text-sm rounded-full ${
+                  timeFilter === 'weekly' 
+                    ? 'bg-orange-100 text-orange-600 font-medium' 
+                    : 'text-gray-600 hover:bg-gray-100'
+                }"
+              >
+                Weekly
+              </button>
+              <button 
+                onClick=${() => setTimeFilter('monthly')}
+                class="px-3 py-1 text-sm rounded-full ${
+                  timeFilter === 'monthly' 
+                    ? 'bg-orange-100 text-orange-600 font-medium' 
+                    : 'text-gray-600 hover:bg-gray-100'
+                }"
+              >
+                Monthly
+              </button>
+              <button 
+                onClick=${() => setTimeFilter('yearly')}
+                class="px-3 py-1 text-sm rounded-full ${
+                  timeFilter === 'yearly' 
+                    ? 'bg-orange-100 text-orange-600 font-medium' 
+                    : 'text-gray-600 hover:bg-gray-100'
+                }"
+              >
+                Yearly
+              </button>
+            </div>
+          </div>
         </div>
-      </section>
+        
+        <div class="mb-6">
+          ${LaunchCountdown()}
+        </div>
+      </div>
 
-      ${LaunchCountdown()}
+      <div>
 
       ${loading &&
       html`
@@ -246,51 +461,36 @@ export const Content = ({ user }) => {
       ${!loading &&
       !error &&
       html`
-        <section aria-labelledby="startups-heading" class="mt-8 mb-12">
-          <h2 id="startups-heading" class="text-2xl font-bold mb-6 border-b-2 border-black pb-2">Featured Startups & Products</h2>
-          <p class="text-gray-600 mb-8">Discover the latest innovations in technology, AI, and more. Each product has been carefully selected for its unique approach and potential impact.</p>
+        <section aria-labelledby="startups-heading" class="mt-8">
+          <div class="space-y-4">
+            ${filteredStartups.map(
+              (startup) => html`<${StartupCard} key=${startup.id} startup=${startup} user=${user} onUpvoteChange=${handleUpvoteChange} />`
+            )}
+          </div>
           
-          <!-- Group startups by launch date -->
-          ${Object.keys(groupedStartups).sort().reverse().map(date => {
-            const startupsForDate = groupedStartups[date];
-            // Use PDT time zone for consistent date display
-            const dateObj = new Date(date + 'T00:00:00');
-            // Add PDT offset to ensure correct date display
-            const pdtDate = new Date(dateObj.toLocaleString('en-US', { timeZone: 'America/Los_Angeles' }));
-            const formattedDate = pdtDate.toLocaleDateString('en-US', {
-              weekday: 'long',
-              month: 'long',
-              day: 'numeric',
-              year: 'numeric'
-            });
-            
-            return html`
-              <div class="mb-12">
-                <h3 class="text-xl font-bold mb-4 bg-yellow-100 p-3 rounded-lg border-l-4 border-yellow-500">
-                  <i class="fas fa-rocket mr-2"></i> Launched on ${formattedDate}
-                  <span class="text-sm font-normal ml-2">(${startupsForDate.length} startup${startupsForDate.length !== 1 ? 's' : ''})</span>
-                </h3>
-                
-                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 mb-8">
-                  ${startupsForDate.map(
-                    (startup) => html`<${StartupCard} key=${startup.id} startup=${startup} user=${user} onUpvoteChange=${handleUpvoteChange} />`
-                  )}
-                </div>
-              </div>
-            `;
-          })}
-          
-          ${Object.keys(groupedStartups).length === 0 && html`
-            <div class="text-center py-12 bg-gray-50 rounded-lg">
-              <p class="text-gray-600">No startups have been launched yet. Check back soon!</p>
+          ${filteredStartups.length === 0 && !loading && html`
+            <div class="text-center py-16">
+              <div class="text-6xl mb-4">🔍</div>
+              <h3 class="text-xl font-semibold text-gray-900 mb-2">No products found</h3>
+              <p class="text-gray-600">Try adjusting your filters or check back later for new launches.</p>
             </div>
           `}
-          
-
         </section>
       `}
+      </div>
+      
       ${selectedStartup &&
       html`<${StartupModal} startup=${selectedStartup} onClose=${closeModal} />`}
-    </main>
+    </div>
   `;
+};
+
+// Export the sidebar props for the main app
+export const getSidebarProps = (startups, onCategoryFilter, onSortChange, selectedCategory) => {
+  return {
+    startups,
+    onCategoryFilter,
+    onSortChange,
+    selectedCategory
+  };
 };

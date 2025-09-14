@@ -181,187 +181,91 @@ export const StartupCard = ({ startup, user, onUpvoteChange }) => {
   };
   
   return html`
-    <div
-      class="startup-card bg-white border-2 border-black overflow-hidden shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] transition-all duration-200 rounded"
-    >
-      <a 
-        href=${getInternalDetailUrl()} 
-        class="block" 
-        onClick=${(e) => {
-          // Prevent default to handle navigation manually
-          e.preventDefault();
-          
-          // Track the click event
-          trackEvent(ANALYTICS_EVENTS.LINK_CLICK, {
-            startupId: startup.id,
-            startupName: startup.title,
-            startupUrl: getInternalDetailUrl()
-          });
-          
-          // Update browser history and URL without page reload
-          window.history.pushState({}, "", getInternalDetailUrl());
-          
-          // Dispatch a popstate event to trigger route change
-          window.dispatchEvent(new PopStateEvent('popstate'));
-        }}
-      >
-        <div class="relative">
-          ${RankingBadge({ rank: startup.daily_rank })}
-          <img
-            src=${getCurrentImage()}
-            alt=${`Screenshot of ${startup.title} - ${startup.description?.substring(0, 50) || 'Innovative startup'}`}
-            class="w-full h-48 object-cover border-b-2 border-black"
-            onError=${handleImageError}
-            loading="lazy"
-            width="400"
-            height="225"
-          />
-          ${hasMultipleImages &&
-          html`
-            <div
-              class="absolute inset-0 flex justify-between items-center pointer-events-none"
-            >
-              <button
-                onClick=${prevImage}
-                class="ml-2 w-8 h-8 flex items-center justify-center bg-white border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all duration-200 pointer-events-auto"
-                aria-label="Previous image"
-              >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="16"
-                  height="16"
-                  fill="currentColor"
-                  viewBox="0 0 16 16"
-                >
-                  <path
-                    fill-rule="evenodd"
-                    d="M11.354 1.646a.5.5 0 0 1 0 .708L5.707 8l5.647 5.646a.5.5 0 0 1-.708.708l-6-6a.5.5 0 0 1 0-.708l6-6a.5.5 0 0 1 .708 0z"
-                  />
-                </svg>
-              </button>
-              <button
-                onClick=${nextImage}
-                class="mr-2 w-8 h-8 flex items-center justify-center bg-white border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all duration-200 pointer-events-auto"
-                aria-label="Next image"
-              >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="16"
-                  height="16"
-                  fill="currentColor"
-                  viewBox="0 0 16 16"
-                >
-                  <path
-                    fill-rule="evenodd"
-                    d="M4.646 1.646a.5.5 0 0 1 .708 0l6 6a.5.5 0 0 1 0 .708l-6 6a.5.5 0 0 1-.708-.708L10.293 8 4.646 2.354a.5.5 0 0 1 0-.708z"
-                  />
-                </svg>
-              </button>
-            </div>
-            <div
-              class="absolute bottom-2 left-0 right-0 flex justify-center pointer-events-none"
-            >
-              ${startup.images.map(
-                (_, index) => html`
-                  <div
-                    key=${index}
-                    class="w-2 h-2 mx-1 rounded-full ${index ===
-                    currentImageIndex
-                      ? "bg-white border border-black"
-                      : "bg-gray-400"}"
-                  ></div>
-                `
-              )}
-            </div>
-          `}
-        </div>
-        <div class="p-4">
-          <div class="min-h-[70px]">
-            <div class="flex items-center gap-1">
-              <h3 class="text-lg font-bold text-black">${startup.title}</h3>
-              <button
-                onClick=${handleCopyLink}
-                class="group relative p-1 hover:bg-gray-100 rounded"
-                aria-label="Copy startup link"
-              >
-                <i class="fas fa-link text-sm"></i>
-                <div
-                  class="absolute -top-8 left-1/2 -translate-x-1/2 hidden group-hover:block bg-black text-white text-xs px-2 py-1 rounded whitespace-nowrap"
-                >
-                  ${tooltipText
-                    .split(":")
-                    .map(
-                      (line, index) =>
-                        html`<span class="block"
-                          >${line}${index < tooltipText.split(":").length - 1
-                            ? ":"
-                            : ""}</span
-                        >`
-                    )}
-                </div>
-              </button>
-            </div>
-            <p class="text-black mt-1 text-sm line-clamp-2">
-              ${startup.description || ""}
-            </p>
-          </div>
-
-          <div>
-            <div class="mt-3 flex items-center flex-wrap min-h-[60px]">
-              ${startup.tags?.map(
-                (tag, index) => html`
-                  <span
-                    key=${index}
-                    class="bg-pink-300 text-black text-xs px-2 py-1 border border-black mb-1 mr-1 font-bold mb-auto"
-                    >${tag}</span
-                  >
-                `
-              )}
-            </div>
-
-            <div class="mt-3 flex items-center justify-between">
-              <span class="text-xs text-gray-600 font-mono truncate">
-                ${getHostname(startup.url)}
-              </span>
-              <div class="flex items-center gap-2">
-                ${UpvoteButton({ startup, user, onUpvoteChange })}
-                <button
-                  onClick=${handleShareOnX}
-                  class="group relative p-1 hover:bg-gray-100 rounded flex items-center"
-                  aria-label="Share on X"
-                >
-                  <i class="fab fa-x-twitter text-sm mr-1"></i>
-                  <span class="text-xs">Share</span>
-                  <div
-                    class="absolute -top-8 left-1/2 -translate-x-1/2 hidden group-hover:block bg-black text-white text-xs px-2 py-1 rounded whitespace-nowrap"
-                  >
-                    Share on X
-                  </div>
-                </button>
-              </div>
-            </div>
-
-            ${startup.author &&
-            html`
-              <div class="mt-3 flex items-center border-t-2 border-black pt-3">
-                <a
-                  href=${addReferralParam(startup.author ? startup.author.profile_url : `https://twitter.com/${startup.author}`)}
-                  target="_blank"
-                  class="flex items-center hover:text-blue-600"
-                >
-                  <img
-                    src=${getAvatarUrl(startup.author ? startup.author.avatar : `https://unavatar.io/twitter/${startup.author}`)}
-                    alt=${startup.author ? startup.author.name : (startup.author || 'User')}
-                    class="w-6 h-6 rounded border border-black mr-2"
-                    onError=${handleAvatarError}
-                  />
-                  <span class="text-sm font-bold">${startup.author ? startup.author.name : `@${startup.author || 'user'}`}</span>
-                </a>
-              </div>
-            `}
+    <div class="startup-card bg-white border border-gray-200 rounded-xl p-6 hover:shadow-md transition-all duration-200">
+      <div class="flex items-start gap-4">
+        <!-- Logo -->
+        <div class="flex-shrink-0">
+          <div class="w-12 h-12 rounded-lg border border-gray-200 overflow-hidden bg-white flex items-center justify-center">
+            <img
+              src=${startup.logo || getCurrentImage()}
+              alt=${`${startup.title} logo`}
+              class="w-full h-full object-cover"
+              onError=${(e) => {
+                e.target.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='48' height='48' viewBox='0 0 48 48'%3E%3Crect width='48' height='48' fill='%23f0f0f0'/%3E%3Ctext x='50%25' y='50%25' font-family='Arial' font-size='20' fill='%23999' text-anchor='middle' dominant-baseline='middle'%3E${startup.title?.charAt(0) || 'S'}%3C/text%3E%3C/svg%3E";
+              }}
+            />
           </div>
         </div>
-      </a>
+        
+        <!-- Content -->
+        <div class="flex-1 min-w-0">
+          <div class="flex items-start justify-between">
+            <div class="flex-1 min-w-0">
+              <a 
+                href=${getInternalDetailUrl()} 
+                class="block group" 
+                onClick=${(e) => {
+                  e.preventDefault();
+                  trackEvent(ANALYTICS_EVENTS.LINK_CLICK, {
+                    startupId: startup.id,
+                    startupName: startup.title,
+                    startupUrl: getInternalDetailUrl()
+                  });
+                  window.history.pushState({}, "", getInternalDetailUrl());
+                  window.dispatchEvent(new PopStateEvent('popstate'));
+                }}
+              >
+                <h3 class="text-lg font-semibold text-gray-900 group-hover:text-blue-600 transition-colors mb-1">
+                  ${startup.title}
+                </h3>
+              </a>
+              
+              <div class="flex items-center text-sm text-gray-600 mb-2">
+                <span>by ${startup.author?.name || 'Anonymous'}</span>
+              </div>
+              
+              <p class="text-sm text-gray-700 leading-relaxed">
+                ${startup.description || ''}
+              </p>
+            </div>
+            
+            <!-- Actions -->
+            <div class="flex items-center gap-2 ml-4">
+              ${UpvoteButton({ startup, user, onUpvoteChange })}
+              
+              <button
+                onClick=${(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  
+                  // Track external link click
+                  trackEvent(ANALYTICS_EVENTS.STARTUP_VIEW, {
+                    startupId: startup.id,
+                    startupName: startup.title,
+                    startupUrl: startup.url
+                  });
+                  
+                  // Open startup URL in new tab
+                  window.open(addReferralParam(startup.url), '_blank', 'noopener,noreferrer');
+                }}
+                class="p-2 text-gray-400 hover:text-gray-600 transition-colors rounded-lg hover:bg-gray-50"
+                aria-label="Visit startup"
+              >
+                <i class="fas fa-external-link-alt text-sm"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Featured Badge -->
+      ${startup.featured && html`
+        <div class="mt-4 pt-4 border-t border-gray-100">
+          <span class="inline-block bg-green-100 text-green-800 text-xs font-medium px-3 py-1 rounded-full">
+            Featured
+          </span>
+        </div>
+      `}
     </div>
   `;
 };

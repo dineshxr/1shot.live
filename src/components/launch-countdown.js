@@ -114,7 +114,7 @@ export const LaunchCountdown = () => {
   };
 
   return html`
-    <div class="border-t border-amber-200 bg-amber-50">
+    <div class="border-t border-amber-200">
       <div class="container mx-auto px-4 py-4 flex items-center gap-3 text-amber-900">
         <span class="text-lg font-semibold">Next launch in</span>
         ${timeLeft.days > 0 ? html`<span class="inline-block rounded-md bg-amber-200/70 px-3 py-1 font-semibold">${timeLeft.days}d</span>` : ''}
