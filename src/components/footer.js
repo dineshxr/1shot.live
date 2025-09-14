@@ -22,7 +22,10 @@ export const Footer = () => {
         <div
           class="mt-6 text-center text-black font-medium border-t-2 border-black pt-4"
         >
-          ${new Date().getFullYear()} · 💥 Submit Hunt · All rights reserved
+          <div class="flex items-center justify-center">
+            <img src="/src/sh-logo.png" alt="SubmitHunt Logo" class="w-6 h-6 mr-2" />
+            ${new Date().getFullYear()} · Submit Hunt · All rights reserved
+          </div>
         </div>
       </div>
     </footer>

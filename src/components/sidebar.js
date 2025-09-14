@@ -25,13 +25,13 @@ export const Sidebar = ({ startups = [], onCategoryFilter, onSortChange, selecte
 
   const categories = [
     { id: 'all', name: 'All Products', icon: '🚀', count: startups.length },
-    { id: 'ai', name: 'AI & Machine Learning', icon: '🤖', count: startups.filter(s => s.category?.toLowerCase().includes('ai') || s.description?.toLowerCase().includes('ai')).length },
-    { id: 'saas', name: 'SaaS & Tools', icon: '⚡', count: startups.filter(s => s.category?.toLowerCase().includes('saas') || s.category?.toLowerCase().includes('tool')).length },
-    { id: 'mobile', name: 'Mobile Apps', icon: '📱', count: startups.filter(s => s.category?.toLowerCase().includes('mobile') || s.category?.toLowerCase().includes('app')).length },
-    { id: 'web', name: 'Web Apps', icon: '🌐', count: startups.filter(s => s.category?.toLowerCase().includes('web')).length },
-    { id: 'productivity', name: 'Productivity', icon: '📊', count: startups.filter(s => s.category?.toLowerCase().includes('productivity')).length },
-    { id: 'design', name: 'Design & Creative', icon: '🎨', count: startups.filter(s => s.category?.toLowerCase().includes('design')).length },
-    { id: 'developer', name: 'Developer Tools', icon: '👨‍💻', count: startups.filter(s => s.category?.toLowerCase().includes('developer') || s.category?.toLowerCase().includes('dev')).length }
+    { id: 'AI & Machine Learning', name: 'AI & Machine Learning', icon: '🤖', count: startups.filter(s => s.category === 'AI & Machine Learning').length },
+    { id: 'SaaS & Tools', name: 'SaaS & Tools', icon: '⚡', count: startups.filter(s => s.category === 'SaaS & Tools').length },
+    { id: 'Mobile Apps', name: 'Mobile Apps', icon: '📱', count: startups.filter(s => s.category === 'Mobile Apps').length },
+    { id: 'Web Apps', name: 'Web Apps', icon: '🌐', count: startups.filter(s => s.category === 'Web Apps').length },
+    { id: 'Productivity', name: 'Productivity', icon: '📊', count: startups.filter(s => s.category === 'Productivity').length },
+    { id: 'Design & Creative', name: 'Design & Creative', icon: '🎨', count: startups.filter(s => s.category === 'Design & Creative').length },
+    { id: 'Developer Tools', name: 'Developer Tools', icon: '👨‍💻', count: startups.filter(s => s.category === 'Developer Tools').length }
   ];
 
   const sortOptions = [

@@ -131,11 +131,29 @@ export const Content = ({ user, onStartupsChange, selectedCategory, sortBy, sear
     };
   }, []);
 
-  // Filter and sort startups based on selected category, sort option, search query, and time filter
+  // Filter and sort startups based on category, sort, and search
   useEffect(() => {
-    let filtered = startups;
+    let filtered = [...startups];
+    
+    // Apply category filter
+    if (selectedCategory && selectedCategory !== 'all') {
+      filtered = filtered.filter(startup => {
+        return startup.category === selectedCategory;
+      });
+    }
 
-    // Filter by time period
+    // Apply search filter
+    if (searchQuery && searchQuery.trim()) {
+      const query = searchQuery.toLowerCase().trim();
+      filtered = filtered.filter(startup => 
+        startup.title?.toLowerCase().includes(query) ||
+        startup.description?.toLowerCase().includes(query) ||
+        startup.category?.toLowerCase().includes(query) ||
+        startup.author?.name?.toLowerCase().includes(query)
+      );
+    }
+
+    // Apply time filter
     if (timeFilter !== 'daily') {
       const now = new Date();
       const filterDate = new Date();
@@ -152,22 +170,6 @@ export const Content = ({ user, onStartupsChange, selectedCategory, sortBy, sear
         const launchDate = new Date(startup.launch_date || startup.created_at);
         return launchDate >= filterDate;
       });
-    }
-
-    // Filter by category
-    if (selectedCategory && selectedCategory !== 'all') {
-      filtered = filtered.filter(startup => startup.category === selectedCategory);
-    }
-
-    // Filter by search query
-    if (searchQuery && searchQuery.trim()) {
-      const query = searchQuery.toLowerCase().trim();
-      filtered = filtered.filter(startup => 
-        startup.title?.toLowerCase().includes(query) ||
-        startup.description?.toLowerCase().includes(query) ||
-        startup.category?.toLowerCase().includes(query) ||
-        startup.author?.name?.toLowerCase().includes(query)
-      );
     }
 
     // Sort startups

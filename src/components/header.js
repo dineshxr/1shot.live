@@ -7,7 +7,10 @@ export const Header = ({ user }) => {
       <div class="container max-w-6xl mx-auto px-4 py-6 md:py-8">
         <div class="flex flex-col md:flex-row justify-between items-center">
           <div>
-            <h1 class="text-3xl md:text-4xl font-bold">💥 Submit Hunt</h1>
+            <div class="flex items-center">
+              <img src="/src/sh-logo.png" alt="SubmitHunt Logo" class="w-12 h-12 mr-3" />
+              <h1 class="text-3xl md:text-4xl font-bold">Submit Hunt</h1>
+            </div>
             <p class="mt-2 text-black font-medium">
               Discover Startups and AI projects
             </p>

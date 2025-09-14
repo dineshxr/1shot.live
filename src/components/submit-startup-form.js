@@ -13,6 +13,7 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
     projectName: "",
     description: "",
     slug: "",
+    category: "", // Category selection
     plan: "free", // Default plan selection
     launchDate: "" // Launch date selection
   });
@@ -233,6 +234,9 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
       if (!formData.slug) {
         throw new Error("Please enter a slug for your project");
       }
+      if (!formData.category) {
+        throw new Error("Please select a category for your startup");
+      }
 
       // Initialize Supabase client with better error handling
       let supabase;
@@ -355,6 +359,7 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
                 url: formData.url,
                 description: formData.description,
                 slug: formData.slug,
+                category: formData.category,
                 author: authorInfo,
                 screenshot_url: screenshotUrl,
                 plan: formData.plan,
@@ -408,6 +413,7 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
                     url: formData.url,
                     description: formData.description,
                     slug: uniqueSlug,
+                    category: formData.category,
                     author: {
                       name: formData.xProfile.replace('@', ''),
                       profile_url: `https://x.com/${formData.xProfile.replace('@', '')}`,
@@ -444,7 +450,7 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
                   window.trackEvent(window.ANALYTICS_EVENTS.FORM_SUBMIT, { success: true, used_unique_slug: true });
                   
                   // Reset form
-                  setFormData({ url: "", xProfile: "", projectName: "", description: "", slug: "" });
+                  setFormData({ url: "", xProfile: "", projectName: "", description: "", slug: "", category: "" });
                   setTurnstileToken(null);
                   // Reset the widget
                   if (window.turnstile) {
@@ -544,7 +550,7 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
       const submittedData = { ...formData };
       
       // Reset form data
-      setFormData({ url: "", xProfile: "", projectName: "", description: "", slug: "" });
+      setFormData({ url: "", xProfile: "", projectName: "", description: "", slug: "", category: "" });
       setTurnstileToken(null);
       // Reset the widget
       if (window.turnstile) {
@@ -875,6 +881,40 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
               class="w-full px-3 py-2 border-2 border-black focus:outline-none focus:ring-2 focus:ring-blue-400"
               placeholder="A short description of the startup"
             />
+          </div>
+
+          <div class="mb-4">
+            <label class="block text-black font-bold mb-2" for="category">
+              Category
+            </label>
+            <select
+              id="category"
+              name="category"
+              value=${formData.category}
+              onChange=${handleChange}
+              class="w-full px-3 py-2 border-2 border-black focus:outline-none focus:ring-2 focus:ring-blue-400 bg-white"
+              required
+            >
+              <option value="">Select a category</option>
+              <option value="AI & Machine Learning">🤖 AI & Machine Learning</option>
+              <option value="SaaS & Tools">⚡ SaaS & Tools</option>
+              <option value="Mobile Apps">📱 Mobile Apps</option>
+              <option value="Web Apps">🌐 Web Apps</option>
+              <option value="Productivity">📊 Productivity</option>
+              <option value="Design & Creative">🎨 Design & Creative</option>
+              <option value="Developer Tools">👨‍💻 Developer Tools</option>
+              <option value="E-commerce">🛒 E-commerce</option>
+              <option value="Marketing">📈 Marketing</option>
+              <option value="Finance">💰 Finance</option>
+              <option value="Health & Fitness">🏃‍♂️ Health & Fitness</option>
+              <option value="Education">📚 Education</option>
+              <option value="Social">👥 Social</option>
+              <option value="Gaming">🎮 Gaming</option>
+              <option value="Chrome Extension">🧩 Chrome Extension</option>
+              <option value="API/Service">🔗 API/Service</option>
+              <option value="Hardware">⚙️ Hardware</option>
+              <option value="Other">📦 Other</option>
+            </select>
           </div>
 
           <div class="mb-6">

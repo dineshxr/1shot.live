@@ -221,7 +221,10 @@ const FeaturedPage = () => {
           <div class="flex flex-col md:flex-row justify-between items-center">
             <div class="flex items-center">
               <a href="/" class="flex items-center hover:opacity-80 transition-opacity">
-                <h1 class="text-3xl md:text-4xl font-bold">💥 Submit Hunt</h1>
+                <div class="flex items-center">
+                  <img src="/src/sh-logo.png" alt="SubmitHunt Logo" class="w-10 h-10 mr-3" />
+                  <h1 class="text-3xl md:text-4xl font-bold">Submit Hunt</h1>
+                </div>
               </a>
               <a href="/" class="ml-4 px-3 py-1 bg-white border-2 border-black rounded shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:bg-gray-100 font-bold text-sm">
                 ← Back to Home
@@ -231,23 +234,13 @@ const FeaturedPage = () => {
               class="mt-4 md:mt-0 flex flex-col md:flex-row items-center gap-4"
             >
               <${OnlineVisitors} />
-              ${user ? html`
-                <!-- Authenticated user - prominent submit button -->
-                <button
-                  onClick=${handleSubmitClick}
-                  class="neo-button inline-flex items-center px-6 py-3 bg-green-400 border-2 border-black rounded shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:bg-green-500 font-bold text-lg animate-pulse"
-                >
-                  <i class="fas fa-rocket mr-2"></i> Submit Your Product
-                </button>
-              ` : html`
-                <!-- Not authenticated - login to submit -->
-                <button
-                  onClick=${handleSubmitClick}
-                  class="neo-button inline-flex items-center px-4 py-2 bg-purple-400 border-2 border-black rounded shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:bg-purple-500 font-bold"
-                >
-                  <i class="fas fa-plus mr-2"></i> Submit Product
-                </button>
-              `}
+              <a
+                href="https://submit.gumroad.com/l/featured"
+                target="_blank"
+                class="neo-button inline-flex items-center px-6 py-3 bg-yellow-400 border-2 border-black rounded shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:bg-yellow-500 font-bold text-lg"
+              >
+                <i class="fas fa-star mr-2"></i> Ready to be Featured
+              </a>
             </div>
           </div>
         </div>

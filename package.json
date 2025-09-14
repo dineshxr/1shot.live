@@ -6,7 +6,7 @@
     "supabase:typegen": "bunx supabase gen types --lang=typescript --local > supabase/database-generated.types.ts"
   },
   "devDependencies": {
-    "@supabase/supabase-js": "^2.49.1"
+    "@supabase/supabase-js": "^2.57.4"
   },
   "dependencies": {
     "@clerk/clerk-react": "^5.42.1",
