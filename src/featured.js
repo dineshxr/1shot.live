@@ -304,12 +304,39 @@ const FeaturedPage = () => {
           </div>
         </section>
         
+        <!-- Website Stats Section -->
+        <section class="py-12 bg-white border-t border-gray-200">
+          <div class="container mx-auto px-4">
+            <div class="max-w-4xl mx-auto">
+              <h2 class="text-2xl font-bold text-center mb-8">2025 STATISTICS ©</h2>
+              <div class="grid grid-cols-2 md:grid-cols-4 gap-6">
+                <div class="text-center p-4 border-2 border-black rounded-lg shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
+                  <div class="text-3xl font-bold text-gray-900">275,374</div>
+                  <div class="text-sm text-gray-500">Visits</div>
+                </div>
+                <div class="text-center p-4 border-2 border-black rounded-lg shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
+                  <div class="text-3xl font-bold text-gray-900">1,150,289</div>
+                  <div class="text-sm text-gray-500">Page views</div>
+                </div>
+                <div class="text-center p-4 border-2 border-black rounded-lg shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
+                  <div class="text-3xl font-bold text-gray-900">2,847</div>
+                  <div class="text-sm text-gray-500">Startups</div>
+                </div>
+                <div class="text-center p-4 border-2 border-black rounded-lg shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
+                  <div class="text-3xl font-bold text-gray-900">45,692</div>
+                  <div class="text-sm text-gray-500">Upvotes</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
         <!-- Benefits Section -->
         <section class="py-16 bg-white">
           <div class="container mx-auto px-4">
             <h2 class="text-3xl font-bold text-center mb-12">Why Get Featured?</h2>
             
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl mx-auto">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-8 max-w-6xl mx-auto">
               <!-- Benefit 1 -->
               <div class="text-center p-6 border-2 border-black rounded-lg shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:translate-y-[-4px] transition-transform">
                 <div class="text-4xl mb-4">🎯</div>
@@ -330,6 +357,13 @@ const FeaturedPage = () => {
                 <h3 class="text-xl font-bold mb-2">Professional presentation</h3>
                 <p class="text-gray-600">Your product will be showcased in a professional, attention-grabbing format.</p>
               </div>
+              
+              <!-- Benefit 4 - Skip Queue -->
+              <div class="text-center p-6 border-2 border-black rounded-lg shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:translate-y-[-4px] transition-transform bg-yellow-50">
+                <div class="text-4xl mb-4">⚡</div>
+                <h3 class="text-xl font-bold mb-2">Skip the waitlist queue</h3>
+                <p class="text-gray-600">Launch immediately without waiting in the standard submission queue.</p>
+              </div>
             </div>
           </div>
         </section>
@@ -343,6 +377,18 @@ const FeaturedPage = () => {
               <p class="text-lg mb-6">
                 Top of page placement, maximum visibility. Additionally, a random featured product will be displayed on each launch page, further increasing visibility.
               </p>
+              
+              <!-- Features List -->
+              <div class="bg-yellow-50 border-2 border-yellow-300 rounded-lg p-6 mb-6">
+                <h3 class="text-xl font-bold mb-4 text-yellow-800">✨ Featured Benefits Include:</h3>
+                <ul class="space-y-2 text-gray-700">
+                  <li class="flex items-center"><i class="fas fa-check text-green-500 mr-2"></i> <strong>Skip the waitlist queue</strong> - Launch immediately</li>
+                  <li class="flex items-center"><i class="fas fa-check text-green-500 mr-2"></i> Premium placement at top of homepage</li>
+                  <li class="flex items-center"><i class="fas fa-check text-green-500 mr-2"></i> Guaranteed high authority backlink</li>
+                  <li class="flex items-center"><i class="fas fa-check text-green-500 mr-2"></i> Featured in our startup newsletter</li>
+                  <li class="flex items-center"><i class="fas fa-check text-green-500 mr-2"></i> Maximum visibility to daily visitors</li>
+                </ul>
+              </div>
               
               <div class="flex flex-col md:flex-row items-center justify-between gap-8 mb-8">
                 <div class="text-center md:text-left">

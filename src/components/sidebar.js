@@ -23,16 +23,56 @@ export const Sidebar = ({ startups = [], onCategoryFilter, onSortChange, selecte
     });
   }, [startups]);
 
-  const categories = [
-    { id: 'all', name: 'All Products', icon: '🚀', count: startups.length },
-    { id: 'AI & Machine Learning', name: 'AI & Machine Learning', icon: '🤖', count: startups.filter(s => s.category === 'AI & Machine Learning').length },
-    { id: 'SaaS & Tools', name: 'SaaS & Tools', icon: '⚡', count: startups.filter(s => s.category === 'SaaS & Tools').length },
-    { id: 'Mobile Apps', name: 'Mobile Apps', icon: '📱', count: startups.filter(s => s.category === 'Mobile Apps').length },
-    { id: 'Web Apps', name: 'Web Apps', icon: '🌐', count: startups.filter(s => s.category === 'Web Apps').length },
-    { id: 'Productivity', name: 'Productivity', icon: '📊', count: startups.filter(s => s.category === 'Productivity').length },
-    { id: 'Design & Creative', name: 'Design & Creative', icon: '🎨', count: startups.filter(s => s.category === 'Design & Creative').length },
-    { id: 'Developer Tools', name: 'Developer Tools', icon: '👨‍💻', count: startups.filter(s => s.category === 'Developer Tools').length }
-  ];
+  // Get unique categories from startups data with counts
+  const getUniqueCategories = () => {
+    const categoryMap = new Map();
+    
+    // Count all categories from startups
+    startups.forEach(startup => {
+      if (startup.category) {
+        const count = categoryMap.get(startup.category) || 0;
+        categoryMap.set(startup.category, count + 1);
+      }
+    });
+    
+    // Define category icons based on actual database categories
+    const categoryIcons = {
+      'AI/ML': '🤖',
+      'Other': '📦',
+      'Design': '🎨',
+      'Web App': '🌐',
+      'SaaS': '⚡',
+      'Gaming': '🎮',
+      'Developer Tools': '👨‍💻',
+      'Productivity': '📊',
+      'Social': '👥',
+      'API/Service': '🔗',
+      'Marketing': '📈',
+      'E-commerce': '🛒',
+      'Health & Fitness': '🏃‍♂️',
+      'Education': '📚',
+      'Chrome Extension': '🧩',
+      'Mobile App': '📱'
+    };
+    
+    // Convert to array and sort by count (descending)
+    const categoryArray = Array.from(categoryMap.entries())
+      .map(([category, count]) => ({
+        id: category,
+        name: category,
+        icon: categoryIcons[category] || '📦',
+        count
+      }))
+      .sort((a, b) => b.count - a.count);
+    
+    // Add "All Products" at the beginning
+    return [
+      { id: 'all', name: 'All Products', icon: '🚀', count: startups.length },
+      ...categoryArray
+    ];
+  };
+  
+  const categories = getUniqueCategories();
 
   const sortOptions = [
     { id: 'trending', name: 'Trending', icon: '🔥' },

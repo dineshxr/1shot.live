@@ -224,6 +224,12 @@ export const StartupCard = ({ startup, user, onUpvoteChange }) => {
               
               <div class="flex items-center text-sm text-gray-600 mb-2">
                 <span class="truncate">by ${startup.author?.name || 'Anonymous'}</span>
+                ${startup.category && html`
+                  <span class="mx-2 text-gray-400">•</span>
+                  <span class="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded-full">
+                    ${startup.category}
+                  </span>
+                `}
               </div>
               
               <p class="text-sm text-gray-700 leading-relaxed line-clamp-2 overflow-hidden">

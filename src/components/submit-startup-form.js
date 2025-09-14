@@ -627,7 +627,7 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
             </h3>
             <div class="mb-4 p-3 bg-yellow-100 border border-yellow-400 rounded">
               <p class="text-sm font-bold text-yellow-800 mb-1">⚠️ Important:</p>
-              <p class="text-sm text-yellow-800">Add our badge to your website to make your listing <strong>permanent</strong> and keep your 37+ DR backlink as <strong>dofollow</strong>. Without the badge, your backlink will become nofollow after 30 days.</p>
+              <p class="text-sm text-yellow-800">Add our badge to your website to make your listing <strong>permanent</strong> and keep your 37+ DR backlink as <strong>dofollow</strong>. Without the badge, your backlink will become nofollow after 30 days. <strong>Note:</strong> You need at least 3 upvotes to secure your permanent backlink.</p>
             </div>
             
             <div class="space-y-4">
@@ -735,9 +735,10 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
           
           <div class="mt-6 p-4 border-2 border-black rounded bg-gray-50">
             <h3 class="font-bold text-lg mb-2">What's Next?</h3>
-            <p class="mb-2">1. Add the badge to your website to keep your dofollow backlink</p>
-            <p class="mb-2">2. Share your startup submission on social media and tag @submithunt</p>
-            <p class="mb-2">3. Tell others about your experience with our Product Hunt alternative platform</p>
+            <p class="mb-2">1. Get at least 3 upvotes to secure your permanent backlink</p>
+            <p class="mb-2">2. Add the badge to your website to keep your dofollow backlink</p>
+            <p class="mb-2">3. Share your startup submission on social media and tag @submithunt</p>
+            <p class="mb-2">4. Tell others about your experience with our Product Hunt alternative platform</p>
           </div>
           
           <div class="mt-6 flex flex-col items-center">
@@ -805,6 +806,9 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
               <span class="mr-2">🚀</span> Submit Your Startup, Get a 37+ DR Backlink
             </p>
             <p class="text-sm mt-1">Join hundreds of founders who chose SubmitHunt as their Product Hunt alternative</p>
+            <p class="text-xs mt-2 font-medium text-gray-700">
+              <span class="mr-1">⭐</span> Get at least 3 upvotes to secure your permanent backlink
+            </p>
           </div>
 
           ${error &&
@@ -896,24 +900,22 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
               required
             >
               <option value="">Select a category</option>
-              <option value="AI & Machine Learning">🤖 AI & Machine Learning</option>
-              <option value="SaaS & Tools">⚡ SaaS & Tools</option>
-              <option value="Mobile Apps">📱 Mobile Apps</option>
-              <option value="Web Apps">🌐 Web Apps</option>
-              <option value="Productivity">📊 Productivity</option>
-              <option value="Design & Creative">🎨 Design & Creative</option>
+              <option value="AI/ML">🤖 AI/ML</option>
+              <option value="Other">📦 Other</option>
+              <option value="Design">🎨 Design</option>
+              <option value="Web App">🌐 Web App</option>
+              <option value="SaaS">⚡ SaaS</option>
+              <option value="Gaming">🎮 Gaming</option>
               <option value="Developer Tools">👨‍💻 Developer Tools</option>
-              <option value="E-commerce">🛒 E-commerce</option>
+              <option value="Productivity">📊 Productivity</option>
+              <option value="Social">👥 Social</option>
+              <option value="API/Service">🔗 API/Service</option>
               <option value="Marketing">📈 Marketing</option>
-              <option value="Finance">💰 Finance</option>
+              <option value="E-commerce">🛒 E-commerce</option>
               <option value="Health & Fitness">🏃‍♂️ Health & Fitness</option>
               <option value="Education">📚 Education</option>
-              <option value="Social">👥 Social</option>
-              <option value="Gaming">🎮 Gaming</option>
               <option value="Chrome Extension">🧩 Chrome Extension</option>
-              <option value="API/Service">🔗 API/Service</option>
-              <option value="Hardware">⚙️ Hardware</option>
-              <option value="Other">📦 Other</option>
+              <option value="Mobile App">📱 Mobile App</option>
             </select>
           </div>
 
@@ -980,7 +982,7 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
                     </div>
                     <ul class="list-disc pl-5 space-y-1 mb-3">
                       <li>Live on homepage for 7 days</li>
-                      <li>High authority backlink (for verified submissions)</li>
+                      <li>High authority backlink (requires 3+ upvotes)</li>
                       <li>Standard launch queue</li>
                     </ul>
                     ${formData.plan === 'free' ? html`
