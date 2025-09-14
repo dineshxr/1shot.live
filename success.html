@@ -45,6 +45,26 @@
           </ul>
         </div>
         
+        <!-- SubmitHunt Badge -->
+        <div class="mb-8">
+          <h2 class="text-xl font-bold mb-3">Add Our Badge to Your Site</h2>
+          <p class="text-sm text-gray-600 mb-4">Show your users that you're featured on SubmitHunt!</p>
+          
+          <div class="bg-gray-50 p-4 rounded-lg mb-4">
+            <img src="./src/submit-hunt-badge.png" alt="SubmitHunt Badge" class="mx-auto mb-3" style="max-width: 200px;">
+          </div>
+          
+          <div class="text-left">
+            <p class="text-sm font-semibold mb-2">HTML Code:</p>
+            <div class="bg-gray-100 p-3 rounded border text-xs font-mono overflow-x-auto">
+              <code>&lt;a href="https://submithunt.com" target="_blank"&gt;&lt;img src="https://submithunt.com/src/submit-hunt-badge.png" alt="Featured on SubmitHunt" style="max-width: 200px;"&gt;&lt;/a&gt;</code>
+            </div>
+            <button onclick="copyBadgeCode()" class="mt-2 px-3 py-1 bg-blue-500 text-white text-xs rounded hover:bg-blue-600">
+              Copy Code
+            </button>
+          </div>
+        </div>
+        
         <div class="space-y-4">
           <a href="index.html" class="neo-button inline-block px-6 py-3 bg-blue-400 border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:bg-blue-500 font-bold">
             Back to Home
@@ -88,6 +108,22 @@
         confettiContainer.appendChild(confetti);
       }
     });
+  </script>
+
+  <script>
+    function copyBadgeCode() {
+      const code = '<a href="https://submithunt.com" target="_blank"><img src="https://submithunt.com/src/submit-hunt-badge.png" alt="Featured on SubmitHunt" style="max-width: 200px;"></a>';
+      navigator.clipboard.writeText(code).then(() => {
+        const button = event.target;
+        const originalText = button.textContent;
+        button.textContent = 'Copied!';
+        button.style.backgroundColor = '#10b981';
+        setTimeout(() => {
+          button.textContent = originalText;
+          button.style.backgroundColor = '#3b82f6';
+        }, 2000);
+      });
+    }
   </script>
 
   <style>
