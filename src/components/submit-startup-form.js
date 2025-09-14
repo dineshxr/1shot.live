@@ -61,8 +61,8 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
           console.error('Error checking launch date availability:', error);
         }
         
-        // Allow unlimited submissions - always available
-        const freeAvailable = true;
+        // Limit free submissions to 6 per day
+        const freeAvailable = count < 6;
         
         dates.push({
           date: formattedDate,
@@ -953,7 +953,9 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
                   <!-- Featured Option -->
                   <div 
                     class="border-4 ${formData.plan === 'premium' ? 'border-blue-500' : 'border-black'} p-4 rounded-lg cursor-pointer hover:bg-gray-50 transition-all"
-                    onClick=${() => selectPlan('premium')}
+                    onClick=${() => {
+                      window.open('/featured.html', '_blank');
+                    }}
                   >
                     <div class="flex justify-between items-center mb-2">
                       <h4 class="text-lg font-bold">Featured</h4>
@@ -979,19 +981,54 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
                 <h3 class="text-xl font-bold mb-4 text-black">Choose Your Launch Date</h3>
                 <p class="text-gray-700 mb-3">Select from available launch dates:</p>
                 
+                ${availableLaunchDates.filter(date => date.freeAvailable).length === 0 ? html`
+                  <div class="mb-4 p-4 bg-yellow-100 border-2 border-yellow-400 rounded">
+                    <h4 class="font-bold text-yellow-800 mb-2">🚀 All Free Slots Are Full!</h4>
+                    <p class="text-yellow-800 mb-3">All free launch dates are currently full (6/6 slots each). Consider upgrading to Featured to launch immediately!</p>
+                    <button
+                      type="button"
+                      onClick=${() => {
+                        window.open('/featured.html', '_blank');
+                      }}
+                      class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 font-bold"
+                    >
+                      Upgrade to Featured ($5)
+                    </button>
+                  </div>
+                ` : availableLaunchDates.filter(date => date.freeAvailable).length < 2 ? html`
+                  <div class="mb-4 p-4 bg-blue-100 border-2 border-blue-400 rounded">
+                    <h4 class="font-bold text-blue-800 mb-2">📅 Limited Free Slots Available</h4>
+                    <p class="text-blue-800 mb-3">Only ${availableLaunchDates.filter(date => date.freeAvailable).length} free slot${availableLaunchDates.filter(date => date.freeAvailable).length === 1 ? '' : 's'} remaining. Consider Featured for guaranteed immediate launch!</p>
+                    <button
+                      type="button"
+                      onClick=${() => {
+                        window.open('/featured.html', '_blank');
+                      }}
+                      class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 font-bold"
+                    >
+                      Learn About Featured ($5)
+                    </button>
+                  </div>
+                ` : ''}
+                
                 <div class="space-y-4">
                   ${availableLaunchDates.slice(0, 3).map(date => html`
                     <div 
-                      class="border-2 ${formData.launchDate === date.value ? 'border-blue-500' : 'border-black'} p-4 rounded-lg ${!date.freeAvailable && formData.plan === 'free' ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:bg-gray-50'} transition-all"
+                      class="border-2 ${formData.launchDate === date.value ? 'border-blue-500' : 'border-black'} p-4 rounded-lg ${!date.freeAvailable && formData.plan === 'free' ? 'opacity-50 cursor-not-allowed bg-gray-100' : 'cursor-pointer hover:bg-gray-50'} transition-all ${!date.freeAvailable ? 'relative' : ''}"
                       onClick=${!date.freeAvailable && formData.plan === 'free' ? null : () => selectLaunchDate(date.value)}
                     >
-                      <div class="flex justify-between items-center">
-                        <h4 class="text-lg font-bold">${date.date}</h4>
+                      ${!date.freeAvailable ? html`
+                        <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
+                          <div class="w-full h-0.5 bg-red-500 transform rotate-12"></div>
+                        </div>
+                      ` : ''}
+                      <div class="flex justify-between items-center ${!date.freeAvailable ? 'relative z-10' : ''}">
+                        <h4 class="text-lg font-bold ${!date.freeAvailable ? 'text-gray-500' : ''}">${date.date}</h4>
                         <div class="flex flex-col items-end">
                           <div class="flex items-center">
                             <span class="inline-block w-3 h-3 rounded-full ${date.freeAvailable ? 'bg-green-500' : 'bg-red-500'} mr-2"></span>
                             <span class="${date.freeAvailable ? 'text-green-700' : 'text-red-700'} text-sm">
-                              ${date.freeAvailable ? `Free (${date.freeCount}/6)` : 'Free full'}
+                              ${date.freeAvailable ? `Free (${date.freeCount}/6)` : 'Full (6/6)'}
                             </span>
                           </div>
                           <div class="flex items-center mt-1">
@@ -1006,7 +1043,9 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
                         </div>
                       ` : ''}
                       <div class="mt-2 text-sm text-gray-600">
-                        ${date.freeCount > 0 ? `${date.freeCount} startup${date.freeCount !== 1 ? 's' : ''} scheduled` : 'No startups scheduled yet'}
+                        ${!date.freeAvailable ? html`
+                          <span class="text-red-600 font-bold">❌ Date unavailable - all 6 free slots filled</span>
+                        ` : date.freeCount > 0 ? `${date.freeCount} startup${date.freeCount !== 1 ? 's' : ''} scheduled` : 'No startups scheduled yet'}
                       </div>
                     </div>
                   `)}
