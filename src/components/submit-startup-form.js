@@ -1083,7 +1083,7 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
                 <h3 class="text-xl font-bold mb-4 text-black">Choose Your Launch Date</h3>
                 <p class="text-gray-700 mb-3">Select from available launch dates:</p>
                 
-                ${availableLaunchDates.filter(date => date.freeAvailable).length === 0 ? html`
+                ${availableLaunchDates.length >= 3 && availableLaunchDates.slice(0, 3).every(date => date.freeCount >= 6) ? html`
                   <div class="mb-4 p-4 bg-yellow-100 border-2 border-yellow-400 rounded">
                     <h4 class="font-bold text-yellow-800 mb-2">🚀 All Free Slots Are Full!</h4>
                     <p class="text-yellow-800 mb-3">All free launch dates are currently full (6/6 slots each). Consider upgrading to Featured to launch immediately!</p>
