@@ -230,6 +230,13 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
         setError("Please enter a valid URL");
         return;
       }
+      
+      // Validate URL format - must start with http:// or https://
+      if (!formData.url.startsWith('http://') && !formData.url.startsWith('https://')) {
+        setError("Please enter a valid URL starting with http:// or https://");
+        return;
+      }
+      
       if (!formData.slug) {
         setError("Please enter a slug for your product");
         return;
@@ -274,6 +281,11 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
       // Validate form data before submission
       if (!formData.url) {
         throw new Error("Please enter a valid URL");
+      }
+      
+      // Validate URL format - must start with http:// or https://
+      if (!formData.url.startsWith('http://') && !formData.url.startsWith('https://')) {
+        throw new Error("Please enter a valid URL starting with http:// or https://");
       }
       if (!formData.projectName) {
         throw new Error("Please enter a project name");
