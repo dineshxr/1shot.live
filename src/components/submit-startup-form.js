@@ -25,6 +25,8 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
   // Removed submission limits - users can now submit multiple times
   const [isDuplicate, setIsDuplicate] = useState(false); // Track if the URL is a duplicate
   const [availableLaunchDates, setAvailableLaunchDates] = useState([]); // Available launch dates
+  const [userHasPreviousSubmissions, setUserHasPreviousSubmissions] = useState(false); // Track if user has submitted before
+  const [checkingPreviousSubmissions, setCheckingPreviousSubmissions] = useState(false); // Loading state for checking submissions
 
   // Generate available launch dates
   const generateLaunchDates = async () => {
@@ -89,6 +91,46 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
   
   // Removed daily submission limit check - users can submit unlimited times
 
+  // Check if user has previous submissions
+  const checkUserPreviousSubmissions = async () => {
+    if (!window.auth || !window.auth.isAuthenticated()) {
+      setUserHasPreviousSubmissions(false);
+      return;
+    }
+
+    const authUser = window.auth.getCurrentUser();
+    if (!authUser || !authUser.email) {
+      setUserHasPreviousSubmissions(false);
+      return;
+    }
+
+    setCheckingPreviousSubmissions(true);
+    try {
+      const supabase = supabaseClient();
+      const { data, error } = await supabase
+        .from('startups')
+        .select('id')
+        .eq('author->>email', authUser.email)
+        .limit(1);
+
+      if (error) {
+        console.error('Error checking previous submissions:', error);
+        setUserHasPreviousSubmissions(false);
+      } else {
+        setUserHasPreviousSubmissions(data && data.length > 0);
+        // If user has previous submissions, default to premium plan
+        if (data && data.length > 0) {
+          setFormData(prev => ({ ...prev, plan: 'premium' }));
+        }
+      }
+    } catch (err) {
+      console.error('Error checking previous submissions:', err);
+      setUserHasPreviousSubmissions(false);
+    } finally {
+      setCheckingPreviousSubmissions(false);
+    }
+  };
+
   useEffect(() => {
     if (!isOpen) return;
     
@@ -102,6 +144,9 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
       const dates = await generateLaunchDates();
       setAvailableLaunchDates(dates);
     };
+    
+    // Check if user has previous submissions
+    checkUserPreviousSubmissions();
     
     loadLaunchDates();
     
@@ -466,6 +511,11 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
                 window.trackEvent(window.ANALYTICS_EVENTS.FORM_SUBMIT, { success: false, error: 'duplicate_url' });
                 throw new Error(`This URL has already been submitted. Each startup can only be submitted once.`);
               } else {
+                // Check if this is a user trying to submit for free when they already have submissions
+                if (formData.plan === 'free' && userHasPreviousSubmissions) {
+                  window.trackEvent(window.ANALYTICS_EVENTS.FORM_SUBMIT, { success: false, error: 'free_limit_exceeded' });
+                  throw new Error('You have already used your free submission. Each user can only submit once for free. Please choose the Featured plan for additional submissions.');
+                }
                 // Other unique constraint violation
                 window.trackEvent(window.ANALYTICS_EVENTS.FORM_SUBMIT, { success: false, error: 'duplicate_entry' });
                 throw new Error('This startup appears to be already registered. Each startup can only be submitted once.');
@@ -969,28 +1019,66 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
               <h3 class="text-xl font-bold mb-4 text-black">Choose Your Launch Plan</h3>
               <p class="text-gray-700 mb-3">Select how you want to submit your startup to our Product Hunt alternative platform:</p>
               
+              ${checkingPreviousSubmissions ? html`
+                <div class="text-center py-4">
+                  <div class="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500"></div>
+                  <p class="text-sm text-gray-600 mt-2">Checking your submission history...</p>
+                </div>
+              ` : ''}
+              
+              ${userHasPreviousSubmissions ? html`
+                <div class="mb-4 p-4 bg-yellow-50 border-2 border-yellow-300 rounded-lg">
+                  <div class="flex items-center mb-2">
+                    <i class="fas fa-info-circle text-yellow-600 mr-2"></i>
+                    <h4 class="font-bold text-yellow-800">Previous Submission Detected</h4>
+                  </div>
+                  <p class="text-yellow-700 text-sm">
+                    You have already submitted a startup for free. Each user can only submit once for free. 
+                    To submit additional startups, please choose the Featured plan.
+                  </p>
+                </div>
+              ` : ''}
+              
               <div class="mb-6">
                 <div class="flex flex-col space-y-6">
-                  <!-- Free Option -->
-                  <div 
-                    class="border-4 ${formData.plan === 'free' ? 'border-blue-500' : 'border-black'} p-4 rounded-lg cursor-pointer hover:bg-gray-50 transition-all"
-                    onClick=${() => selectPlan('free')}
-                  >
-                    <div class="flex justify-between items-center mb-2">
-                      <h4 class="text-lg font-bold">Free</h4>
-                      <span class="text-lg font-bold">$0</span>
-                    </div>
-                    <ul class="list-disc pl-5 space-y-1 mb-3">
-                      <li>Live on homepage for 7 days</li>
-                      <li>High authority backlink (requires 3+ upvotes)</li>
-                      <li>Standard launch queue</li>
-                    </ul>
-                    ${formData.plan === 'free' ? html`
-                      <div class="bg-blue-100 text-blue-800 text-sm font-bold py-1 px-2 rounded inline-block">
-                        <i class="fas fa-check mr-1"></i> Selected
+                  <!-- Free Option - Only show if user has no previous submissions -->
+                  ${!userHasPreviousSubmissions ? html`
+                    <div 
+                      class="border-4 ${formData.plan === 'free' ? 'border-blue-500' : 'border-black'} p-4 rounded-lg cursor-pointer hover:bg-gray-50 transition-all"
+                      onClick=${() => selectPlan('free')}
+                    >
+                      <div class="flex justify-between items-center mb-2">
+                        <h4 class="text-lg font-bold">Free</h4>
+                        <span class="text-lg font-bold">$0</span>
                       </div>
-                    ` : ''}
-                  </div>
+                      <ul class="list-disc pl-5 space-y-1 mb-3">
+                        <li>Live on homepage for 7 days</li>
+                        <li>High authority backlink (requires 3+ upvotes)</li>
+                        <li>Standard launch queue</li>
+                      </ul>
+                      ${formData.plan === 'free' ? html`
+                        <div class="bg-blue-100 text-blue-800 text-sm font-bold py-1 px-2 rounded inline-block">
+                          <i class="fas fa-check mr-1"></i> Selected
+                        </div>
+                      ` : ''}
+                    </div>
+                  ` : html`
+                    <!-- Disabled Free Option for returning users -->
+                    <div class="border-4 border-gray-300 p-4 rounded-lg bg-gray-100 opacity-60">
+                      <div class="flex justify-between items-center mb-2">
+                        <h4 class="text-lg font-bold text-gray-500">Free</h4>
+                        <span class="text-lg font-bold text-gray-500">$0</span>
+                      </div>
+                      <ul class="list-disc pl-5 space-y-1 mb-3 text-gray-500">
+                        <li>Live on homepage for 7 days</li>
+                        <li>High authority backlink (requires 3+ upvotes)</li>
+                        <li>Standard launch queue</li>
+                      </ul>
+                      <div class="bg-gray-200 text-gray-600 text-sm font-bold py-1 px-2 rounded inline-block">
+                        <i class="fas fa-lock mr-1"></i> Already Used
+                      </div>
+                    </div>
+                  `}
                   
                   <!-- Featured Option -->
                   <div 

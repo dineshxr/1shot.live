@@ -3,8 +3,17 @@
   "builds": [
     { "src": "**/*", "use": "@vercel/static" }
   ],
+  "functions": {
+    "api/screenshot.js": {
+      "maxDuration": 30
+    }
+  },
   "rewrites": [
-    { "source": "/(.*)", "destination": "/index.html" }
+    { "source": "/(.*)", "destination": "/index.html" },
+    {
+      "source": "/startup/(.*)",
+      "destination": "/index.html"
+    }
   ],
   "cleanUrls": true,
   "trailingSlash": false
