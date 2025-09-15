@@ -28,32 +28,34 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
   const [userHasPreviousSubmissions, setUserHasPreviousSubmissions] = useState(false); // Track if user has submitted before
   const [checkingPreviousSubmissions, setCheckingPreviousSubmissions] = useState(false); // Loading state for checking submissions
 
-  // Generate available launch dates
+  // Generate available launch dates using database function for consistency
   const generateLaunchDates = async () => {
     const dates = [];
-    // Use PDT time zone for date calculations
-    const today = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Los_Angeles' }));
+    const supabase = supabaseClient();
     
-    // Find the next weekday (Monday through Friday)
-    let nextDate = new Date(today);
-    let daysAdded = 0;
+    // Use database function to get next available date for free plan
+    const { data: nextFreeDate, error: freeDateError } = await supabase.rpc('get_next_launch_date', { plan_type: 'free' });
     
-    // Include today as an available date
-    nextDate.setDate(today.getDate());
+    if (freeDateError) {
+      console.error('Error getting next free launch date:', freeDateError);
+      return [];
+    }
     
-    // Generate sequential available dates on weekdays (Monday through Friday)
-    // We'll show only the next 3 dates
-    while (dates.length < 3 && daysAdded < 30) {
-      const day = nextDate.getDay(); // 0 = Sunday, 1 = Monday, etc.
+    // Start from the next available free date
+    let currentDate = new Date(nextFreeDate + 'T00:00:00');
+    let daysChecked = 0;
+    
+    // Generate 3 available dates
+    while (dates.length < 3 && daysChecked < 30) {
+      const day = currentDate.getDay(); // 0 = Sunday, 1 = Monday, etc.
       
       // Only use weekdays (Monday = 1 through Friday = 5)
       if (day >= 1 && day <= 5) {
         const dateOptions = { weekday: 'long', month: 'long', day: 'numeric' };
-        const formattedDate = nextDate.toLocaleDateString('en-US', dateOptions);
-        const dateValue = nextDate.toISOString().split('T')[0];
+        const formattedDate = currentDate.toLocaleDateString('en-US', dateOptions);
+        const dateValue = currentDate.toISOString().split('T')[0];
         
-        // Check how many submissions are already scheduled for this date
-        const supabase = supabaseClient();
+        // Check current capacity for this date
         const { data, error, count } = await supabase
           .from('startups')
           .select('id', { count: 'exact' })
@@ -64,8 +66,8 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
           console.error('Error checking launch date availability:', error);
         }
         
-        // Limit free submissions to 6 per day
-        const freeAvailable = count < 6;
+        // Limit free submissions to 6 per day (same as database function)
+        const freeAvailable = (count || 0) < 6;
         
         dates.push({
           date: formattedDate,
@@ -77,8 +79,8 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
       }
       
       // Move to next day
-      nextDate.setDate(nextDate.getDate() + 1);
-      daysAdded++;
+      currentDate.setDate(currentDate.getDate() + 1);
+      daysChecked++;
     }
     
     return dates;
@@ -748,36 +750,6 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
                   class="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600 font-bold"
                 >
                   Copy Embed Code
-                </button>
-              </div>
-              
-              <!-- WordPress Shortcode Option -->
-              <div class="border border-gray-300 rounded p-3">
-                <h4 class="font-bold mb-2">🔌 WordPress Shortcode</h4>
-                <p class="text-sm text-gray-600 mb-3">For WordPress sites, use this shortcode.</p>
-                <div class="bg-gray-100 p-3 rounded text-xs font-mono mb-3 overflow-x-auto">
-                  <code id="wp-shortcode">[submithunt_badge]</code>
-                </div>
-                <button 
-                  onClick=${() => {
-                    const shortcode = document.getElementById('wp-shortcode').textContent;
-                    navigator.clipboard.writeText(shortcode).then(() => {
-                      // Show copied feedback
-                      const btn = event.target;
-                      const originalText = btn.textContent;
-                      btn.textContent = 'Copied!';
-                      btn.classList.add('bg-green-500');
-                      btn.classList.remove('bg-purple-500');
-                      setTimeout(() => {
-                        btn.textContent = originalText;
-                        btn.classList.remove('bg-green-500');
-                        btn.classList.add('bg-purple-500');
-                      }, 2000);
-                    });
-                  }}
-                  class="px-4 py-2 bg-purple-500 text-white rounded hover:bg-purple-600 font-bold"
-                >
-                  Copy Shortcode
                 </button>
               </div>
             </div>
