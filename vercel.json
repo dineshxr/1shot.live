@@ -3,11 +3,6 @@
   "builds": [
     { "src": "**/*", "use": "@vercel/static" }
   ],
-  "functions": {
-    "api/screenshot.js": {
-      "maxDuration": 30
-    }
-  },
   "rewrites": [
     { "source": "/(.*)", "destination": "/index.html" },
     {
