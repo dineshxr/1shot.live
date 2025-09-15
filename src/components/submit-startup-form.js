@@ -28,21 +28,34 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
   const [userHasPreviousSubmissions, setUserHasPreviousSubmissions] = useState(false); // Track if user has submitted before
   const [checkingPreviousSubmissions, setCheckingPreviousSubmissions] = useState(false); // Loading state for checking submissions
 
-  // Generate available launch dates using database function for consistency
+  // Generate available launch dates with fallback logic
   const generateLaunchDates = async () => {
     const dates = [];
     const supabase = supabaseClient();
     
-    // Use database function to get next available date for free plan
-    const { data: nextFreeDate, error: freeDateError } = await supabase.rpc('get_next_launch_date', { plan_type: 'free' });
+    // Start from today, find next weekday
+    let currentDate = new Date();
     
-    if (freeDateError) {
-      console.error('Error getting next free launch date:', freeDateError);
-      return [];
+    // If it's weekend or after 5 PM PST, start from next weekday
+    const pstTime = new Date(currentDate.toLocaleString("en-US", {timeZone: "America/Los_Angeles"}));
+    const currentHour = pstTime.getHours();
+    const currentDay = pstTime.getDay();
+    
+    // If it's weekend (Saturday=6, Sunday=0) or after 5 PM, move to next business day
+    if (currentDay === 0 || currentDay === 6 || currentHour >= 17) {
+      // Move to next Monday if weekend, or next day if after hours
+      while (currentDate.getDay() === 0 || currentDate.getDay() === 6) {
+        currentDate.setDate(currentDate.getDate() + 1);
+      }
+      if (currentHour >= 17 && currentDay >= 1 && currentDay <= 5) {
+        currentDate.setDate(currentDate.getDate() + 1);
+        // Skip weekend if we land on it
+        while (currentDate.getDay() === 0 || currentDate.getDay() === 6) {
+          currentDate.setDate(currentDate.getDate() + 1);
+        }
+      }
     }
     
-    // Start from the next available free date
-    let currentDate = new Date(nextFreeDate + 'T00:00:00');
     let daysChecked = 0;
     
     // Generate 3 available dates
@@ -66,7 +79,7 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
           console.error('Error checking launch date availability:', error);
         }
         
-        // Limit free submissions to 6 per day (same as database function)
+        // Limit free submissions to 6 per day
         const freeAvailable = (count || 0) < 6;
         
         dates.push({
