@@ -68,26 +68,33 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
         const formattedDate = currentDate.toLocaleDateString('en-US', dateOptions);
         const dateValue = currentDate.toISOString().split('T')[0];
         
-        // Check current capacity for this date
-        const { data, error, count } = await supabase
+        // Check current capacity for this date - count ALL plans
+        const { data: allData, error: allError, count: totalCount } = await supabase
+          .from('startups')
+          .select('id', { count: 'exact' })
+          .eq('launch_date', dateValue);
+        
+        // Also get free plan count specifically
+        const { data: freeData, error: freeError, count: freeCount } = await supabase
           .from('startups')
           .select('id', { count: 'exact' })
           .eq('plan', 'free')
           .eq('launch_date', dateValue);
         
-        if (error) {
-          console.error('Error checking launch date availability:', error);
+        if (allError || freeError) {
+          console.error('Error checking launch date availability:', allError || freeError);
         }
         
         // Limit free submissions to 6 per day
-        const freeAvailable = (count || 0) < 6;
+        const freeAvailable = (freeCount || 0) < 6;
         
         dates.push({
           date: formattedDate,
           value: dateValue,
           freeAvailable: freeAvailable,
           premiumAvailable: true, // Featured always available
-          freeCount: count || 0
+          freeCount: freeCount || 0,
+          totalCount: totalCount || 0
         });
       }
       
@@ -1172,7 +1179,7 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
                       <div class="mt-2 text-sm text-gray-600">
                         ${!date.freeAvailable ? html`
                           <span class="text-red-600 font-bold">❌ Date unavailable - all 6 free slots filled</span>
-                        ` : date.freeCount > 0 ? `${date.freeCount} startup${date.freeCount !== 1 ? 's' : ''} scheduled` : 'No startups scheduled yet'}
+                        ` : date.totalCount > 0 ? `${date.totalCount} startup${date.totalCount !== 1 ? 's' : ''} scheduled` : 'No startups scheduled yet'}
                       </div>
                     </div>
                   `)}
