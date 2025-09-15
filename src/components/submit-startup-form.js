@@ -1167,13 +1167,23 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
                 >
                   Previous
                 </button>
-                <button
-                  type="submit"
-                  class="neo-button px-4 py-2 bg-green-400 border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:bg-green-500 font-bold disabled:opacity-50"
-                  disabled=${loading}
-                >
-                  ${loading ? "Submitting..." : "Submit"}
-                </button>
+                ${formData.plan === 'free' && availableLaunchDates.filter(date => date.freeAvailable).length > 0 ? html`
+                  <button
+                    type="submit"
+                    class="neo-button px-4 py-2 bg-green-400 border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:bg-green-500 font-bold disabled:opacity-50"
+                    disabled=${loading}
+                  >
+                    ${loading ? "Submitting..." : "Submit"}
+                  </button>
+                ` : formData.plan === 'featured' ? html`
+                  <button
+                    type="submit"
+                    class="neo-button px-4 py-2 bg-green-400 border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:bg-green-500 font-bold disabled:opacity-50"
+                    disabled=${loading}
+                  >
+                    ${loading ? "Submitting..." : "Submit"}
+                  </button>
+                ` : ''}
               </div>
             </div>
           ` : ''}
