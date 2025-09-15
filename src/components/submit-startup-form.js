@@ -1097,7 +1097,7 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
                       Upgrade to Featured ($5)
                     </button>
                   </div>
-                ` : availableLaunchDates.filter(date => date.freeAvailable).length < 2 ? html`
+                ` : availableLaunchDates.filter(date => date.freeAvailable).length < 2 && availableLaunchDates.filter(date => date.freeAvailable).length > 0 ? html`
                   <div class="mb-4 p-4 bg-blue-100 border-2 border-blue-400 rounded">
                     <h4 class="font-bold text-blue-800 mb-2">📅 Limited Free Slots Available</h4>
                     <p class="text-blue-800 mb-3">Only ${availableLaunchDates.filter(date => date.freeAvailable).length} free slot${availableLaunchDates.filter(date => date.freeAvailable).length === 1 ? '' : 's'} remaining. Consider Featured for guaranteed immediate launch!</p>
