@@ -36,25 +36,27 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
     // Start from today, find next weekday
     let currentDate = new Date();
     
-    // If it's weekend or after 5 PM PST, start from next weekday
+    // If it's weekend or after 8 AM PST, start from next weekday
     const pstTime = new Date(currentDate.toLocaleString("en-US", {timeZone: "America/Los_Angeles"}));
     const currentHour = pstTime.getHours();
     const currentDay = pstTime.getDay();
     
-    // If it's weekend (Saturday=6, Sunday=0) or after 5 PM, move to next business day
-    if (currentDay === 0 || currentDay === 6 || currentHour >= 17) {
-      // Move to next Monday if weekend, or next day if after hours
+    // If it's weekend (Saturday=6, Sunday=0), move to next Monday
+    if (currentDay === 0 || currentDay === 6) {
+      // Move to next Monday if weekend
       while (currentDate.getDay() === 0 || currentDate.getDay() === 6) {
         currentDate.setDate(currentDate.getDate() + 1);
       }
-      if (currentHour >= 17 && currentDay >= 1 && currentDay <= 5) {
+    }
+    // If it's a weekday but after 8 AM PST, move to next day
+    else if (currentDay >= 1 && currentDay <= 5 && currentHour >= 8) {
+      currentDate.setDate(currentDate.getDate() + 1);
+      // Skip weekend if we land on it
+      while (currentDate.getDay() === 0 || currentDate.getDay() === 6) {
         currentDate.setDate(currentDate.getDate() + 1);
-        // Skip weekend if we land on it
-        while (currentDate.getDay() === 0 || currentDate.getDay() === 6) {
-          currentDate.setDate(currentDate.getDate() + 1);
-        }
       }
     }
+    // If it's Monday-Friday before 8 AM PST, we can use today
     
     let daysChecked = 0;
     
@@ -501,9 +503,20 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
                     screenshot_url: screenshotUrl,
                     plan: formData.plan,
                     launch_date: formData.launchDate || (() => {
-                      // Fallback to next weekday
+                      // Fallback to next available weekday based on 8 AM PST rule
                       const pdt = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Los_Angeles' }));
                       let nextDay = new Date(pdt);
+                      const currentHour = pdt.getHours();
+                      const currentDayOfWeek = pdt.getDay();
+                      
+                      // If it's a weekday and before 8 AM PST, use today
+                      if (currentDayOfWeek >= 1 && currentDayOfWeek <= 5 && currentHour < 8) {
+                        return nextDay.getFullYear() + '-' + 
+                               String(nextDay.getMonth() + 1).padStart(2, '0') + '-' + 
+                               String(nextDay.getDate()).padStart(2, '0');
+                      }
+                      
+                      // Otherwise, find next weekday
                       nextDay.setDate(pdt.getDate() + 1);
                       
                       // Find next weekday (Monday-Friday)

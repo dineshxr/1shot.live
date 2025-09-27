@@ -1,6 +1,7 @@
 import { html } from 'htm/preact';
 import { useState, useEffect } from 'preact/hooks';
 import { auth } from '../lib/auth.js';
+import { validateEmail } from '../lib/email-validation.js';
 
 // Login modal component using email magic link authentication
 /* global useState, useEffect, html, useLayoutEffect, useMemo, useCallback, useRef, useReducer */
@@ -9,11 +10,19 @@ export const LoginModal = ({ isOpen, onClose, onLoginSuccess }) => {
   const [error, setError] = useState(null);
   const [email, setEmail] = useState('');
   const [step, setStep] = useState('email'); // 'email' or 'sent'
+  const [emailValidation, setEmailValidation] = useState({ isValid: true, error: null });
 
   // Handle email submission
   const handleEmailSubmit = async (e) => {
     e.preventDefault();
     if (!email.trim()) return;
+
+    // Validate email domain before attempting to send magic link
+    const validation = validateEmail(email.trim());
+    if (!validation.isValid) {
+      setError(validation.error);
+      return;
+    }
 
     setLoading(true);
     setError(null);
@@ -30,12 +39,30 @@ export const LoginModal = ({ isOpen, onClose, onLoginSuccess }) => {
     }
   };
 
+  // Handle email input change with validation
+  const handleEmailChange = (e) => {
+    const newEmail = e.target.value;
+    setEmail(newEmail);
+    
+    // Clear previous errors when user starts typing
+    if (error) setError(null);
+    
+    // Validate email in real-time (but only show errors after user stops typing)
+    if (newEmail.trim()) {
+      const validation = validateEmail(newEmail.trim());
+      setEmailValidation(validation);
+    } else {
+      setEmailValidation({ isValid: true, error: null });
+    }
+  };
+
   // Reset modal state when opening
   useEffect(() => {
     if (isOpen) {
       setStep('email');
       setEmail('');
       setError(null);
+      setEmailValidation({ isValid: true, error: null });
     }
   }, [isOpen]);
 
@@ -94,6 +121,12 @@ export const LoginModal = ({ isOpen, onClose, onLoginSuccess }) => {
             <p class="text-gray-700 mb-4">
               To submit your startup, please log in with your account.
             </p>
+            <div class="bg-blue-50 border border-blue-200 rounded-md p-3 mb-4">
+              <p class="text-sm text-blue-800">
+                <i class="fas fa-info-circle mr-2"></i>
+                Please use a permanent email address. Temporary email providers are not allowed.
+              </p>
+            </div>
           </div>
           
           ${step === 'email' ? html`
@@ -107,23 +140,31 @@ export const LoginModal = ({ isOpen, onClose, onLoginSuccess }) => {
                 type="email"
                 id="email"
                 value=${email}
-                onInput=${(e) => setEmail(e.target.value)}
-                placeholder="Enter your email"
-                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                onInput=${handleEmailChange}
+                placeholder="Enter your email (no temporary emails)"
+                class="w-full px-3 py-2 border ${!emailValidation.isValid && email.trim() ? 'border-red-300 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} rounded-md focus:outline-none focus:ring-2 focus:border-transparent"
                 required
                 disabled=${loading}
               />
             </div>
             
+            ${!emailValidation.isValid && email.trim() && html`
+              <div class="text-orange-600 text-sm bg-orange-50 p-3 rounded-md">
+                <i class="fas fa-exclamation-triangle mr-2"></i>
+                ${emailValidation.error}
+              </div>
+            `}
+            
             ${error && html`
               <div class="text-red-600 text-sm bg-red-50 p-3 rounded-md">
+                <i class="fas fa-times-circle mr-2"></i>
                 ${error}
               </div>
             `}
             
             <button
               type="submit"
-              disabled=${loading || !email.trim()}
+              disabled=${loading || !email.trim() || !emailValidation.isValid}
               class="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               ${loading ? 'Sending...' : 'Send Magic Link'}

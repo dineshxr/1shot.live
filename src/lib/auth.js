@@ -1,4 +1,5 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.38.4/+esm';
+import { validateEmail } from './email-validation.js';
 
 // Supabase client for auth operations - singleton pattern to prevent multiple instances
 const supabaseUrl = window.PUBLIC_ENV?.supabaseUrl || 'https://lbayphzxmdtdmrqmeomt.supabase.co';
@@ -108,6 +109,12 @@ export const auth = {
   // Sign in with email (sends magic link)
   async signInWithEmail(email) {
     try {
+      // Validate email domain before attempting to send magic link
+      const validation = validateEmail(email);
+      if (!validation.isValid) {
+        throw new Error(validation.error);
+      }
+
       const { data, error } = await supabase.auth.signInWithOtp({
         email: email,
         options: {
