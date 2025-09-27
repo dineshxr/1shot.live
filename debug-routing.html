@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug Routing - SubmitHunt</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .debug-info { background: #f0f0f0; padding: 15px; margin: 10px 0; border-radius: 5px; }
+        .error { background: #ffe6e6; border: 1px solid #ff0000; }
+        .success { background: #e6ffe6; border: 1px solid #00ff00; }
+    </style>
+</head>
+<body>
+    <h1>SubmitHunt Routing Debug</h1>
+    
+    <div class="debug-info">
+        <h3>Current URL Information:</h3>
+        <p><strong>Full URL:</strong> <span id="fullUrl"></span></p>
+        <p><strong>Pathname:</strong> <span id="pathname"></span></p>
+        <p><strong>Search:</strong> <span id="search"></span></p>
+        <p><strong>Hash:</strong> <span id="hash"></span></p>
+    </div>
+
+    <div class="debug-info">
+        <h3>Route Detection:</h3>
+        <p><strong>Is Startup Route:</strong> <span id="isStartupRoute"></span></p>
+        <p><strong>Extracted Slug:</strong> <span id="extractedSlug"></span></p>
+    </div>
+
+    <div class="debug-info">
+        <h3>Test Links:</h3>
+        <ul>
+            <li><a href="/">Home</a></li>
+            <li><a href="/startup/armanet">Startup: armanet</a></li>
+            <li><a href="/startup/test-startup">Startup: test-startup</a></li>
+        </ul>
+    </div>
+
+    <div class="debug-info">
+        <h3>Actions:</h3>
+        <button onclick="testFetch()">Test Supabase Connection</button>
+        <button onclick="testStartupFetch()">Test Startup Fetch</button>
+        <div id="testResults"></div>
+    </div>
+
+    <script type="module">
+        // Update URL information
+        function updateUrlInfo() {
+            document.getElementById('fullUrl').textContent = window.location.href;
+            document.getElementById('pathname').textContent = window.location.pathname;
+            document.getElementById('search').textContent = window.location.search || '(none)';
+            document.getElementById('hash').textContent = window.location.hash || '(none)';
+            
+            // Route detection
+            const isStartupRoute = window.location.pathname.startsWith('/startup/');
+            document.getElementById('isStartupRoute').textContent = isStartupRoute ? 'YES' : 'NO';
+            
+            if (isStartupRoute) {
+                const pathSegments = window.location.pathname.split('/');
+                const slug = pathSegments[pathSegments.length - 1];
+                document.getElementById('extractedSlug').textContent = slug || '(empty)';
+            } else {
+                document.getElementById('extractedSlug').textContent = 'N/A';
+            }
+        }
+
+        // Test Supabase connection
+        window.testFetch = async function() {
+            const resultsDiv = document.getElementById('testResults');
+            resultsDiv.innerHTML = '<p>Testing Supabase connection...</p>';
+            
+            try {
+                const response = await fetch('https://lbayphzxmdtdmrqmeomt.supabase.co/rest/v1/startups?select=slug,title&limit=5', {
+                    headers: {
+                        'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxiYXlwaHp4bWR0ZG1ycW1lb210Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDA5NTAyNTYsImV4cCI6MjA1NjUyNjI1Nn0.uSt7ll1Gy_TtbHxTyRtkyToZBIbW7ud18X45k5BdzKo',
+                        'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxiYXlwaHp4bWR0ZG1ycW1lb210Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDA5NTAyNTYsImV4cCI6MjA1NjUyNjI1Nn0.uSt7ll1Gy_TtbHxTyRtkyToZBIbW7ud18X45k5BdzKo'
+                    }
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    resultsDiv.innerHTML = `
+                        <div class="success">
+                            <h4>✅ Supabase Connection Successful</h4>
+                            <p>Found ${data.length} startups:</p>
+                            <ul>
+                                ${data.map(startup => `<li>${startup.title} (slug: ${startup.slug})</li>`).join('')}
+                            </ul>
+                        </div>
+                    `;
+                } else {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+            } catch (error) {
+                resultsDiv.innerHTML = `
+                    <div class="error">
+                        <h4>❌ Supabase Connection Failed</h4>
+                        <p>Error: ${error.message}</p>
+                    </div>
+                `;
+            }
+        };
+
+        // Test specific startup fetch
+        window.testStartupFetch = async function() {
+            const resultsDiv = document.getElementById('testResults');
+            const slug = document.getElementById('extractedSlug').textContent;
+            
+            if (slug === 'N/A' || slug === '(empty)') {
+                resultsDiv.innerHTML = '<div class="error"><p>No startup slug to test</p></div>';
+                return;
+            }
+            
+            resultsDiv.innerHTML = `<p>Testing startup fetch for slug: ${slug}...</p>`;
+            
+            try {
+                const response = await fetch(`https://lbayphzxmdtdmrqmeomt.supabase.co/rest/v1/startups?select=*&slug=eq.${encodeURIComponent(slug)}&limit=1`, {
+                    headers: {
+                        'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxiYXlwaHp4bWR0ZG1ycW1lb210Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDA5NTAyNTYsImV4cCI6MjA1NjUyNjI1Nn0.uSt7ll1Gy_TtbHxTyRtkyToZBIbW7ud18X45k5BdzKo',
+                        'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxiYXlwaHp4bWR0ZG1ycW1lb210Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDA5NTAyNTYsImV4cCI6MjA1NjUyNjI1Nn0.uSt7ll1Gy_TtbHxTyRtkyToZBIbW7ud18X45k5BdzKo'
+                    }
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.length > 0) {
+                        resultsDiv.innerHTML = `
+                            <div class="success">
+                                <h4>✅ Startup Found</h4>
+                                <p><strong>Title:</strong> ${data[0].title}</p>
+                                <p><strong>Slug:</strong> ${data[0].slug}</p>
+                                <p><strong>URL:</strong> ${data[0].url}</p>
+                                <p><strong>Description:</strong> ${data[0].description?.substring(0, 100)}...</p>
+                            </div>
+                        `;
+                    } else {
+                        resultsDiv.innerHTML = `
+                            <div class="error">
+                                <h4>❌ Startup Not Found</h4>
+                                <p>No startup found with slug: ${slug}</p>
+                            </div>
+                        `;
+                    }
+                } else {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+            } catch (error) {
+                resultsDiv.innerHTML = `
+                    <div class="error">
+                        <h4>❌ Startup Fetch Failed</h4>
+                        <p>Error: ${error.message}</p>
+                    </div>
+                `;
+            }
+        };
+
+        // Update on page load
+        updateUrlInfo();
+        
+        // Update on navigation
+        window.addEventListener('popstate', updateUrlInfo);
+    </script>
+</body>
+</html>

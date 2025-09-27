@@ -18,6 +18,10 @@ export const StartupDetailPage = () => {
         const pathSegments = window.location.pathname.split('/');
         const slug = pathSegments[pathSegments.length - 1];
         
+        console.log('StartupDetailPage: Current pathname:', window.location.pathname);
+        console.log('StartupDetailPage: Path segments:', pathSegments);
+        console.log('StartupDetailPage: Extracted slug:', slug);
+        
         if (!slug) {
           throw new Error('No startup slug found in URL');
         }

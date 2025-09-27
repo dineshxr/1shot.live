@@ -12,7 +12,7 @@ import { auth } from "../lib/auth.js";
 export const App = () => {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
-  const [currentRoute, setCurrentRoute] = useState(window.location.pathname);
+  const [currentRoute, setCurrentRoute] = useState('');
   const [user, setUser] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [startups, setStartups] = useState([]);
@@ -20,6 +20,11 @@ export const App = () => {
   const [sortBy, setSortBy] = useState('trending');
   const [searchQuery, setSearchQuery] = useState('');
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+
+  // Set initial route on component mount
+  useEffect(() => {
+    setCurrentRoute(window.location.pathname);
+  }, []);
 
   // Handle authentication state changes
   useEffect(() => {
@@ -89,6 +94,10 @@ export const App = () => {
   
   // Check if the current route is a startup detail page
   const isStartupDetailPage = currentRoute.startsWith('/startup/');
+  
+  // Debug logging
+  console.log('App: Current route:', currentRoute);
+  console.log('App: Is startup detail page:', isStartupDetailPage);
 
   const handleCategoryFilter = (category) => {
     setSelectedCategory(category);
