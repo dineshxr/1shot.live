@@ -476,12 +476,14 @@ export const Content = ({ user, onStartupsChange, selectedCategory, sortBy, sear
               
               return sortedDateKeys.map((dateKey, index) => {
                 const startups = groupedStartups[dateKey];
-                const date = new Date(dateKey);
+                // Construct date at noon UTC to avoid timezone shifting to previous day
+                const date = new Date(`${dateKey}T12:00:00Z`);
                 const formattedDate = date.toLocaleDateString('en-US', {
                   weekday: 'long',
                   year: 'numeric',
                   month: 'long',
-                  day: 'numeric'
+                  day: 'numeric',
+                  timeZone: 'America/Los_Angeles'
                 });
                 
                 const shouldShowFeatured = !featuredCardShown && totalStartupsRendered + startups.length >= 6;
