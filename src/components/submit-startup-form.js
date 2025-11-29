@@ -27,6 +27,7 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
   const [availableLaunchDates, setAvailableLaunchDates] = useState([]); // Available launch dates
   const [userHasPreviousSubmissions, setUserHasPreviousSubmissions] = useState(false); // Track if user has submitted before
   const [checkingPreviousSubmissions, setCheckingPreviousSubmissions] = useState(false); // Loading state for checking submissions
+  const [loadingDates, setLoadingDates] = useState(false); // Loading state for date fetching
 
   // Helper to get EST date string (YYYY-MM-DD) from a Date object
   const getESTDateString = (date) => {
@@ -36,10 +37,45 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
            String(estDate.getDate()).padStart(2, '0');
   };
 
-  // Generate available launch dates with fallback logic
-  const generateLaunchDates = async () => {
-    const dates = [];
+  // Fetch real-time slot availability from database
+  const fetchSlotAvailability = async (dateValue) => {
     const supabase = supabaseClient();
+    try {
+      // Use the database function for accurate real-time data
+      const { data, error } = await supabase.rpc('get_available_slots', { target_date: dateValue });
+      
+      if (error) {
+        console.error('Error fetching slot availability:', error);
+        // Fallback to direct query
+        const { count: freeCount } = await supabase
+          .from('startups')
+          .select('id', { count: 'exact' })
+          .eq('plan', 'free')
+          .eq('launch_date', dateValue);
+        
+        const { count: totalCount } = await supabase
+          .from('startups')
+          .select('id', { count: 'exact' })
+          .eq('launch_date', dateValue);
+        
+        return {
+          free_slots_remaining: 6 - (freeCount || 0),
+          free_count: freeCount || 0,
+          total_count: totalCount || 0
+        };
+      }
+      
+      return data?.[0] || { free_slots_remaining: 6, free_count: 0, total_count: 0 };
+    } catch (err) {
+      console.error('Error in fetchSlotAvailability:', err);
+      return { free_slots_remaining: 6, free_count: 0, total_count: 0 };
+    }
+  };
+
+  // Generate available launch dates with real-time database check
+  const generateLaunchDates = async () => {
+    setLoadingDates(true);
+    const dates = [];
     
     // Get current time in EST
     const now = new Date();
@@ -79,34 +115,19 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
         // Get date value in YYYY-MM-DD format (EST)
         const dateValue = getESTDateString(workingDate);
         
-        // Check current capacity for this date
-        const { error: allError, count: totalCount } = await supabase
-          .from('startups')
-          .select('id', { count: 'exact' })
-          .eq('launch_date', dateValue);
+        // Fetch real-time slot availability from database
+        const slotData = await fetchSlotAvailability(dateValue);
         
-        // Get free plan count specifically
-        const { error: freeError, count: freeCount } = await supabase
-          .from('startups')
-          .select('id', { count: 'exact' })
-          .eq('plan', 'free')
-          .eq('launch_date', dateValue);
-        
-        if (allError || freeError) {
-          console.error('Error checking launch date availability:', allError || freeError);
-        }
-        
-        const actualFreeCount = freeCount || 0;
-        const freeAvailable = actualFreeCount < MAX_FREE_PER_DAY;
-        const slotsRemaining = MAX_FREE_PER_DAY - actualFreeCount;
+        const slotsRemaining = slotData.free_slots_remaining;
+        const freeAvailable = slotsRemaining > 0;
         
         dates.push({
           date: formattedDate,
           value: dateValue,
           freeAvailable: freeAvailable,
           premiumAvailable: true, // Featured always available
-          freeCount: actualFreeCount,
-          totalCount: totalCount || 0,
+          freeCount: slotData.free_count,
+          totalCount: slotData.total_count,
           slotsRemaining: slotsRemaining,
           dayOfWeek: dayOfWeek
         });
@@ -117,7 +138,36 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
       daysChecked++;
     }
     
+    setLoadingDates(false);
     return dates;
+  };
+  
+  // Refresh slot availability for all dates (called periodically)
+  const refreshSlotAvailability = async () => {
+    if (availableLaunchDates.length === 0) return;
+    
+    const updatedDates = await Promise.all(
+      availableLaunchDates.map(async (dateInfo) => {
+        const slotData = await fetchSlotAvailability(dateInfo.value);
+        return {
+          ...dateInfo,
+          freeCount: slotData.free_count,
+          totalCount: slotData.total_count,
+          slotsRemaining: slotData.free_slots_remaining,
+          freeAvailable: slotData.free_slots_remaining > 0
+        };
+      })
+    );
+    
+    setAvailableLaunchDates(updatedDates);
+    
+    // If selected date is now full, clear selection
+    if (formData.launchDate) {
+      const selectedDate = updatedDates.find(d => d.value === formData.launchDate);
+      if (selectedDate && !selectedDate.freeAvailable && formData.plan === 'free') {
+        setFormData(prev => ({ ...prev, launchDate: '' }));
+      }
+    }
   };
   
   // Select a launch date
@@ -186,7 +236,15 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
     
     loadLaunchDates();
     
-    // Removed Turnstile captcha integration
+    // Set up periodic refresh of slot availability (every 10 seconds)
+    const refreshInterval = setInterval(() => {
+      refreshSlotAvailability();
+    }, 10000);
+    
+    // Cleanup interval on unmount or when modal closes
+    return () => {
+      clearInterval(refreshInterval);
+    };
   }, [isOpen]); // Re-run when modal opens
 
   // Generate a slug from the project name
@@ -1137,10 +1195,25 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
               
               ${formData.plan === 'free' ? html`
               <div class="mb-6">
-                <h3 class="text-xl font-bold mb-2 text-black">📅 Choose Your Launch Date</h3>
+                <div class="flex items-center justify-between mb-2">
+                  <h3 class="text-xl font-bold text-black">📅 Choose Your Launch Date</h3>
+                  <span class="text-xs text-gray-400 flex items-center gap-1">
+                    <span class="inline-block w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
+                    Live
+                  </span>
+                </div>
                 <p class="text-gray-600 text-sm mb-4">Startups launch at 8 AM EST, Monday-Friday. Max 6 free slots per day.</p>
                 
-                ${availableLaunchDates.every(date => !date.freeAvailable) ? html`
+                ${loadingDates ? html`
+                  <div class="flex items-center justify-center py-8">
+                    <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+                    <span class="ml-3 text-gray-600">Loading available dates...</span>
+                  </div>
+                ` : availableLaunchDates.length === 0 ? html`
+                  <div class="p-4 bg-gray-100 border-2 border-gray-300 rounded text-center text-gray-600">
+                    Unable to load dates. Please try again.
+                  </div>
+                ` : availableLaunchDates.every(date => !date.freeAvailable) ? html`
                   <div class="mb-4 p-4 bg-yellow-100 border-2 border-yellow-400 rounded">
                     <h4 class="font-bold text-yellow-800 mb-2">🚀 All Free Slots Are Full!</h4>
                     <p class="text-yellow-800 mb-3">All free launch dates are currently full. Consider upgrading to Featured to launch immediately!</p>
@@ -1154,72 +1227,72 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
                       Upgrade to Featured ($5)
                     </button>
                   </div>
-                ` : ''}
-                
-                <!-- Calendar-style grid -->
-                <div class="grid grid-cols-5 gap-2 mb-4">
-                  ${availableLaunchDates.map(date => {
-                    const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-                    const dayName = dayNames[date.dayOfWeek];
-                    const dateNum = date.date.split(' ')[2]; // Get day number
-                    const isSelected = formData.launchDate === date.value;
-                    const isAvailable = date.freeAvailable;
-                    
-                    return html`
-                      <div 
-                        class="text-center p-2 rounded-lg border-2 transition-all ${
-                          isSelected 
-                            ? 'border-blue-500 bg-blue-100' 
-                            : isAvailable 
-                              ? 'border-black hover:bg-gray-50 cursor-pointer' 
-                              : 'border-gray-300 bg-gray-100 opacity-60 cursor-not-allowed'
-                        }"
-                        onClick=${isAvailable ? () => selectLaunchDate(date.value) : null}
-                      >
-                        <div class="text-xs font-bold ${isAvailable ? 'text-gray-600' : 'text-gray-400'}">${dayName}</div>
-                        <div class="text-lg font-bold ${isSelected ? 'text-blue-700' : isAvailable ? 'text-black' : 'text-gray-400'}">${dateNum}</div>
-                        <div class="text-xs ${isAvailable ? 'text-green-600' : 'text-red-500'} font-medium">
-                          ${isAvailable ? `${date.slotsRemaining} left` : 'Full'}
+                ` : html`
+                  <!-- Calendar-style grid -->
+                  <div class="grid grid-cols-5 gap-2 mb-4">
+                    ${availableLaunchDates.map(date => {
+                      const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+                      const dayName = dayNames[date.dayOfWeek];
+                      const dateNum = date.date.split(' ')[2]; // Get day number
+                      const isSelected = formData.launchDate === date.value;
+                      const isAvailable = date.freeAvailable;
+                      
+                      return html`
+                        <div 
+                          class="text-center p-2 rounded-lg border-2 transition-all ${
+                            isSelected 
+                              ? 'border-blue-500 bg-blue-100' 
+                              : isAvailable 
+                                ? 'border-black hover:bg-gray-50 cursor-pointer' 
+                                : 'border-gray-300 bg-gray-200 cursor-not-allowed'
+                          }"
+                          onClick=${isAvailable ? () => selectLaunchDate(date.value) : null}
+                        >
+                          <div class="text-xs font-bold ${isAvailable ? 'text-gray-600' : 'text-gray-400'}">${dayName}</div>
+                          <div class="text-lg font-bold ${isSelected ? 'text-blue-700' : isAvailable ? 'text-black' : 'text-gray-400'}">${dateNum}</div>
+                          <div class="text-xs ${isAvailable ? 'text-green-600' : 'text-red-500'} font-medium">
+                            ${isAvailable ? `${date.slotsRemaining} left` : 'Full'}
+                          </div>
+                          ${isSelected ? html`<div class="text-xs text-blue-600 mt-1">✓</div>` : ''}
                         </div>
-                        ${isSelected ? html`<div class="text-xs text-blue-600 mt-1">✓</div>` : ''}
-                      </div>
-                    `;
-                  })}
-                </div>
-                
-                <!-- Selected date details -->
-                ${formData.launchDate ? html`
-                  <div class="p-3 bg-blue-50 border-2 border-blue-200 rounded-lg">
-                    <div class="flex items-center justify-between">
-                      <div>
-                        <span class="font-bold text-blue-800">Selected: </span>
-                        <span class="text-blue-700">${availableLaunchDates.find(d => d.value === formData.launchDate)?.date || formData.launchDate}</span>
-                      </div>
-                      <div class="text-sm text-blue-600">
-                        ${(() => {
-                          const selected = availableLaunchDates.find(d => d.value === formData.launchDate);
-                          return selected ? `${selected.slotsRemaining} of 6 slots available` : '';
-                        })()}
+                      `;
+                    })}
+                  </div>
+                  
+                  <!-- Selected date details -->
+                  ${formData.launchDate ? html`
+                    <div class="p-3 bg-blue-50 border-2 border-blue-200 rounded-lg">
+                      <div class="flex items-center justify-between">
+                        <div>
+                          <span class="font-bold text-blue-800">Selected: </span>
+                          <span class="text-blue-700">${availableLaunchDates.find(d => d.value === formData.launchDate)?.date || formData.launchDate}</span>
+                        </div>
+                        <div class="text-sm text-blue-600">
+                          ${(() => {
+                            const selected = availableLaunchDates.find(d => d.value === formData.launchDate);
+                            return selected ? `${selected.slotsRemaining} of 6 slots available` : '';
+                          })()}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ` : html`
-                  <div class="p-3 bg-gray-50 border-2 border-gray-200 rounded-lg text-center text-gray-500">
-                    Click a date above to select your launch day
+                  ` : html`
+                    <div class="p-3 bg-gray-50 border-2 border-gray-200 rounded-lg text-center text-gray-500">
+                      Click a date above to select your launch day
+                    </div>
+                  `}
+                  
+                  <!-- Slot availability legend -->
+                  <div class="mt-3 flex items-center justify-center gap-4 text-xs text-gray-500">
+                    <div class="flex items-center gap-1">
+                      <span class="inline-block w-3 h-3 rounded-full bg-green-500"></span>
+                      <span>Available</span>
+                    </div>
+                    <div class="flex items-center gap-1">
+                      <span class="inline-block w-3 h-3 rounded-full bg-gray-400"></span>
+                      <span>Full (6/6)</span>
+                    </div>
                   </div>
                 `}
-                
-                <!-- Slot availability legend -->
-                <div class="mt-3 flex items-center justify-center gap-4 text-xs text-gray-500">
-                  <div class="flex items-center gap-1">
-                    <span class="inline-block w-3 h-3 rounded-full bg-green-500"></span>
-                    <span>Available</span>
-                  </div>
-                  <div class="flex items-center gap-1">
-                    <span class="inline-block w-3 h-3 rounded-full bg-red-500"></span>
-                    <span>Full (6/6)</span>
-                  </div>
-                </div>
               </div>
               ` : ''}
               
