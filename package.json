@@ -2,7 +2,6 @@
   "name": "submit-hunt",
   "scripts": {
     "dev": "npx live-server",
-    "build": "echo 'Static site - no build step needed'",
     "supabase:typegen": "bunx supabase gen types --lang=typescript --local > supabase/database-generated.types.ts"
   },
   "devDependencies": {
