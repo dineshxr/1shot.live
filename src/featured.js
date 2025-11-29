@@ -47,10 +47,10 @@ const LaunchCountdown = () => {
   const [nextLaunchDate, setNextLaunchDate] = useState(null);
   const [isWeekend, setIsWeekend] = useState(false);
 
-  // Calculate next launch date (weekday at 8 AM PST, skipping weekends)
+  // Calculate next launch date (weekday at 8 AM EST, skipping weekends)
   const getNextLaunchDate = () => {
     const now = new Date();
-    const pstNow = new Date(now.toLocaleString('en-US', { timeZone: 'America/Los_Angeles' }));
+    const pstNow = new Date(now.toLocaleString('en-US', { timeZone: 'America/New_York' }));
     
     let nextDate = new Date(pstNow);
     
@@ -88,7 +88,7 @@ const LaunchCountdown = () => {
   // Check if we're currently in a weekend
   const checkIfWeekend = () => {
     const now = new Date();
-    const pstNow = new Date(now.toLocaleString('en-US', { timeZone: 'America/Los_Angeles' }));
+    const pstNow = new Date(now.toLocaleString('en-US', { timeZone: 'America/New_York' }));
     const dayOfWeek = pstNow.getDay(); // 0 = Sunday, 6 = Saturday
     
     return dayOfWeek === 0 || dayOfWeek === 6;
@@ -97,7 +97,7 @@ const LaunchCountdown = () => {
   // Calculate time remaining
   const calculateTimeLeft = () => {
     const now = new Date();
-    const pstNow = new Date(now.toLocaleString('en-US', { timeZone: 'America/Los_Angeles' }));
+    const pstNow = new Date(now.toLocaleString('en-US', { timeZone: 'America/New_York' }));
     const target = getNextLaunchDate();
     
     const difference = target.getTime() - pstNow.getTime();
@@ -136,7 +136,7 @@ const LaunchCountdown = () => {
       weekday: 'long', 
       month: 'long', 
       day: 'numeric',
-      timeZone: 'America/Los_Angeles'
+      timeZone: 'America/New_York'
     });
   };
 
@@ -146,7 +146,7 @@ const LaunchCountdown = () => {
       hour: 'numeric',
       minute: '2-digit',
       timeZoneName: 'short',
-      timeZone: 'America/Los_Angeles'
+      timeZone: 'America/New_York'
     });
   };
 

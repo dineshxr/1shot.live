@@ -25,8 +25,8 @@ export const Content = ({ user, onStartupsChange, selectedCategory, sortBy, sear
       // Try to fetch from Supabase first
       try {
         const supabase = supabaseClient();
-        // Get today's date in YYYY-MM-DD format using PDT time zone
-        const today = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Los_Angeles' }));
+        // Get today's date in YYYY-MM-DD format using EST time zone
+        const today = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/New_York' }));
         const todayStr = today.getFullYear() + '-' + 
                       String(today.getMonth() + 1).padStart(2, '0') + '-' + 
                       String(today.getDate()).padStart(2, '0');
@@ -483,7 +483,7 @@ export const Content = ({ user, onStartupsChange, selectedCategory, sortBy, sear
                   year: 'numeric',
                   month: 'long',
                   day: 'numeric',
-                  timeZone: 'America/Los_Angeles'
+                  timeZone: 'America/New_York'
                 });
                 
                 const shouldShowFeatured = !featuredCardShown && totalStartupsRendered + startups.length >= 6;
