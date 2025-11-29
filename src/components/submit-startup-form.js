@@ -73,6 +73,7 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
   };
 
   // Generate available launch dates with real-time database check
+  // Free slots start 1 week away to promote paid submissions
   const generateLaunchDates = async () => {
     setLoadingDates(true);
     const dates = [];
@@ -80,24 +81,11 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
     // Get current time in EST
     const now = new Date();
     const estNow = new Date(now.toLocaleString("en-US", {timeZone: "America/New_York"}));
-    const currentHour = estNow.getHours();
-    const currentDay = estNow.getDay(); // 0 = Sunday, 6 = Saturday
     
-    // Start from EST today
+    // Start from EST today + 7 days (free slots are always 1 week away)
     let workingDate = new Date(estNow);
     workingDate.setHours(0, 0, 0, 0);
-    
-    // Determine if we can use today
-    let canUseToday = false;
-    if (currentDay >= 1 && currentDay <= 5 && currentHour < 8) {
-      // It's a weekday before 8 AM EST - can use today
-      canUseToday = true;
-    }
-    
-    // If we can't use today, start from tomorrow
-    if (!canUseToday) {
-      workingDate.setDate(workingDate.getDate() + 1);
-    }
+    workingDate.setDate(workingDate.getDate() + 7); // Add 7 days
     
     let daysChecked = 0;
     const MAX_FREE_PER_DAY = 6;
@@ -1140,8 +1128,8 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
                       </div>
                       <ul class="list-disc pl-5 space-y-1 mb-3">
                         <li>Live on homepage for 7 days</li>
-                        <li>High authority backlink (requires 3+ upvotes)</li>
-                        <li>Standard launch queue</li>
+                        <li>Nofollow backlink</li>
+                        <li>Launch date: 1 week from now</li>
                       </ul>
                       ${formData.plan === 'free' ? html`
                         <div class="bg-blue-100 text-blue-800 text-sm font-bold py-1 px-2 rounded inline-block">
@@ -1158,8 +1146,8 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
                       </div>
                       <ul class="list-disc pl-5 space-y-1 mb-3 text-gray-500">
                         <li>Live on homepage for 7 days</li>
-                        <li>High authority backlink (requires 3+ upvotes)</li>
-                        <li>Standard launch queue</li>
+                        <li>Nofollow backlink</li>
+                        <li>Launch date: 1 week from now</li>
                       </ul>
                       <div class="bg-gray-200 text-gray-600 text-sm font-bold py-1 px-2 rounded inline-block">
                         <i class="fas fa-lock mr-1"></i> Already Used
@@ -1169,19 +1157,22 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
                   
                   <!-- Featured Option -->
                   <div 
-                    class="border-4 ${formData.plan === 'premium' ? 'border-blue-500' : 'border-black'} p-4 rounded-lg cursor-pointer hover:bg-gray-50 transition-all"
+                    class="border-4 ${formData.plan === 'premium' ? 'border-blue-500' : 'border-black'} p-4 rounded-lg cursor-pointer hover:bg-gray-50 transition-all relative"
                     onClick=${() => {
                       window.open('/featured.html', '_blank');
                     }}
                   >
+                    <div class="absolute -top-2 -right-2 bg-yellow-400 text-black text-xs font-bold px-2 py-1 rounded border border-black">
+                      RECOMMENDED
+                    </div>
                     <div class="flex justify-between items-center mb-2">
                       <h4 class="text-lg font-bold">Featured</h4>
                       <span class="text-lg font-bold">$5</span>
                     </div>
                     <ul class="list-disc pl-5 space-y-1 mb-3">
                       <li>Live on homepage for 14 days</li>
-                      <li>Guaranteed high authority backlink</li>
-                      <li>Skip the queue (launch today)</li>
+                      <li><strong>Dofollow backlink (37+ DR)</strong></li>
+                      <li>Launch immediately (skip the queue)</li>
                       <li>Featured in our startup newsletter</li>
                     </ul>
                     ${formData.plan === 'premium' ? html`
