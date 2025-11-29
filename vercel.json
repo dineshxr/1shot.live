@@ -1,9 +1,5 @@
 {
-  "routes": [
-    { "handle": "filesystem" },
-    { "src": "/featured", "dest": "/featured.html" },
-    { "src": "/dashboard", "dest": "/dashboard.html" },
-    { "src": "/success", "dest": "/success.html" },
-    { "src": "/startup/.*", "dest": "/index.html" }
+  "rewrites": [
+    { "source": "/startup/(.*)", "destination": "/index.html" }
   ]
 }
