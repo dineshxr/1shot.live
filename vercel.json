@@ -1,57 +1,8 @@
 {
   "rewrites": [
-    {
-      "source": "/startup/:slug*",
-      "destination": "/index.html"
-    },
-    {
-      "source": "/featured",
-      "destination": "/featured.html"
-    },
-    {
-      "source": "/dashboard",
-      "destination": "/dashboard.html"
-    },
-    {
-      "source": "/success",
-      "destination": "/success.html"
-    }
-  ],
-  "headers": [
-    {
-      "source": "/src/(.*).js",
-      "headers": [
-        {
-          "key": "Content-Type",
-          "value": "application/javascript"
-        },
-        {
-          "key": "Cache-Control",
-          "value": "public, max-age=31536000, immutable"
-        }
-      ]
-    },
-    {
-      "source": "/src/(.*).css",
-      "headers": [
-        {
-          "key": "Content-Type",
-          "value": "text/css"
-        },
-        {
-          "key": "Cache-Control",
-          "value": "public, max-age=31536000, immutable"
-        }
-      ]
-    },
-    {
-      "source": "/(.*)",
-      "headers": [
-        {
-          "key": "Cache-Control",
-          "value": "public, max-age=0, must-revalidate"
-        }
-      ]
-    }
+    { "source": "/startup/:path*", "destination": "/index.html" },
+    { "source": "/featured", "destination": "/featured.html" },
+    { "source": "/dashboard", "destination": "/dashboard.html" },
+    { "source": "/success", "destination": "/success.html" }
   ]
 }
