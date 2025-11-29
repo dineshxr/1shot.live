@@ -1,11 +1,7 @@
 {
-  "version": 2,
-  "builds": [
-    { "src": "**/*", "use": "@vercel/static" }
-  ],
   "rewrites": [
     {
-      "source": "/startup/(.*)",
+      "source": "/startup/:slug*",
       "destination": "/index.html"
     },
     {
@@ -19,15 +15,11 @@
     {
       "source": "/success",
       "destination": "/success.html"
-    },
-    {
-      "source": "/((?!api|_next|_static|favicon.ico|src|auth|.*\\.(js|css|png|jpg|jpeg|gif|svg|ico|woff|woff2|ttf|eot)).*)",
-      "destination": "/index.html"
     }
   ],
   "headers": [
     {
-      "source": "/src/**/*.js",
+      "source": "/src/(.*).js",
       "headers": [
         {
           "key": "Content-Type",
@@ -40,7 +32,7 @@
       ]
     },
     {
-      "source": "/src/**/*.css",
+      "source": "/src/(.*).css",
       "headers": [
         {
           "key": "Content-Type",
