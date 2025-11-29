@@ -1,15 +1,9 @@
 {
-  "buildCommand": "",
-  "outputDirectory": ".",
-  "trailingSlash": false,
-  "rewrites": [
-    { "source": "/startup/:path*", "destination": "/index.html" }
-  ],
   "routes": [
     { "handle": "filesystem" },
     { "src": "/featured", "dest": "/featured.html" },
     { "src": "/dashboard", "dest": "/dashboard.html" },
     { "src": "/success", "dest": "/success.html" },
-    { "src": "/startup/(.*)", "dest": "/index.html" }
+    { "src": "/startup/.*", "dest": "/index.html" }
   ]
 }
