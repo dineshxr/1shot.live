@@ -28,56 +28,65 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
   const [userHasPreviousSubmissions, setUserHasPreviousSubmissions] = useState(false); // Track if user has submitted before
   const [checkingPreviousSubmissions, setCheckingPreviousSubmissions] = useState(false); // Loading state for checking submissions
 
+  // Helper to get EST date string (YYYY-MM-DD) from a Date object
+  const getESTDateString = (date) => {
+    const estDate = new Date(date.toLocaleString("en-US", {timeZone: "America/New_York"}));
+    return estDate.getFullYear() + '-' + 
+           String(estDate.getMonth() + 1).padStart(2, '0') + '-' + 
+           String(estDate.getDate()).padStart(2, '0');
+  };
+
   // Generate available launch dates with fallback logic
   const generateLaunchDates = async () => {
     const dates = [];
     const supabase = supabaseClient();
     
-    // Start from today, find next weekday
-    let currentDate = new Date();
+    // Get current time in EST
+    const now = new Date();
+    const estNow = new Date(now.toLocaleString("en-US", {timeZone: "America/New_York"}));
+    const currentHour = estNow.getHours();
+    const currentDay = estNow.getDay(); // 0 = Sunday, 6 = Saturday
     
-    // If it's weekend or after 8 AM EST, start from next weekday
-    const pstTime = new Date(currentDate.toLocaleString("en-US", {timeZone: "America/New_York"}));
-    const currentHour = pstTime.getHours();
-    const currentDay = pstTime.getDay();
+    // Start from EST today
+    let workingDate = new Date(estNow);
+    workingDate.setHours(0, 0, 0, 0);
     
-    // If it's weekend (Saturday=6, Sunday=0), move to next Monday
-    if (currentDay === 0 || currentDay === 6) {
-      // Move to next Monday if weekend
-      while (currentDate.getDay() === 0 || currentDate.getDay() === 6) {
-        currentDate.setDate(currentDate.getDate() + 1);
-      }
+    // Determine if we can use today
+    let canUseToday = false;
+    if (currentDay >= 1 && currentDay <= 5 && currentHour < 8) {
+      // It's a weekday before 8 AM EST - can use today
+      canUseToday = true;
     }
-    // If it's a weekday but after 8 AM EST, move to next day
-    else if (currentDay >= 1 && currentDay <= 5 && currentHour >= 8) {
-      currentDate.setDate(currentDate.getDate() + 1);
-      // Skip weekend if we land on it
-      while (currentDate.getDay() === 0 || currentDate.getDay() === 6) {
-        currentDate.setDate(currentDate.getDate() + 1);
-      }
+    
+    // If we can't use today, start from tomorrow
+    if (!canUseToday) {
+      workingDate.setDate(workingDate.getDate() + 1);
     }
-    // If it's Monday-Friday before 8 AM EST, we can use today
     
     let daysChecked = 0;
+    const MAX_FREE_PER_DAY = 6;
     
-    // Generate 3 available dates
-    while (dates.length < 3 && daysChecked < 30) {
-      const day = currentDate.getDay(); // 0 = Sunday, 1 = Monday, etc.
+    // Generate 5 available weekday dates (a full work week)
+    while (dates.length < 5 && daysChecked < 30) {
+      const dayOfWeek = workingDate.getDay();
       
       // Only use weekdays (Monday = 1 through Friday = 5)
-      if (day >= 1 && day <= 5) {
-        const dateOptions = { weekday: 'long', month: 'long', day: 'numeric' };
-        const formattedDate = currentDate.toLocaleDateString('en-US', dateOptions);
-        const dateValue = currentDate.toISOString().split('T')[0];
+      if (dayOfWeek >= 1 && dayOfWeek <= 5) {
+        // Format date for display
+        const dateOptions = { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'America/New_York' };
+        const formattedDate = workingDate.toLocaleDateString('en-US', dateOptions);
         
-        // Check current capacity for this date - count ALL plans
-        const { data: allData, error: allError, count: totalCount } = await supabase
+        // Get date value in YYYY-MM-DD format (EST)
+        const dateValue = getESTDateString(workingDate);
+        
+        // Check current capacity for this date
+        const { error: allError, count: totalCount } = await supabase
           .from('startups')
           .select('id', { count: 'exact' })
           .eq('launch_date', dateValue);
         
-        // Also get free plan count specifically
-        const { data: freeData, error: freeError, count: freeCount } = await supabase
+        // Get free plan count specifically
+        const { error: freeError, count: freeCount } = await supabase
           .from('startups')
           .select('id', { count: 'exact' })
           .eq('plan', 'free')
@@ -87,21 +96,24 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
           console.error('Error checking launch date availability:', allError || freeError);
         }
         
-        // Limit free submissions to 6 per day
-        const freeAvailable = (freeCount || 0) < 6;
+        const actualFreeCount = freeCount || 0;
+        const freeAvailable = actualFreeCount < MAX_FREE_PER_DAY;
+        const slotsRemaining = MAX_FREE_PER_DAY - actualFreeCount;
         
         dates.push({
           date: formattedDate,
           value: dateValue,
           freeAvailable: freeAvailable,
           premiumAvailable: true, // Featured always available
-          freeCount: freeCount || 0,
-          totalCount: totalCount || 0
+          freeCount: actualFreeCount,
+          totalCount: totalCount || 0,
+          slotsRemaining: slotsRemaining,
+          dayOfWeek: dayOfWeek
         });
       }
       
       // Move to next day
-      currentDate.setDate(currentDate.getDate() + 1);
+      workingDate.setDate(workingDate.getDate() + 1);
       daysChecked++;
     }
     
@@ -1125,13 +1137,13 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
               
               ${formData.plan === 'free' ? html`
               <div class="mb-6">
-                <h3 class="text-xl font-bold mb-4 text-black">Choose Your Launch Date</h3>
-                <p class="text-gray-700 mb-3">Select from available launch dates:</p>
+                <h3 class="text-xl font-bold mb-2 text-black">📅 Choose Your Launch Date</h3>
+                <p class="text-gray-600 text-sm mb-4">Startups launch at 8 AM EST, Monday-Friday. Max 6 free slots per day.</p>
                 
-                ${availableLaunchDates.length >= 3 && availableLaunchDates.slice(0, 3).every(date => date.freeCount >= 6) ? html`
+                ${availableLaunchDates.every(date => !date.freeAvailable) ? html`
                   <div class="mb-4 p-4 bg-yellow-100 border-2 border-yellow-400 rounded">
                     <h4 class="font-bold text-yellow-800 mb-2">🚀 All Free Slots Are Full!</h4>
-                    <p class="text-yellow-800 mb-3">All free launch dates are currently full (6/6 slots each). Consider upgrading to Featured to launch immediately!</p>
+                    <p class="text-yellow-800 mb-3">All free launch dates are currently full. Consider upgrading to Featured to launch immediately!</p>
                     <button
                       type="button"
                       onClick=${() => {
@@ -1142,60 +1154,71 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
                       Upgrade to Featured ($5)
                     </button>
                   </div>
-                ` : availableLaunchDates.filter(date => date.freeAvailable).length < 2 && availableLaunchDates.filter(date => date.freeAvailable).length > 0 ? html`
-                  <div class="mb-4 p-4 bg-blue-100 border-2 border-blue-400 rounded">
-                    <h4 class="font-bold text-blue-800 mb-2">📅 Limited Free Slots Available</h4>
-                    <p class="text-blue-800 mb-3">Only ${availableLaunchDates.filter(date => date.freeAvailable).length} free slot${availableLaunchDates.filter(date => date.freeAvailable).length === 1 ? '' : 's'} remaining. Consider Featured for guaranteed immediate launch!</p>
-                    <button
-                      type="button"
-                      onClick=${() => {
-                        window.open('/featured.html', '_blank');
-                      }}
-                      class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 font-bold"
-                    >
-                      Learn About Featured ($5)
-                    </button>
-                  </div>
                 ` : ''}
                 
-                <div class="space-y-4">
-                  ${availableLaunchDates.slice(0, 3).map(date => html`
-                    <div 
-                      class="border-2 ${formData.launchDate === date.value ? 'border-blue-500' : 'border-black'} p-4 rounded-lg ${!date.freeAvailable && formData.plan === 'free' ? 'opacity-50 cursor-not-allowed bg-gray-100' : 'cursor-pointer hover:bg-gray-50'} transition-all ${!date.freeAvailable ? 'relative' : ''}"
-                      onClick=${!date.freeAvailable && formData.plan === 'free' ? null : () => selectLaunchDate(date.value)}
-                    >
-                      ${!date.freeAvailable ? html`
-                        <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
-                          <div class="w-full h-0.5 bg-red-500 transform rotate-12"></div>
+                <!-- Calendar-style grid -->
+                <div class="grid grid-cols-5 gap-2 mb-4">
+                  ${availableLaunchDates.map(date => {
+                    const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+                    const dayName = dayNames[date.dayOfWeek];
+                    const dateNum = date.date.split(' ')[2]; // Get day number
+                    const isSelected = formData.launchDate === date.value;
+                    const isAvailable = date.freeAvailable;
+                    
+                    return html`
+                      <div 
+                        class="text-center p-2 rounded-lg border-2 transition-all ${
+                          isSelected 
+                            ? 'border-blue-500 bg-blue-100' 
+                            : isAvailable 
+                              ? 'border-black hover:bg-gray-50 cursor-pointer' 
+                              : 'border-gray-300 bg-gray-100 opacity-60 cursor-not-allowed'
+                        }"
+                        onClick=${isAvailable ? () => selectLaunchDate(date.value) : null}
+                      >
+                        <div class="text-xs font-bold ${isAvailable ? 'text-gray-600' : 'text-gray-400'}">${dayName}</div>
+                        <div class="text-lg font-bold ${isSelected ? 'text-blue-700' : isAvailable ? 'text-black' : 'text-gray-400'}">${dateNum}</div>
+                        <div class="text-xs ${isAvailable ? 'text-green-600' : 'text-red-500'} font-medium">
+                          ${isAvailable ? `${date.slotsRemaining} left` : 'Full'}
                         </div>
-                      ` : ''}
-                      <div class="flex justify-between items-center ${!date.freeAvailable ? 'relative z-10' : ''}">
-                        <h4 class="text-lg font-bold ${!date.freeAvailable ? 'text-gray-500' : ''}">${date.date}</h4>
-                        <div class="flex flex-col items-end">
-                          <div class="flex items-center">
-                            <span class="inline-block w-3 h-3 rounded-full ${date.freeAvailable ? 'bg-green-500' : 'bg-red-500'} mr-2"></span>
-                            <span class="${date.freeAvailable ? 'text-green-700' : 'text-red-700'} text-sm">
-                              ${date.freeAvailable ? `Free (${date.freeCount}/6)` : 'Full (6/6)'}
-                            </span>
-                          </div>
-                          <div class="flex items-center mt-1">
-                            <span class="inline-block w-3 h-3 rounded-full ${date.premiumAvailable ? 'bg-green-500' : 'bg-red-500'} mr-2"></span>
-                            <span class="${date.premiumAvailable ? 'text-green-700' : 'text-red-700'} text-sm">Featured available</span>
-                          </div>
-                        </div>
+                        ${isSelected ? html`<div class="text-xs text-blue-600 mt-1">✓</div>` : ''}
                       </div>
-                      ${formData.launchDate === date.value ? html`
-                        <div class="mt-2 bg-blue-100 text-blue-800 text-sm font-bold py-1 px-2 rounded inline-block">
-                          <i class="fas fa-check mr-1"></i> Selected
-                        </div>
-                      ` : ''}
-                      <div class="mt-2 text-sm text-gray-600">
-                        ${!date.freeAvailable ? html`
-                          <span class="text-red-600 font-bold">❌ Date unavailable - all 6 free slots filled</span>
-                        ` : date.totalCount > 0 ? `${date.totalCount} startup${date.totalCount !== 1 ? 's' : ''} scheduled` : 'No startups scheduled yet'}
+                    `;
+                  })}
+                </div>
+                
+                <!-- Selected date details -->
+                ${formData.launchDate ? html`
+                  <div class="p-3 bg-blue-50 border-2 border-blue-200 rounded-lg">
+                    <div class="flex items-center justify-between">
+                      <div>
+                        <span class="font-bold text-blue-800">Selected: </span>
+                        <span class="text-blue-700">${availableLaunchDates.find(d => d.value === formData.launchDate)?.date || formData.launchDate}</span>
+                      </div>
+                      <div class="text-sm text-blue-600">
+                        ${(() => {
+                          const selected = availableLaunchDates.find(d => d.value === formData.launchDate);
+                          return selected ? `${selected.slotsRemaining} of 6 slots available` : '';
+                        })()}
                       </div>
                     </div>
-                  `)}
+                  </div>
+                ` : html`
+                  <div class="p-3 bg-gray-50 border-2 border-gray-200 rounded-lg text-center text-gray-500">
+                    Click a date above to select your launch day
+                  </div>
+                `}
+                
+                <!-- Slot availability legend -->
+                <div class="mt-3 flex items-center justify-center gap-4 text-xs text-gray-500">
+                  <div class="flex items-center gap-1">
+                    <span class="inline-block w-3 h-3 rounded-full bg-green-500"></span>
+                    <span>Available</span>
+                  </div>
+                  <div class="flex items-center gap-1">
+                    <span class="inline-block w-3 h-3 rounded-full bg-red-500"></span>
+                    <span>Full (6/6)</span>
+                  </div>
                 </div>
               </div>
               ` : ''}
