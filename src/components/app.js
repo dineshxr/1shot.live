@@ -12,7 +12,13 @@ import { auth } from "../lib/auth.js";
 export const App = () => {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
-  const [currentRoute, setCurrentRoute] = useState('');
+  // Initialize currentRoute immediately from window.location.pathname
+  const [currentRoute, setCurrentRoute] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return window.location.pathname;
+    }
+    return '';
+  });
   const [user, setUser] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [startups, setStartups] = useState([]);
@@ -20,11 +26,6 @@ export const App = () => {
   const [sortBy, setSortBy] = useState('trending');
   const [searchQuery, setSearchQuery] = useState('');
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
-
-  // Set initial route on component mount
-  useEffect(() => {
-    setCurrentRoute(window.location.pathname);
-  }, []);
 
   // Handle authentication state changes
   useEffect(() => {
