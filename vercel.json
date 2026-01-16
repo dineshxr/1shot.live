@@ -3,15 +3,7 @@
   "builds": [
     { "src": "**/*", "use": "@vercel/static" }
   ],
-  "redirects": [
-    {
-      "source": "/:path*",
-      "has": [{ "type": "host", "value": "www.submithunt.com" }],
-      "destination": "https://submithunt.com/:path*",
-      "permanent": true
-    }
-  ],
-  "rewrites": [
+    "rewrites": [
     { "source": "/startup/:path*", "destination": "/index.html" },
     { "source": "/featured", "destination": "/featured.html" },
     { "source": "/dashboard", "destination": "/dashboard.html" },
