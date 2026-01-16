@@ -174,9 +174,10 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
     }
   };
 
-  // Track form view only once on mount
+  // Track form view only once on mount (use a module-level flag to prevent re-firing)
   useEffect(() => {
-    if (typeof window.trackEvent === 'function') {
+    if (typeof window.trackEvent === 'function' && !window._submitFormViewTracked) {
+      window._submitFormViewTracked = true;
       window.trackEvent('submit_page_form_view');
     }
   }, []);
