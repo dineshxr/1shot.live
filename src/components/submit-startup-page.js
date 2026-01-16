@@ -138,6 +138,27 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
     setFormData(prev => ({ ...prev, launchDate: dateValue }));
   };
 
+  // Calculate days until first available free launch date
+  const getDelayText = () => {
+    if (availableLaunchDates.length === 0) return 'Loading...';
+    
+    const firstAvailable = availableLaunchDates.find(d => d.freeAvailable);
+    if (!firstAvailable) return 'No slots available';
+    
+    const today = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/New_York' }));
+    today.setHours(0, 0, 0, 0);
+    
+    const launchDate = new Date(firstAvailable.value + 'T12:00:00');
+    const diffTime = launchDate - today;
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    if (diffDays <= 1) return '1 day';
+    if (diffDays < 7) return `${diffDays} days`;
+    if (diffDays === 7) return '1 week';
+    if (diffDays < 14) return `${diffDays} days (~1 week)`;
+    return `${Math.ceil(diffDays / 7)} weeks`;
+  };
+
   const checkUserPreviousSubmissions = async () => {
     if (!window.auth || !window.auth.isAuthenticated()) {
       setUserHasPreviousSubmissions(false);
@@ -174,13 +195,6 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
     }
   };
 
-  // Track form view only once on mount (use a module-level flag to prevent re-firing)
-  useEffect(() => {
-    if (typeof window.trackEvent === 'function' && !window._submitFormViewTracked) {
-      window._submitFormViewTracked = true;
-      window.trackEvent('submit_page_form_view');
-    }
-  }, []);
 
   // Load launch dates and set up refresh interval
   useEffect(() => {
@@ -688,7 +702,7 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
                 </div>
               ` : ''}
               
-              <div class="grid md:grid-cols-2 gap-4">
+              <div class="grid md:grid-cols-3 gap-4">
                 <!-- Free Plan -->
                 ${!userHasPreviousSubmissions ? html`
                   <div 
@@ -718,8 +732,8 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
                         <span class="text-gray-700 text-sm">Backlink for top 3 ranking</span>
                       </div>
                       <div class="flex items-start gap-2">
-                        <span class="text-gray-400 mt-0.5 text-sm"><i class="fas fa-clock"></i></span>
-                        <span class="text-gray-700 text-sm">Standard queue (1 week)</span>
+                        <span class="text-red-500 mt-0.5 text-sm"><i class="fas fa-clock"></i></span>
+                        <span class="text-red-600 text-sm font-medium">⏳ Launch in ${getDelayText()}</span>
                       </div>
                     </div>
                     
@@ -783,6 +797,59 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
                     <div class="text-orange-500 text-sm font-medium py-1.5">Click to select</div>
                   `}
                 </div>
+                
+                <!-- Featured Spot -->
+                <div 
+                  class="bg-white rounded-xl p-5 cursor-pointer transition-all ${formData.plan === 'featured' ? 'border-4 border-purple-500 shadow-lg' : 'border-2 border-gray-200 hover:border-gray-300 hover:shadow-md'}"
+                  onClick=${() => window.open('https://x.com/submithunt', '_blank')}
+                >
+                  <div class="mb-4">
+                    <h4 class="text-lg font-bold text-gray-900 mb-1">Featured Spot</h4>
+                    <div class="text-sm text-gray-500 mb-2">Premium placement</div>
+                  </div>
+                  
+                  <div class="space-y-2 mb-4">
+                    <div class="bg-gray-50 rounded-lg p-3 border border-gray-200">
+                      <div class="flex justify-between items-center">
+                        <div>
+                          <div class="font-semibold text-gray-900 text-sm">Top Spot</div>
+                          <div class="text-xs text-gray-500">Top of page</div>
+                        </div>
+                        <div class="font-bold text-gray-900 text-sm">$45<span class="text-xs font-normal text-gray-500">/wk</span></div>
+                      </div>
+                    </div>
+                    
+                    <div class="bg-gray-50 rounded-lg p-3 border border-gray-200">
+                      <div class="flex justify-between items-center">
+                        <div>
+                          <div class="font-semibold text-gray-900 text-sm">Mid-Feed</div>
+                          <div class="text-xs text-gray-500">Between 3rd & 4th</div>
+                        </div>
+                        <div class="font-bold text-gray-900 text-sm">$20<span class="text-xs font-normal text-gray-500">/wk</span></div>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div class="space-y-2 mb-4 text-xs">
+                    <div class="flex items-start gap-2">
+                      <span class="text-purple-500 mt-0.5"><i class="fas fa-star"></i></span>
+                      <span class="text-gray-700">Premium landing page placement</span>
+                    </div>
+                    <div class="flex items-start gap-2">
+                      <span class="text-purple-500 mt-0.5"><i class="fas fa-eye"></i></span>
+                      <span class="text-gray-700">High visibility to daily visitors</span>
+                    </div>
+                  </div>
+                  
+                  <a
+                    href="https://x.com/submithunt"
+                    target="_blank"
+                    class="block w-full text-center py-2 px-3 bg-purple-500 rounded-lg text-white font-bold text-sm hover:bg-purple-600 transition-all"
+                    onClick=${(e) => e.stopPropagation()}
+                  >
+                    Contact Us
+                  </a>
+                </div>
               </div>
               
               ${formData.plan === 'free' ? html`
@@ -818,7 +885,7 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
                             <div class="text-xs font-bold ${isAvailable ? 'text-gray-600' : 'text-gray-400'}">${dayName}</div>
                             <div class="text-lg font-bold ${isSelected ? 'text-blue-700' : isAvailable ? 'text-black' : 'text-gray-400'}">${dateNum}</div>
                             <div class="text-xs ${isAvailable ? 'text-green-600' : 'text-red-500'} font-medium">
-                              ${isAvailable ? `${date.slotsRemaining} left` : 'Full'}
+                              ${isAvailable ? `${date.slotsRemaining} left` : 'Full / Sold Out'}
                             </div>
                           </div>
                         `;

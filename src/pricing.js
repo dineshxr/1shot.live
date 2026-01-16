@@ -101,10 +101,10 @@ const PricingPage = () => {
                 </div>
                 
                 <div class="flex items-start gap-3">
-                  <span class="text-gray-400 mt-0.5">
+                  <span class="text-red-500 mt-0.5">
                     <i class="fas fa-clock"></i>
                   </span>
-                  <span class="text-gray-700">Standard launch queue (1 week)</span>
+                  <span class="text-red-600 font-medium">⏳ Launch delayed ~1 week</span>
                 </div>
               </div>
               
