@@ -106,20 +106,17 @@ function getAuthState() {
 
 // Auth service using Supabase Auth
 export const auth = {
-  // Sign in with email (sends magic link)
-  async signInWithEmail(email) {
+  // Sign in with Google OAuth
+  async signInWithGoogle() {
     try {
-      // Validate email domain before attempting to send magic link
-      const validation = validateEmail(email);
-      if (!validation.isValid) {
-        throw new Error(validation.error);
-      }
-
-      const { data, error } = await supabase.auth.signInWithOtp({
-        email: email,
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
         options: {
-          shouldCreateUser: true,
-          emailRedirectTo: `${window.location.origin}/auth/callback.html`
+          redirectTo: `${window.location.origin}/auth/callback.html`,
+          queryParams: {
+            access_type: 'offline',
+            prompt: 'consent',
+          }
         }
       });
       
@@ -129,8 +126,8 @@ export const auth = {
       
       return { success: true, data };
     } catch (error) {
-      console.error('Sign in error:', error);
-      throw new Error(error.message || 'Failed to send magic link');
+      console.error('Google sign in error:', error);
+      throw new Error(error.message || 'Failed to sign in with Google');
     }
   },
 
