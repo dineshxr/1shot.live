@@ -458,7 +458,7 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
     // Trigger login modal and show a simple loading state
     // The login modal is shown automatically by the parent component
     return html`
-      <div class="max-w-2xl mx-auto px-4 py-12 text-center">
+      <div class="max-w-4xl mx-auto px-4 py-8 md:py-12 text-center">
         <div class="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
         <p class="mt-4 text-gray-600">Please sign in to continue...</p>
       </div>
@@ -468,7 +468,7 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
   // Show loading state
   if (authLoading) {
     return html`
-      <div class="max-w-2xl mx-auto px-4 py-12 text-center">
+      <div class="max-w-4xl mx-auto px-4 py-8 md:py-12 text-center">
         <div class="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
         <p class="mt-4 text-gray-600">Loading...</p>
       </div>
@@ -478,8 +478,8 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
   // Success page
   if (showSuccessPage) {
     return html`
-      <div class="max-w-2xl mx-auto px-4 py-8">
-        <div class="bg-white border-4 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] p-8 rounded-lg">
+      <div class="max-w-4xl mx-auto px-4 py-6 md:py-8">
+        <div class="bg-white border-4 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] p-4 md:p-8 rounded-lg">
           <h2 class="text-2xl font-bold mb-4 text-black">Startup Submitted Successfully! 🚀</h2>
           
           <div class="mb-6 p-4 bg-green-100 border-2 border-green-500 rounded text-center">
@@ -560,8 +560,8 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
 
   // Main form
   return html`
-    <div class="max-w-2xl mx-auto px-4 py-8">
-      <div class="bg-white border-4 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] p-8 rounded-lg">
+    <div class="max-w-4xl mx-auto px-4 py-6 md:py-8">
+      <div class="bg-white border-4 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] p-4 md:p-8 rounded-lg">
         <h2 class="text-2xl font-bold mb-2 text-black">Submit Your Startup</h2>
         <p class="text-gray-700 mb-4">Launch your project on the best Product Hunt alternative.</p>
         
@@ -719,141 +719,145 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
                 </div>
               ` : ''}
               
-              <div class="grid md:grid-cols-3 gap-4">
+              <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
                 <!-- Free Plan -->
                 ${!userHasPreviousSubmissions ? html`
                   <div 
-                    class="bg-white rounded-xl p-5 cursor-pointer transition-all ${formData.plan === 'free' ? 'border-4 border-blue-500 shadow-lg' : 'border-2 border-gray-200 hover:border-gray-300 hover:shadow-md'}"
-                    onClick=${() => selectPlan('free')}
+                    class="bg-white rounded-xl overflow-hidden transition-all flex flex-col ${formData.plan === 'free' ? 'ring-4 ring-blue-500 shadow-xl' : 'border-2 border-gray-200 hover:shadow-lg'}"
                   >
-                    <div class="mb-4">
-                      <h4 class="text-lg font-bold text-gray-900 mb-1">Standard Launch</h4>
-                      <div class="flex items-baseline">
-                        <span class="text-3xl font-bold text-gray-900">Free</span>
-                      </div>
+                    <div class="bg-gray-100 px-5 py-3 border-b-4 border-gray-300">
+                      <span class="text-gray-700 text-xs font-bold uppercase tracking-wide">FREE</span>
                     </div>
                     
-                    <div class="space-y-3 mb-4">
-                      <div class="flex items-start gap-2">
-                        <span class="text-gray-400 mt-0.5 text-sm"><i class="fas fa-home"></i></span>
-                        <span class="text-gray-700 text-sm">Live on homepage for 7 days</span>
+                    <div class="p-5 flex-1 flex flex-col">
+                      <div class="mb-1 text-gray-500 text-sm">Standard Launch</div>
+                      <div class="flex items-baseline mb-4">
+                        <span class="text-4xl font-bold text-gray-900">Free</span>
                       </div>
-                      <div class="flex items-start gap-2">
-                        <span class="text-orange-500 mt-0.5 text-sm"><i class="fas fa-trophy"></i></span>
-                        <span class="text-gray-700 text-sm">
-                          <span class="bg-yellow-100 text-yellow-800 px-1.5 py-0.5 rounded text-xs font-medium">Badge for top 3</span>
-                        </span>
-                      </div>
-                      <div class="flex items-start gap-2">
-                        <span class="text-gray-400 mt-0.5 text-sm"><i class="fas fa-chart-bar"></i></span>
-                        <span class="text-gray-700 text-sm">Backlink for top 3 ranking</span>
-                      </div>
-                      <div class="flex items-start gap-2">
-                        <span class="text-red-500 mt-0.5 text-sm"><i class="fas fa-clock"></i></span>
-                        <span class="text-red-600 text-sm font-medium">⏳ Launch in ${getDelayText()}</span>
+                      <div class="text-xs text-gray-500 mb-4">no payment method needed</div>
+                      
+                      <button
+                        type="button"
+                        class="w-full py-3 px-4 rounded-lg font-bold text-sm mb-6 flex items-center justify-center gap-2 transition-all ${formData.plan === 'free' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}"
+                        onClick=${() => selectPlan('free')}
+                      >
+                        ${formData.plan === 'free' ? html`<i class="fas fa-check"></i> Selected` : html`Start with Free <i class="fas fa-arrow-right"></i>`}
+                      </button>
+                      
+                      <div class="space-y-3 flex-1">
+                        <div class="flex items-start gap-2">
+                          <span class="text-green-500 mt-0.5"><i class="fas fa-check-circle"></i></span>
+                          <span class="text-gray-700 text-sm">Live on homepage for 7 days</span>
+                        </div>
+                        <div class="flex items-start gap-2">
+                          <span class="text-green-500 mt-0.5"><i class="fas fa-check-circle"></i></span>
+                          <span class="text-gray-700 text-sm">Badge for top 3 ranking</span>
+                        </div>
+                        <div class="flex items-start gap-2">
+                          <span class="text-green-500 mt-0.5"><i class="fas fa-check-circle"></i></span>
+                          <span class="text-gray-700 text-sm">Backlink for top 3 ranking</span>
+                        </div>
+                        <div class="flex items-start gap-2 mt-4 pt-3 border-t border-gray-200">
+                          <span class="text-amber-500 mt-0.5"><i class="fas fa-clock"></i></span>
+                          <span class="text-amber-600 text-sm font-medium">Launch in ${getDelayText()}</span>
+                        </div>
                       </div>
                     </div>
-                    
-                    ${formData.plan === 'free' ? html`
-                      <div class="bg-blue-100 text-blue-800 text-sm font-bold py-1.5 px-3 rounded-lg inline-flex items-center">
-                        <i class="fas fa-check mr-1.5"></i> Selected
-                      </div>
-                    ` : html`
-                      <div class="text-gray-500 text-sm font-medium py-1.5">Click to select</div>
-                    `}
                   </div>
                 ` : ''}
                 
                 <!-- Premium Plan -->
                 <div 
-                  class="bg-white rounded-xl p-5 cursor-pointer transition-all relative ${formData.plan === 'premium' ? 'border-4 border-orange-500 shadow-lg' : 'border-4 border-orange-400 hover:shadow-lg'}"
-                  onClick=${() => selectPlan('premium')}
+                  class="bg-white rounded-xl overflow-hidden transition-all flex flex-col ${formData.plan === 'premium' ? 'ring-4 ring-orange-500 shadow-xl' : 'border-4 border-orange-400 hover:shadow-lg'}"
                 >
-                  <div class="absolute -top-3 left-1/2 transform -translate-x-1/2">
-                    <span class="bg-orange-400 text-white text-xs font-bold px-3 py-1 rounded-full whitespace-nowrap">
-                      MOST POPULAR
-                    </span>
+                  <div class="bg-orange-400 px-5 py-3 border-b-4 border-orange-500">
+                    <span class="text-white text-xs font-bold uppercase tracking-wide">MOST POPULAR</span>
                   </div>
                   
-                  <div class="mb-4 mt-2">
-                    <h4 class="text-lg font-bold text-gray-900 mb-1">Premium Launch</h4>
-                    <div class="flex items-baseline">
-                      <span class="text-3xl font-bold text-gray-900">$5</span>
+                  <div class="p-5 flex-1 flex flex-col">
+                    <div class="mb-1 text-gray-500 text-sm">Premium Launch</div>
+                    <div class="flex items-baseline mb-4">
+                      <span class="text-4xl font-bold text-gray-900">$5</span>
                       <span class="text-gray-500 ml-1 text-sm">/launch</span>
                     </div>
+                    <div class="text-xs text-gray-500 mb-4">one-time payment</div>
+                    
+                    <button
+                      type="button"
+                      class="w-full py-3 px-4 rounded-lg font-bold text-sm mb-6 flex items-center justify-center gap-2 transition-all ${formData.plan === 'premium' ? 'bg-orange-500 text-white' : 'bg-orange-400 text-white hover:bg-orange-500'}"
+                      onClick=${() => selectPlan('premium')}
+                    >
+                      ${formData.plan === 'premium' ? html`<i class="fas fa-check"></i> Selected` : html`Choose Premium <i class="fas fa-arrow-right"></i>`}
+                    </button>
+                    
+                    <div class="space-y-3 flex-1">
+                      <div class="flex items-start gap-2">
+                        <span class="text-green-500 mt-0.5"><i class="fas fa-check-circle"></i></span>
+                        <span class="text-gray-700 text-sm">Live on homepage for 14 days</span>
+                      </div>
+                      <div class="flex items-start gap-2">
+                        <span class="text-green-500 mt-0.5"><i class="fas fa-check-circle"></i></span>
+                        <span class="text-gray-700 text-sm">Badge for top 3 ranking</span>
+                      </div>
+                      <div class="flex items-start gap-2">
+                        <span class="text-green-500 mt-0.5"><i class="fas fa-check-circle"></i></span>
+                        <span class="text-gray-700 text-sm font-semibold">Guaranteed backlink (37+ DR)</span>
+                      </div>
+                      <div class="flex items-start gap-2">
+                        <span class="text-green-500 mt-0.5"><i class="fas fa-check-circle"></i></span>
+                        <span class="text-gray-700 text-sm">Skip queue - launch immediately</span>
+                      </div>
+                      <div class="flex items-start gap-2">
+                        <span class="text-green-500 mt-0.5"><i class="fas fa-check-circle"></i></span>
+                        <span class="text-gray-700 text-sm">Featured in newsletter</span>
+                      </div>
+                    </div>
                   </div>
-                  
-                  <div class="space-y-3 mb-4">
-                    <div class="flex items-start gap-2">
-                      <span class="text-orange-500 mt-0.5 text-sm"><i class="fas fa-home"></i></span>
-                      <span class="text-gray-700 text-sm">Live on homepage for 14 days</span>
-                    </div>
-                    <div class="flex items-start gap-2">
-                      <span class="text-orange-500 mt-0.5 text-sm"><i class="fas fa-trophy"></i></span>
-                      <span class="text-gray-700 text-sm">Badge for top 3 ranking</span>
-                    </div>
-                    <div class="flex items-start gap-2">
-                      <span class="text-orange-500 mt-0.5 text-sm"><i class="fas fa-chart-bar"></i></span>
-                      <span class="text-gray-700 text-sm font-semibold">Guaranteed backlink (37+ DR)</span>
-                    </div>
-                    <div class="flex items-start gap-2">
-                      <span class="text-orange-500 mt-0.5 text-sm"><i class="fas fa-bolt"></i></span>
-                      <span class="text-gray-700 text-sm">Skip queue - launch immediately</span>
-                    </div>
-                    <div class="flex items-start gap-2">
-                      <span class="text-orange-500 mt-0.5 text-sm"><i class="fas fa-envelope"></i></span>
-                      <span class="text-gray-700 text-sm">Featured in newsletter</span>
-                    </div>
-                  </div>
-                  
-                  ${formData.plan === 'premium' ? html`
-                    <div class="bg-orange-100 text-orange-800 text-sm font-bold py-1.5 px-3 rounded-lg inline-flex items-center">
-                      <i class="fas fa-check mr-1.5"></i> Selected
-                    </div>
-                  ` : html`
-                    <div class="text-orange-500 text-sm font-medium py-1.5">Click to select</div>
-                  `}
                 </div>
                 
                 <!-- Featured Spot -->
                 <div 
-                  class="bg-white rounded-xl p-5 cursor-pointer transition-all ${formData.plan === 'featured' ? 'border-4 border-purple-500 shadow-lg' : 'border-2 border-gray-200 hover:border-gray-300 hover:shadow-md'}"
-                  onClick=${() => createCheckoutSession('featured', { userEmail: user?.email })}
+                  class="bg-white rounded-xl overflow-hidden transition-all flex flex-col border-2 border-purple-300 hover:shadow-lg"
                 >
-                  <div class="mb-4">
-                    <h4 class="text-lg font-bold text-gray-900 mb-1">Featured Spot</h4>
-                    <div class="flex items-baseline">
-                      <span class="text-3xl font-bold text-gray-900">$20</span>
+                  <div class="bg-purple-500 px-5 py-3 border-b-4 border-purple-600">
+                    <span class="text-white text-xs font-bold uppercase tracking-wide">FEATURED SPOT</span>
+                  </div>
+                  
+                  <div class="p-5 flex-1 flex flex-col">
+                    <div class="mb-1 text-gray-500 text-sm">Premium Placement</div>
+                    <div class="flex items-baseline mb-4">
+                      <span class="text-4xl font-bold text-gray-900">$20</span>
                       <span class="text-gray-500 ml-1 text-sm">/week</span>
                     </div>
+                    <div class="text-xs text-gray-500 mb-4">recurring subscription</div>
+                    
+                    <button
+                      type="button"
+                      class="w-full py-3 px-4 bg-purple-500 text-white rounded-lg font-bold text-sm mb-6 flex items-center justify-center gap-2 hover:bg-purple-600 transition-all"
+                      onClick=${() => createCheckoutSession('featured', { userEmail: user?.email })}
+                    >
+                      Get Featured <i class="fas fa-arrow-right"></i>
+                    </button>
+                    
+                    <div class="space-y-3 flex-1">
+                      <div class="flex items-start gap-2">
+                        <span class="text-green-500 mt-0.5"><i class="fas fa-check-circle"></i></span>
+                        <span class="text-gray-700 text-sm">Featured placement in feed</span>
+                      </div>
+                      <div class="flex items-start gap-2">
+                        <span class="text-green-500 mt-0.5"><i class="fas fa-check-circle"></i></span>
+                        <span class="text-gray-700 text-sm">High visibility to daily visitors</span>
+                      </div>
+                      <div class="flex items-start gap-2">
+                        <span class="text-green-500 mt-0.5"><i class="fas fa-check-circle"></i></span>
+                        <span class="text-gray-700 text-sm">Colorful gradient border</span>
+                      </div>
+                      <div class="flex items-start gap-2">
+                        <span class="text-green-500 mt-0.5"><i class="fas fa-check-circle"></i></span>
+                        <span class="text-gray-700 text-sm">Cancel anytime</span>
+                      </div>
+                    </div>
                   </div>
-                  
-                  <div class="space-y-3 mb-4">
-                    <div class="flex items-start gap-2">
-                      <span class="text-purple-500 mt-0.5 text-sm"><i class="fas fa-star"></i></span>
-                      <span class="text-gray-700 text-sm">Featured placement in feed</span>
-                    </div>
-                    <div class="flex items-start gap-2">
-                      <span class="text-purple-500 mt-0.5 text-sm"><i class="fas fa-eye"></i></span>
-                      <span class="text-gray-700 text-sm">High visibility to daily visitors</span>
-                    </div>
-                    <div class="flex items-start gap-2">
-                      <span class="text-purple-500 mt-0.5 text-sm"><i class="fas fa-border-all"></i></span>
-                      <span class="text-gray-700 text-sm">Colorful gradient border</span>
-                    </div>
-                    <div class="flex items-start gap-2">
-                      <span class="text-purple-500 mt-0.5 text-sm"><i class="fas fa-redo"></i></span>
-                      <span class="text-gray-700 text-sm">Renews weekly</span>
-                    </div>
-                  </div>
-                  
-                  <button
-                    type="button"
-                    class="block w-full text-center py-2 px-3 bg-purple-500 rounded-lg text-white font-bold text-sm hover:bg-purple-600 transition-all"
-                    onClick=${(e) => { e.stopPropagation(); createCheckoutSession('featured', { userEmail: user?.email }); }}
-                  >
-                    Buy Now
-                  </button>
                 </div>
               </div>
               
@@ -900,22 +904,33 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
                 </div>
               ` : ''}
               
-              <div class="flex justify-end pt-4">
+              <div class="flex justify-between items-center pt-6 border-t border-gray-200 mt-6">
                 <button
                   type="button"
                   onClick=${goToPreviousPage}
-                  class="mr-2 px-4 py-2 bg-gray-200 border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:bg-gray-300 font-bold"
+                  class="px-6 py-3 bg-gray-200 border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:bg-gray-300 font-bold rounded-lg"
                   disabled=${loading}
                 >
-                  Previous
+                  <i class="fas fa-arrow-left mr-2"></i>Previous
                 </button>
+                
                 ${formData.plan === 'free' && availableLaunchDates.filter(d => d.freeAvailable).length > 0 ? html`
                   <button
                     type="submit"
-                    class="neo-button px-4 py-2 bg-green-400 border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:bg-green-500 font-bold disabled:opacity-50"
+                    class="px-6 py-3 bg-blue-500 text-white border-2 border-blue-600 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:bg-blue-600 font-bold rounded-lg disabled:opacity-50"
                     disabled=${loading}
                   >
-                    ${loading ? "Submitting..." : "Submit"}
+                    ${loading ? html`<i class="fas fa-spinner fa-spin mr-2"></i>Submitting...` : html`Submit Free Launch <i class="fas fa-arrow-right ml-2"></i>`}
+                  </button>
+                ` : ''}
+                
+                ${formData.plan === 'premium' ? html`
+                  <button
+                    type="submit"
+                    class="px-6 py-3 bg-orange-500 text-white border-2 border-orange-600 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:bg-orange-600 font-bold rounded-lg disabled:opacity-50"
+                    disabled=${loading}
+                  >
+                    ${loading ? html`<i class="fas fa-spinner fa-spin mr-2"></i>Submitting...` : html`Continue to Payment <i class="fas fa-arrow-right ml-2"></i>`}
                   </button>
                 ` : ''}
               </div>

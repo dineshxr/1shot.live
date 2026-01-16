@@ -38,6 +38,35 @@
     <!-- Canonical URL -->
     <link rel="canonical" href="https://submithunt.com/" />
     
+    <!-- Structured Data / JSON-LD -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebSite",
+      "name": "SubmitHunt",
+      "alternateName": "Submit Hunt",
+      "url": "https://submithunt.com/",
+      "description": "The best Product Hunt alternative. Submit your startup, get featured, and receive a 37+ DR backlink.",
+      "potentialAction": {
+        "@type": "SearchAction",
+        "target": "https://submithunt.com/?search={search_term_string}",
+        "query-input": "required name=search_term_string"
+      }
+    }
+    </script>
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "Organization",
+      "name": "SubmitHunt",
+      "url": "https://submithunt.com/",
+      "logo": "https://submithunt.com/og-image.png",
+      "sameAs": [
+        "https://x.com/submithunt"
+      ]
+    }
+    </script>
+    
     <!-- Favicon -->
     <link rel="icon" type="image/x-icon" href="/src/favicon_io/favicon.ico" />
     <link rel="icon" type="image/png" sizes="32x32" href="/src/favicon_io/favicon-32x32.png" />

@@ -4,10 +4,17 @@ Allow: /
 # Sitemap location
 Sitemap: https://submithunt.com/sitemap.xml
 
-# Reduced crawl-delay for better indexing
+# Crawl-delay for respectful crawling
 Crawl-delay: 5
 
-# Important pages to prioritize indexing
-Allow: /submit-startup
-Allow: /product-hunt-alternative
-Allow: /startups
+# Main pages
+Allow: /
+Allow: /submit
+Allow: /pricing
+Allow: /featured
+Allow: /dashboard
+Allow: /startup/*
+
+# Disallow private/utility pages
+Disallow: /payment-success
+Disallow: /auth/callback

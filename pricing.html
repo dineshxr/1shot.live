@@ -29,6 +29,53 @@
     <!-- Canonical URL -->
     <link rel="canonical" href="https://submithunt.com/pricing" />
     
+    <!-- Structured Data / JSON-LD for Pricing -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebPage",
+      "name": "Pricing - SubmitHunt",
+      "description": "Choose the perfect plan to launch your startup on SubmitHunt. Free and premium options available.",
+      "url": "https://submithunt.com/pricing",
+      "isPartOf": {
+        "@type": "WebSite",
+        "name": "SubmitHunt",
+        "url": "https://submithunt.com/"
+      },
+      "mainEntity": {
+        "@type": "Product",
+        "name": "SubmitHunt Startup Launch",
+        "description": "Launch your startup and get a 37+ DR backlink",
+        "offers": [
+          {
+            "@type": "Offer",
+            "name": "Free Launch",
+            "price": "0",
+            "priceCurrency": "USD"
+          },
+          {
+            "@type": "Offer",
+            "name": "Premium Launch",
+            "price": "5",
+            "priceCurrency": "USD"
+          },
+          {
+            "@type": "Offer",
+            "name": "Featured Spot",
+            "price": "20",
+            "priceCurrency": "USD",
+            "priceSpecification": {
+              "@type": "UnitPriceSpecification",
+              "price": "20",
+              "priceCurrency": "USD",
+              "billingDuration": "P1W"
+            }
+          }
+        ]
+      }
+    }
+    </script>
+    
     <!-- Favicon -->
     <link rel="icon" type="image/x-icon" href="/src/favicon_io/favicon.ico" />
     <link rel="icon" type="image/png" sizes="32x32" href="/src/favicon_io/favicon-32x32.png" />
