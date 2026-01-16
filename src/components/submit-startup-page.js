@@ -174,19 +174,19 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
     }
   };
 
+  // Track form view only once on mount
   useEffect(() => {
     if (typeof window.trackEvent === 'function') {
       window.trackEvent('submit_page_form_view');
     }
-    
+  }, []);
+
+  // Load launch dates and set up refresh interval
+  useEffect(() => {
     const loadLaunchDates = async () => {
       const dates = await generateLaunchDates();
       setAvailableLaunchDates(dates);
     };
-    
-    if (user) {
-      checkUserPreviousSubmissions();
-    }
     
     loadLaunchDates();
     
@@ -197,6 +197,13 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
     return () => {
       clearInterval(refreshInterval);
     };
+  }, []);
+
+  // Check user previous submissions when user changes
+  useEffect(() => {
+    if (user) {
+      checkUserPreviousSubmissions();
+    }
   }, [user]);
 
   const generateSlug = (name) => {
@@ -675,51 +682,105 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
               ${userHasPreviousSubmissions ? html`
                 <div class="p-4 bg-yellow-50 border-2 border-yellow-300 rounded-lg">
                   <p class="text-yellow-700 text-sm">
-                    You have already submitted a startup for free. Please choose the Featured plan for additional submissions.
+                    You have already submitted a startup for free. Please choose the Premium plan for additional submissions.
                   </p>
                 </div>
               ` : ''}
               
-              <div class="space-y-4">
+              <div class="grid md:grid-cols-2 gap-4">
+                <!-- Free Plan -->
                 ${!userHasPreviousSubmissions ? html`
                   <div 
-                    class="border-4 ${formData.plan === 'free' ? 'border-blue-500' : 'border-black'} p-4 rounded-lg cursor-pointer hover:bg-gray-50"
+                    class="bg-white rounded-xl p-5 cursor-pointer transition-all ${formData.plan === 'free' ? 'border-4 border-blue-500 shadow-lg' : 'border-2 border-gray-200 hover:border-gray-300 hover:shadow-md'}"
                     onClick=${() => selectPlan('free')}
                   >
-                    <div class="flex justify-between items-center mb-2">
-                      <h4 class="text-lg font-bold">Free</h4>
-                      <span class="text-lg font-bold">$0</span>
-                    </div>
-                    <ul class="list-disc pl-5 space-y-1 mb-3">
-                      <li>Live on homepage for 7 days</li>
-                      <li>Nofollow backlink</li>
-                      <li>Launch date: 1 week from now</li>
-                    </ul>
-                    ${formData.plan === 'free' ? html`
-                      <div class="bg-blue-100 text-blue-800 text-sm font-bold py-1 px-2 rounded inline-block">
-                        <i class="fas fa-check mr-1"></i> Selected
+                    <div class="mb-4">
+                      <h4 class="text-lg font-bold text-gray-900 mb-1">Standard Launch</h4>
+                      <div class="flex items-baseline">
+                        <span class="text-3xl font-bold text-gray-900">Free</span>
                       </div>
-                    ` : ''}
+                    </div>
+                    
+                    <div class="space-y-3 mb-4">
+                      <div class="flex items-start gap-2">
+                        <span class="text-gray-400 mt-0.5 text-sm"><i class="fas fa-home"></i></span>
+                        <span class="text-gray-700 text-sm">Live on homepage for 7 days</span>
+                      </div>
+                      <div class="flex items-start gap-2">
+                        <span class="text-orange-500 mt-0.5 text-sm"><i class="fas fa-trophy"></i></span>
+                        <span class="text-gray-700 text-sm">
+                          <span class="bg-yellow-100 text-yellow-800 px-1.5 py-0.5 rounded text-xs font-medium">Badge for top 3</span>
+                        </span>
+                      </div>
+                      <div class="flex items-start gap-2">
+                        <span class="text-gray-400 mt-0.5 text-sm"><i class="fas fa-chart-bar"></i></span>
+                        <span class="text-gray-700 text-sm">Backlink for top 3 ranking</span>
+                      </div>
+                      <div class="flex items-start gap-2">
+                        <span class="text-gray-400 mt-0.5 text-sm"><i class="fas fa-clock"></i></span>
+                        <span class="text-gray-700 text-sm">Standard queue (1 week)</span>
+                      </div>
+                    </div>
+                    
+                    ${formData.plan === 'free' ? html`
+                      <div class="bg-blue-100 text-blue-800 text-sm font-bold py-1.5 px-3 rounded-lg inline-flex items-center">
+                        <i class="fas fa-check mr-1.5"></i> Selected
+                      </div>
+                    ` : html`
+                      <div class="text-gray-500 text-sm font-medium py-1.5">Click to select</div>
+                    `}
                   </div>
                 ` : ''}
                 
+                <!-- Premium Plan -->
                 <div 
-                  class="border-4 ${formData.plan === 'premium' ? 'border-blue-500' : 'border-black'} p-4 rounded-lg cursor-pointer hover:bg-gray-50 relative"
-                  onClick=${() => window.open('/featured.html', '_blank')}
+                  class="bg-white rounded-xl p-5 cursor-pointer transition-all relative ${formData.plan === 'premium' ? 'border-4 border-orange-500 shadow-lg' : 'border-4 border-orange-400 hover:shadow-lg'}"
+                  onClick=${() => selectPlan('premium')}
                 >
-                  <div class="absolute -top-2 -right-2 bg-yellow-400 text-black text-xs font-bold px-2 py-1 rounded border border-black">
-                    RECOMMENDED
+                  <div class="absolute -top-3 left-1/2 transform -translate-x-1/2">
+                    <span class="bg-orange-400 text-white text-xs font-bold px-3 py-1 rounded-full whitespace-nowrap">
+                      MOST POPULAR
+                    </span>
                   </div>
-                  <div class="flex justify-between items-center mb-2">
-                    <h4 class="text-lg font-bold">Featured</h4>
-                    <span class="text-lg font-bold">$5</span>
+                  
+                  <div class="mb-4 mt-2">
+                    <h4 class="text-lg font-bold text-gray-900 mb-1">Premium Launch</h4>
+                    <div class="flex items-baseline">
+                      <span class="text-3xl font-bold text-gray-900">$5</span>
+                      <span class="text-gray-500 ml-1 text-sm">/launch</span>
+                    </div>
                   </div>
-                  <ul class="list-disc pl-5 space-y-1 mb-3">
-                    <li>Live on homepage for 14 days</li>
-                    <li><strong>Dofollow backlink (37+ DR)</strong></li>
-                    <li>Launch immediately</li>
-                    <li>Featured in newsletter</li>
-                  </ul>
+                  
+                  <div class="space-y-3 mb-4">
+                    <div class="flex items-start gap-2">
+                      <span class="text-orange-500 mt-0.5 text-sm"><i class="fas fa-home"></i></span>
+                      <span class="text-gray-700 text-sm">Live on homepage for 14 days</span>
+                    </div>
+                    <div class="flex items-start gap-2">
+                      <span class="text-orange-500 mt-0.5 text-sm"><i class="fas fa-trophy"></i></span>
+                      <span class="text-gray-700 text-sm">Badge for top 3 ranking</span>
+                    </div>
+                    <div class="flex items-start gap-2">
+                      <span class="text-orange-500 mt-0.5 text-sm"><i class="fas fa-chart-bar"></i></span>
+                      <span class="text-gray-700 text-sm font-semibold">Guaranteed backlink (37+ DR)</span>
+                    </div>
+                    <div class="flex items-start gap-2">
+                      <span class="text-orange-500 mt-0.5 text-sm"><i class="fas fa-bolt"></i></span>
+                      <span class="text-gray-700 text-sm">Skip queue - launch immediately</span>
+                    </div>
+                    <div class="flex items-start gap-2">
+                      <span class="text-orange-500 mt-0.5 text-sm"><i class="fas fa-envelope"></i></span>
+                      <span class="text-gray-700 text-sm">Featured in newsletter</span>
+                    </div>
+                  </div>
+                  
+                  ${formData.plan === 'premium' ? html`
+                    <div class="bg-orange-100 text-orange-800 text-sm font-bold py-1.5 px-3 rounded-lg inline-flex items-center">
+                      <i class="fas fa-check mr-1.5"></i> Selected
+                    </div>
+                  ` : html`
+                    <div class="text-orange-500 text-sm font-medium py-1.5">Click to select</div>
+                  `}
                 </div>
               </div>
               

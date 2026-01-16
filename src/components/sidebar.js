@@ -110,7 +110,7 @@ export const Sidebar = ({ startups = [], onCategoryFilter, onSortChange, selecte
 
       <!-- Statistics -->
       <div class="p-6 border-b border-gray-200">
-        <h3 class="text-sm font-semibold text-gray-900 mb-4">2025 STATISTICS ©</h3>
+        <h3 class="text-sm font-semibold text-gray-900 mb-4">2026 STATISTICS ©</h3>
         <div class="grid grid-cols-2 gap-4">
           <div class="text-center">
             <div class="text-2xl font-bold text-gray-900">275,374</div>

@@ -180,9 +180,54 @@ export const StartupCard = ({ startup, user, onUpvoteChange }) => {
   const getInternalDetailUrl = () => {
     return `/startup/${startup.slug}`;
   };
+
+  // Check if this startup is from today (for ranking borders)
+  const isToday = () => {
+    if (!startup.launch_date) return false;
+    const today = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/New_York' }));
+    const todayStr = today.getFullYear() + '-' + 
+                  String(today.getMonth() + 1).padStart(2, '0') + '-' + 
+                  String(today.getDate()).padStart(2, '0');
+    return startup.launch_date === todayStr;
+  };
+
+  // Get ranking class for today's top 3
+  const getRankingClass = () => {
+    if (!isToday() || !startup.daily_rank) return '';
+    if (startup.daily_rank === 1) return 'startup-card-1st';
+    if (startup.daily_rank === 2) return 'startup-card-2nd';
+    if (startup.daily_rank === 3) return 'startup-card-3rd';
+    return '';
+  };
+
+  // Get ranking label text
+  const getRankingLabel = () => {
+    if (!isToday() || !startup.daily_rank || startup.daily_rank > 3) return null;
+    const labels = { 1: '1st Place', 2: '2nd Place', 3: '3rd Place' };
+    return labels[startup.daily_rank];
+  };
+
+  const rankingClass = getRankingClass();
+  const rankingLabel = getRankingLabel();
+  // Check if startup is featured (premium plan or featured flag)
+  const isFeatured = startup.featured || startup.plan === 'premium' || startup.plan === 'featured';
+  const featuredClass = isFeatured ? 'startup-card-featured' : '';
+  
+  // Debug logging for ranking
+  if (startup.daily_rank) {
+    console.log(`Startup "${startup.title}" - daily_rank: ${startup.daily_rank}, launch_date: ${startup.launch_date}, isToday: ${isToday()}, rankingClass: ${rankingClass}`);
+  }
   
   return html`
-    <div class="startup-card bg-white border border-gray-200 rounded-xl p-6 hover:shadow-md transition-all duration-200 w-full max-w-4xl">
+    <div class="startup-card bg-white border border-gray-200 rounded-xl p-6 hover:shadow-md transition-all duration-200 w-full max-w-4xl ${rankingClass} ${featuredClass}">
+      ${rankingLabel && html`
+        <span class="ranking-label ranking-label-${startup.daily_rank === 1 ? '1st' : startup.daily_rank === 2 ? '2nd' : '3rd'}">
+          ${rankingLabel}
+        </span>
+      `}
+      ${isFeatured && html`
+        <span class="featured-badge">Featured</span>
+      `}
       <div class="flex items-start gap-4">
         <!-- Logo -->
         <div class="flex-shrink-0">
@@ -268,14 +313,6 @@ export const StartupCard = ({ startup, user, onUpvoteChange }) => {
         </div>
       </div>
       
-      <!-- Featured Badge -->
-      ${startup.featured && html`
-        <div class="mt-4 pt-4 border-t border-gray-100">
-          <span class="inline-block bg-green-100 text-green-800 text-xs font-medium px-3 py-1 rounded-full">
-            Featured
-          </span>
-        </div>
-      `}
     </div>
   `;
 };

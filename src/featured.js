@@ -308,7 +308,7 @@ const FeaturedPage = () => {
         <section class="py-12 bg-white border-t border-gray-200">
           <div class="container mx-auto px-4">
             <div class="max-w-4xl mx-auto">
-              <h2 class="text-2xl font-bold text-center mb-8">2025 STATISTICS ©</h2>
+              <h2 class="text-2xl font-bold text-center mb-8">2026 STATISTICS ©</h2>
               <div class="grid grid-cols-2 md:grid-cols-4 gap-6">
                 <div class="text-center p-4 border-2 border-black rounded-lg shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
                   <div class="text-3xl font-bold text-gray-900">275,374</div>

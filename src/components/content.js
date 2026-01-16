@@ -101,6 +101,18 @@ export const Content = ({ user, onStartupsChange, selectedCategory, sortBy, sear
   };
 
   useEffect(() => {
+    // Update daily rankings once on initial load
+    const updateRankings = async () => {
+      try {
+        const supabase = supabaseClient();
+        await supabase.rpc('update_daily_rankings');
+        console.log('Daily rankings updated');
+      } catch (err) {
+        console.log('Rankings update error:', err);
+      }
+    };
+    updateRankings();
+    
     fetchStartups();
 
     // Listen for refresh requests
