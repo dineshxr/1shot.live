@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Payment Successful - SubmitHunt</title>
+  <link rel="icon" type="image/png" href="/favicon.png">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    @keyframes checkmark {
+      0% { transform: scale(0); opacity: 0; }
+      50% { transform: scale(1.2); }
+      100% { transform: scale(1); opacity: 1; }
+    }
+    .checkmark-animate {
+      animation: checkmark 0.5s ease-out forwards;
+    }
+    @keyframes confetti {
+      0% { transform: translateY(0) rotate(0deg); opacity: 1; }
+      100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
+    }
+    .confetti {
+      position: fixed;
+      width: 10px;
+      height: 10px;
+      top: -10px;
+      animation: confetti 3s ease-out forwards;
+    }
+  </style>
+</head>
+<body class="bg-gradient-to-br from-green-50 to-blue-50 min-h-screen flex items-center justify-center p-4">
+  <div id="confetti-container"></div>
+  
+  <div class="bg-white rounded-2xl shadow-xl p-8 max-w-md w-full text-center">
+    <div class="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6 checkmark-animate">
+      <i class="fas fa-check text-green-500 text-4xl"></i>
+    </div>
+    
+    <h1 class="text-3xl font-bold text-gray-900 mb-2">Payment Successful!</h1>
+    <p class="text-gray-600 mb-6">Thank you for your purchase. Your payment has been processed successfully.</p>
+    
+    <div id="order-details" class="bg-gray-50 rounded-lg p-4 mb-6 text-left">
+      <h3 class="font-semibold text-gray-900 mb-2">Order Details</h3>
+      <div class="space-y-2 text-sm">
+        <div class="flex justify-between">
+          <span class="text-gray-600">Product:</span>
+          <span id="product-name" class="font-medium text-gray-900">Loading...</span>
+        </div>
+        <div class="flex justify-between">
+          <span class="text-gray-600">Status:</span>
+          <span class="font-medium text-green-600">Completed</span>
+        </div>
+      </div>
+    </div>
+    
+    <div id="next-steps" class="bg-blue-50 rounded-lg p-4 mb-6 text-left">
+      <h3 class="font-semibold text-blue-900 mb-2">
+        <i class="fas fa-info-circle mr-2"></i>What's Next?
+      </h3>
+      <ul class="text-sm text-blue-800 space-y-2">
+        <li class="flex items-start gap-2">
+          <i class="fas fa-check text-blue-500 mt-1"></i>
+          <span>Your startup is now live on the homepage</span>
+        </li>
+        <li class="flex items-start gap-2">
+          <i class="fas fa-check text-blue-500 mt-1"></i>
+          <span>You'll receive a confirmation email shortly</span>
+        </li>
+        <li class="flex items-start gap-2">
+          <i class="fas fa-check text-blue-500 mt-1"></i>
+          <span>View and manage your listing in the dashboard</span>
+        </li>
+      </ul>
+    </div>
+    
+    <div class="space-y-3">
+      <a href="/" class="block w-full py-3 px-4 bg-black text-white font-bold rounded-lg hover:bg-gray-800 transition-colors">
+        <i class="fas fa-home mr-2"></i>Go to Homepage
+      </a>
+      <a href="/dashboard.html" class="block w-full py-3 px-4 bg-white border-2 border-black text-black font-bold rounded-lg hover:bg-gray-100 transition-colors">
+        <i class="fas fa-tachometer-alt mr-2"></i>View Dashboard
+      </a>
+    </div>
+    
+    <p class="text-xs text-gray-400 mt-6">
+      Questions? Contact us at <a href="https://x.com/submithunt" target="_blank" class="text-blue-500 hover:underline">@submithunt</a>
+    </p>
+  </div>
+
+  <script>
+    // Create confetti effect
+    function createConfetti() {
+      const colors = ['#f59e0b', '#10b981', '#3b82f6', '#8b5cf6', '#ef4444'];
+      const container = document.getElementById('confetti-container');
+      
+      for (let i = 0; i < 50; i++) {
+        setTimeout(() => {
+          const confetti = document.createElement('div');
+          confetti.className = 'confetti';
+          confetti.style.left = Math.random() * 100 + 'vw';
+          confetti.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+          confetti.style.animationDuration = (Math.random() * 2 + 2) + 's';
+          confetti.style.animationDelay = Math.random() * 0.5 + 's';
+          container.appendChild(confetti);
+          
+          setTimeout(() => confetti.remove(), 5000);
+        }, i * 50);
+      }
+    }
+    
+    // Get session ID from URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const sessionId = urlParams.get('session_id');
+    
+    // Update product name based on URL or default
+    const productName = document.getElementById('product-name');
+    if (sessionId) {
+      // Could fetch session details from backend, for now show generic
+      productName.textContent = 'SubmitHunt Launch';
+    } else {
+      productName.textContent = 'SubmitHunt Launch';
+    }
+    
+    // Trigger confetti on load
+    window.addEventListener('load', () => {
+      createConfetti();
+    });
+  </script>
+</body>
+</html>

@@ -293,7 +293,7 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
       }
 
       if (data) {
-        setError('This URL has already been submitted. If you want to feature it, please contact us.');
+        setError('This URL has already been submitted. If you want to upgrade it, please visit your dashboard.');
         setIsDuplicate(true);
       } else {
         setIsDuplicate(false);
@@ -764,7 +764,7 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
           
           ${formData.plan === 'premium' ? html`
             <div class="mb-4 bg-yellow-300 p-3 border border-black rounded">
-              <p class="font-bold mb-2"><a href="https://submit.gumroad.com/l/featured" target="_blank" class="underline hover:text-blue-700">Pay Now</a></p>
+              <p class="font-bold mb-2">Payment will be processed after submission</p>
               <p>After you pay - Your startup will be featured on the Home Page.</p>
               <p class="mt-2 font-bold">Your featured submission will be prioritized and displayed immediately.</p>
             </div>

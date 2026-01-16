@@ -233,9 +233,32 @@ class Dashboard {
         const createdDate = new Date(listing.created_at).toLocaleDateString();
         const launchDate = listing.launch_date ? new Date(listing.launch_date).toLocaleDateString() : 'Not set';
         const isPremium = listing.plan === 'premium';
+        const isFeatured = listing.plan === 'featured';
+        const isLive = listing.is_live;
+        
+        // Determine badge
+        let badge = '';
+        if (isFeatured) {
+            badge = `<span class="bg-purple-500 text-white border border-purple-700 px-2 py-1 text-xs font-bold">
+                <i class="fas fa-crown mr-1"></i>FEATURED
+            </span>`;
+        } else if (isPremium) {
+            badge = `<span class="bg-yellow-400 border border-black px-2 py-1 text-xs font-bold">
+                <i class="fas fa-star mr-1"></i>PREMIUM
+            </span>`;
+        } else {
+            badge = `<span class="bg-green-400 border border-black px-2 py-1 text-xs font-bold">
+                FREE
+            </span>`;
+        }
+        
+        // Status indicator
+        const statusBadge = isLive 
+            ? `<span class="bg-green-100 text-green-800 px-2 py-1 text-xs font-medium rounded-full"><i class="fas fa-circle text-green-500 mr-1" style="font-size: 6px;"></i>Live</span>`
+            : `<span class="bg-yellow-100 text-yellow-800 px-2 py-1 text-xs font-medium rounded-full"><i class="fas fa-clock mr-1"></i>Pending</span>`;
         
         return `
-            <div class="startup-card bg-white border-2 border-black brutalist-shadow p-4">
+            <div class="startup-card bg-white border-2 border-black brutalist-shadow p-4 ${isFeatured ? 'ring-2 ring-purple-500' : ''}">
                 ${listing.screenshot_url ? `
                     <img src="${listing.screenshot_url}" alt="${listing.title}" 
                          class="w-full h-32 object-cover border-2 border-black mb-3">
@@ -247,15 +270,11 @@ class Dashboard {
                 
                 <div class="flex items-start justify-between mb-2">
                     <h3 class="font-bold text-lg flex-1 mr-2">${listing.title}</h3>
-                    ${isPremium ? `
-                        <span class="bg-yellow-400 border border-black px-2 py-1 text-xs font-bold">
-                            <i class="fas fa-star mr-1"></i>FEATURED
-                        </span>
-                    ` : `
-                        <span class="bg-green-400 border border-black px-2 py-1 text-xs font-bold">
-                            FREE
-                        </span>
-                    `}
+                    ${badge}
+                </div>
+                
+                <div class="flex items-center gap-2 mb-2">
+                    ${statusBadge}
                 </div>
                 
                 <p class="text-gray-600 text-sm mb-3 line-clamp-2">
@@ -284,10 +303,10 @@ class Dashboard {
                             class="flex-1 px-3 py-2 bg-blue-400 border-2 border-black brutalist-shadow hover:bg-blue-500 font-bold text-sm">
                         <i class="fas fa-edit mr-1"></i>Edit
                     </button>
-                    ${!isPremium ? `
-                        <button onclick="dashboard.upgradeListing('${listing.id}')" 
-                                class="flex-1 px-3 py-2 bg-yellow-400 border-2 border-black brutalist-shadow hover:bg-yellow-500 font-bold text-sm">
-                            <i class="fas fa-star mr-1"></i>Upgrade
+                    ${!isPremium && !isFeatured ? `
+                        <button onclick="dashboard.upgradeListing('${listing.id}', '${listing.title}')" 
+                                class="flex-1 px-3 py-2 bg-purple-500 text-white border-2 border-purple-700 brutalist-shadow hover:bg-purple-600 font-bold text-sm">
+                            <i class="fas fa-crown mr-1"></i>Feature
                         </button>
                     ` : ''}
                     <a href="/startup/${listing.slug}" target="_blank"
@@ -299,14 +318,10 @@ class Dashboard {
         `;
     }
 
-    upgradeListing(listingId) {
+    async upgradeListing(listingId, listingTitle) {
         const listing = this.listings.find(l => l.id === listingId);
         if (!listing) return;
 
-        // Redirect to featured upgrade payment page with listing ID
-        const upgradeUrl = `https://submit.gumroad.com/l/featured?listing_id=${listingId}`;
-        window.open(upgradeUrl, '_blank');
-        
         // Track upgrade attempt
         if (typeof window.gtag === 'function') {
             window.gtag('event', 'upgrade_attempt', {
@@ -314,6 +329,34 @@ class Dashboard {
                 event_label: listing.title,
                 listing_id: listingId
             });
+        }
+
+        // Create Stripe checkout session via Edge Function
+        try {
+            const response = await fetch('https://lbayphzxmdtdmrqmeomt.supabase.co/functions/v1/create-checkout', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    product: 'featured',
+                    startupId: listingId,
+                    startupTitle: listingTitle || listing.title,
+                    userEmail: this.currentUser?.email,
+                    successUrl: `${window.location.origin}/payment-success`,
+                    cancelUrl: window.location.href
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to create checkout session');
+            }
+
+            const { url } = await response.json();
+            if (url) {
+                window.location.href = url;
+            }
+        } catch (error) {
+            console.error('Checkout error:', error);
+            this.showError('Failed to start checkout. Please try again.');
         }
     }
 

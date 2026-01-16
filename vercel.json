@@ -9,7 +9,8 @@
     { "source": "/dashboard", "destination": "/dashboard.html" },
     { "source": "/success", "destination": "/success.html" },
     { "source": "/submit", "destination": "/submit.html" },
-    { "source": "/pricing", "destination": "/pricing.html" }
+    { "source": "/pricing", "destination": "/pricing.html" },
+    { "source": "/payment-success", "destination": "/payment-success.html" }
   ],
   "headers": [
     {

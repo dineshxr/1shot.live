@@ -1,6 +1,7 @@
 import { supabaseClient } from '../lib/supabase-client.js';
 import { captureScreenshot, uploadScreenshot } from '../lib/screenshot-service.js';
 import { Confetti } from './confetti.js';
+import { createCheckoutSession } from '../lib/stripe.js';
 
 /* global html, useState, useEffect */
 
@@ -266,7 +267,7 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
       const { data, error } = await supabase.rpc('check_duplicate_url', { p_url: normalizedUrl });
 
       if (!error && data) {
-        setError('This URL has already been submitted. If you want to feature it, please contact us.');
+        setError('This URL has already been submitted. If you want to upgrade it, please visit your dashboard.');
         setIsDuplicate(true);
       } else {
         setIsDuplicate(false);
@@ -433,6 +434,17 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
       window.trackEvent('form_submit_success', { plan: formData.plan });
       window.dispatchEvent(new Event("refresh-startups"));
       
+      // If premium plan, redirect to Stripe checkout
+      if (formData.plan === 'premium' && data?.id) {
+        setTimeout(() => {
+          createCheckoutSession('premium', {
+            startupId: data.id,
+            startupTitle: formData.projectName,
+            userEmail: user?.email
+          });
+        }, 2000); // Show success briefly then redirect to payment
+      }
+      
     } catch (err) {
       setError(err.message);
       window.trackEvent('form_submit_error', { error: err.message });
@@ -479,8 +491,13 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
           
           ${formData.plan === 'premium' ? html`
             <div class="mb-4 bg-yellow-300 p-3 border border-black rounded">
-              <p class="font-bold mb-2"><a href="https://submit.gumroad.com/l/featured" target="_blank" class="underline hover:text-blue-700">Pay Now</a></p>
-              <p>After you pay - Your startup will be featured immediately.</p>
+              <div class="flex items-center gap-3">
+                <div class="animate-spin rounded-full h-5 w-5 border-b-2 border-black"></div>
+                <div>
+                  <p class="font-bold mb-1">Redirecting to payment...</p>
+                  <p class="text-sm">You'll be redirected to Stripe to complete your $5 payment.</p>
+                </div>
+              </div>
             </div>
           ` : html`
             <div class="mb-4 bg-blue-100 p-3 border border-black rounded">
@@ -801,54 +818,42 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
                 <!-- Featured Spot -->
                 <div 
                   class="bg-white rounded-xl p-5 cursor-pointer transition-all ${formData.plan === 'featured' ? 'border-4 border-purple-500 shadow-lg' : 'border-2 border-gray-200 hover:border-gray-300 hover:shadow-md'}"
-                  onClick=${() => window.open('https://x.com/submithunt', '_blank')}
+                  onClick=${() => createCheckoutSession('featured', { userEmail: user?.email })}
                 >
                   <div class="mb-4">
                     <h4 class="text-lg font-bold text-gray-900 mb-1">Featured Spot</h4>
-                    <div class="text-sm text-gray-500 mb-2">Premium placement</div>
-                  </div>
-                  
-                  <div class="space-y-2 mb-4">
-                    <div class="bg-gray-50 rounded-lg p-3 border border-gray-200">
-                      <div class="flex justify-between items-center">
-                        <div>
-                          <div class="font-semibold text-gray-900 text-sm">Top Spot</div>
-                          <div class="text-xs text-gray-500">Top of page</div>
-                        </div>
-                        <div class="font-bold text-gray-900 text-sm">$45<span class="text-xs font-normal text-gray-500">/wk</span></div>
-                      </div>
-                    </div>
-                    
-                    <div class="bg-gray-50 rounded-lg p-3 border border-gray-200">
-                      <div class="flex justify-between items-center">
-                        <div>
-                          <div class="font-semibold text-gray-900 text-sm">Mid-Feed</div>
-                          <div class="text-xs text-gray-500">Between 3rd & 4th</div>
-                        </div>
-                        <div class="font-bold text-gray-900 text-sm">$20<span class="text-xs font-normal text-gray-500">/wk</span></div>
-                      </div>
+                    <div class="flex items-baseline">
+                      <span class="text-3xl font-bold text-gray-900">$20</span>
+                      <span class="text-gray-500 ml-1 text-sm">/week</span>
                     </div>
                   </div>
                   
-                  <div class="space-y-2 mb-4 text-xs">
+                  <div class="space-y-3 mb-4">
                     <div class="flex items-start gap-2">
-                      <span class="text-purple-500 mt-0.5"><i class="fas fa-star"></i></span>
-                      <span class="text-gray-700">Premium landing page placement</span>
+                      <span class="text-purple-500 mt-0.5 text-sm"><i class="fas fa-star"></i></span>
+                      <span class="text-gray-700 text-sm">Featured placement in feed</span>
                     </div>
                     <div class="flex items-start gap-2">
-                      <span class="text-purple-500 mt-0.5"><i class="fas fa-eye"></i></span>
-                      <span class="text-gray-700">High visibility to daily visitors</span>
+                      <span class="text-purple-500 mt-0.5 text-sm"><i class="fas fa-eye"></i></span>
+                      <span class="text-gray-700 text-sm">High visibility to daily visitors</span>
+                    </div>
+                    <div class="flex items-start gap-2">
+                      <span class="text-purple-500 mt-0.5 text-sm"><i class="fas fa-border-all"></i></span>
+                      <span class="text-gray-700 text-sm">Colorful gradient border</span>
+                    </div>
+                    <div class="flex items-start gap-2">
+                      <span class="text-purple-500 mt-0.5 text-sm"><i class="fas fa-redo"></i></span>
+                      <span class="text-gray-700 text-sm">Renews weekly</span>
                     </div>
                   </div>
                   
-                  <a
-                    href="https://x.com/submithunt"
-                    target="_blank"
+                  <button
+                    type="button"
                     class="block w-full text-center py-2 px-3 bg-purple-500 rounded-lg text-white font-bold text-sm hover:bg-purple-600 transition-all"
-                    onClick=${(e) => e.stopPropagation()}
+                    onClick=${(e) => { e.stopPropagation(); createCheckoutSession('featured', { userEmail: user?.email }); }}
                   >
-                    Contact Us
-                  </a>
+                    Buy Now
+                  </button>
                 </div>
               </div>
               

@@ -195,7 +195,7 @@ const FeaturedPage = () => {
     trackEvent("FEATURED_CONTACT_CLICK");
     
     // Open Twitter in a new tab
-    window.open("https://x.com/submithunt", "_blank");
+    window.open("https://buy.stripe.com/YOUR_FEATURED_LINK", "_blank");
   };
 
   // Handle submit button click with authentication check
@@ -235,7 +235,7 @@ const FeaturedPage = () => {
             >
               <${OnlineVisitors} />
               <a
-                href="https://submit.gumroad.com/l/featured"
+                href="https://buy.stripe.com/YOUR_FEATURED_LINK"
                 target="_blank"
                 class="neo-button inline-flex items-center px-6 py-3 bg-yellow-400 border-2 border-black rounded shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:bg-yellow-500 font-bold text-lg"
               >
@@ -294,7 +294,7 @@ const FeaturedPage = () => {
                       <span class="bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-0.5 rounded">Premium</span>
                       <span class="bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-0.5 rounded">Sponsored</span>
                     </div>
-                    <a href="https://submit.gumroad.com/l/featured" target="_blank" class="inline-block bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded">
+                    <a href="https://buy.stripe.com/YOUR_FEATURED_LINK" target="_blank" class="inline-block bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded">
                       Get Featured
                     </a>
                   </div>
@@ -397,7 +397,7 @@ const FeaturedPage = () => {
                 </div>
                 
                 <a 
-                  href="https://submit.gumroad.com/l/featured"
+                  href="https://buy.stripe.com/YOUR_FEATURED_LINK"
                   target="_blank"
                   class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-6 rounded-lg shadow-md transition-all transform hover:scale-105 inline-block"
                 >
@@ -407,7 +407,7 @@ const FeaturedPage = () => {
               
               <div class="bg-blue-50 p-4 rounded-lg">
                 <p class="text-center font-medium">
-                  Click the button above or <a href="https://submit.gumroad.com/l/featured" target="_blank" class="text-blue-600 hover:underline">visit our payment page</a> to get started
+                  Click the button above or <a href="https://buy.stripe.com/YOUR_FEATURED_LINK" target="_blank" class="text-blue-600 hover:underline">visit our payment page</a> to get started
                 </p>
               </div>
             </div>
@@ -446,7 +446,7 @@ const FeaturedPage = () => {
               Get your product in front of our engaged audience of tech enthusiasts, investors, and early adopters.
             </p>
             <a 
-              href="https://submit.gumroad.com/l/featured"
+              href="https://buy.stripe.com/YOUR_FEATURED_LINK"
               target="_blank"
               class="bg-white text-blue-600 hover:bg-gray-100 font-bold py-3 px-8 rounded-lg shadow-lg transition-all transform hover:scale-105 inline-block"
             >

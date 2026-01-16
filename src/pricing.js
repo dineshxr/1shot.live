@@ -170,7 +170,7 @@ const PricingPage = () => {
               </div>
               
               <a
-                href="https://submit.gumroad.com/l/featured"
+                href="https://buy.stripe.com/YOUR_PREMIUM_LINK"
                 target="_blank"
                 class="block w-full text-center py-3 px-4 bg-orange-400 border-2 border-orange-500 rounded-lg text-white font-bold hover:bg-orange-500 transition-all shadow-md"
               >
@@ -182,76 +182,49 @@ const PricingPage = () => {
             <div class="bg-white rounded-2xl border-2 border-gray-200 p-8 hover:shadow-lg transition-shadow">
               <div class="mb-6">
                 <h3 class="text-xl font-bold text-gray-900 mb-2">Featured Spot</h3>
-                <div class="text-sm text-gray-500 mb-4">Premium placement options</div>
-              </div>
-              
-              <!-- Spot Options -->
-              <div class="space-y-4 mb-6">
-                <div class="bg-gray-50 rounded-lg p-4 border border-gray-200">
-                  <div class="flex justify-between items-start">
-                    <div>
-                      <div class="font-semibold text-gray-900">Top Spot</div>
-                      <div class="text-sm text-gray-500">Top of page placement</div>
-                    </div>
-                    <div class="text-right">
-                      <div class="font-bold text-gray-900">$45<span class="text-sm font-normal text-gray-500">/week</span></div>
-                    </div>
-                  </div>
+                <div class="flex items-baseline gap-1 mb-2">
+                  <span class="text-4xl font-bold text-gray-900">$20</span>
+                  <span class="text-gray-500">/week</span>
                 </div>
-                
-                <div class="bg-gray-50 rounded-lg p-4 border border-gray-200">
-                  <div class="flex justify-between items-start">
-                    <div>
-                      <div class="font-semibold text-gray-900">Mid-Feed Spot</div>
-                      <div class="text-sm text-gray-500">Between 3rd and 4th place</div>
-                    </div>
-                    <div class="text-right">
-                      <div class="font-bold text-gray-900">$20<span class="text-sm font-normal text-gray-500">/week</span></div>
-                    </div>
-                  </div>
-                </div>
+                <div class="text-sm text-gray-500">Premium placement in feed</div>
               </div>
               
               <div class="space-y-3 mb-8 text-sm">
                 <div class="flex items-start gap-3">
-                  <span class="text-orange-500 mt-0.5">
+                  <span class="text-purple-500 mt-0.5">
                     <i class="fas fa-star"></i>
                   </span>
-                  <span class="text-gray-700">Premium placement on landing page</span>
+                  <span class="text-gray-700">Featured placement in feed</span>
                 </div>
                 
                 <div class="flex items-start gap-3">
-                  <span class="text-orange-500 mt-0.5">
-                    <i class="fas fa-random"></i>
-                  </span>
-                  <span class="text-gray-700">Random featured product shown on each launch page</span>
-                </div>
-                
-                <div class="flex items-start gap-3">
-                  <span class="text-orange-500 mt-0.5">
+                  <span class="text-purple-500 mt-0.5">
                     <i class="fas fa-eye"></i>
                   </span>
                   <span class="text-gray-700">High visibility to daily visitors</span>
                 </div>
                 
                 <div class="flex items-start gap-3">
-                  <span class="text-orange-500 mt-0.5">
-                    <i class="fas fa-times-circle"></i>
+                  <span class="text-purple-500 mt-0.5">
+                    <i class="fas fa-border-all"></i>
                   </span>
-                  <span class="text-gray-700">Cancel anytime</span>
+                  <span class="text-gray-700">Colorful gradient border</span>
+                </div>
+                
+                <div class="flex items-start gap-3">
+                  <span class="text-purple-500 mt-0.5">
+                    <i class="fas fa-redo"></i>
+                  </span>
+                  <span class="text-gray-700">Renews weekly, cancel anytime</span>
                 </div>
               </div>
               
-              <p class="text-xs text-gray-400 mb-4 italic">
-                Features stay up until they hit at least $1 CPC, but they almost always do in the allotted time anyway
-              </p>
-              
               <a
-                href="https://x.com/submithunt"
+                href="https://buy.stripe.com/YOUR_FEATURED_LINK"
                 target="_blank"
-                class="block w-full text-center py-3 px-4 bg-orange-400 border-2 border-orange-500 rounded-lg text-white font-bold hover:bg-orange-500 transition-all"
+                class="block w-full text-center py-3 px-4 bg-purple-500 border-2 border-purple-600 rounded-lg text-white font-bold hover:bg-purple-600 transition-all"
               >
-                Contact Us
+                Buy Now
               </a>
             </div>
           </div>
