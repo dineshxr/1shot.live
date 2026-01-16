@@ -34,19 +34,27 @@ const SubmitApp = () => {
   const [showLoginModal, setShowLoginModal] = useState(false);
 
   useEffect(() => {
+    let lastUserId = null;
+    let pageViewTracked = false;
+    
     // Subscribe to auth state changes
     const unsubscribe = auth.subscribe((authState) => {
-      setUser(authState.user);
-      setAuthLoading(authState.loading);
-      
-      // Auto-show login modal if not authenticated after loading
-      if (!authState.loading && !authState.user) {
-        setShowLoginModal(true);
+      // Only update if user actually changed
+      if (authState.user?.id !== lastUserId) {
+        lastUserId = authState.user?.id || null;
+        setUser(authState.user);
+        setAuthLoading(authState.loading);
+        
+        // Auto-show login modal if not authenticated after loading
+        if (!authState.loading && !authState.user) {
+          setShowLoginModal(true);
+        }
       }
     });
 
     // Set initial user state
     const currentAuthState = auth.getAuthState();
+    lastUserId = currentAuthState.user?.id || null;
     setUser(currentAuthState.user);
     setAuthLoading(currentAuthState.loading);
     
@@ -55,8 +63,11 @@ const SubmitApp = () => {
       setShowLoginModal(true);
     }
 
-    // Track page view
-    window.trackEvent('submit_page_view');
+    // Track page view only once
+    if (!pageViewTracked) {
+      pageViewTracked = true;
+      window.trackEvent('submit_page_view');
+    }
 
     return unsubscribe;
   }, []);

@@ -68,8 +68,17 @@ async function initAuth() {
     updateAuthState(session?.user || null, session, false);
 
     // Listen for auth changes
+    let lastEventTime = 0;
     supabase.auth.onAuthStateChange((event, session) => {
       console.log('Auth state change:', event, session);
+      
+      // Debounce rapid auth events (within 500ms)
+      const now = Date.now();
+      if (now - lastEventTime < 500) {
+        console.log('Skipping rapid auth event');
+        return;
+      }
+      lastEventTime = now;
       
       // Prevent infinite loops by checking if state actually changed
       if (authState.user?.id !== session?.user?.id || 
