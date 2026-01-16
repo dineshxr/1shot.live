@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    
+    <!-- Primary Meta Tags -->
+    <title>Submit Your Startup | SubmitHunt - Best Product Hunt Alternative</title>
+    <meta name="title" content="Submit Your Startup | SubmitHunt - Best Product Hunt Alternative" />
+    <meta name="description" content="Submit your startup to SubmitHunt, the leading Product Hunt alternative. Launch your startup, get featured, and receive a 37+ DR backlink to boost your SEO." />
+    <meta name="keywords" content="submit your startup, product hunt alternatives, startup submission, launch your startup" />
+    <meta name="author" content="SubmitHunt" />
+    <meta name="robots" content="index, follow" />
+    
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://submithunt.com/submit" />
+    <meta property="og:title" content="Submit Your Startup | SubmitHunt" />
+    <meta property="og:description" content="Submit your startup to SubmitHunt and get a 37+ DR backlink." />
+    <meta property="og:image" content="https://submithunt.com/og-image.png" />
+    
+    <!-- Twitter / X -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:url" content="https://submithunt.com/submit" />
+    <meta name="twitter:title" content="Submit Your Startup | SubmitHunt" />
+    <meta name="twitter:description" content="Submit your startup to SubmitHunt and get a 37+ DR backlink." />
+    <meta name="twitter:image" content="https://submithunt.com/og-image.png" />
+    
+    <!-- Canonical URL -->
+    <link rel="canonical" href="https://submithunt.com/submit" />
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/x-icon" href="/src/favicon_io/favicon.ico" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/src/favicon_io/favicon-32x32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/src/favicon_io/favicon-16x16.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+    
+    <!-- Stylesheets -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    />
+    <link rel="stylesheet" href="/src/style.css" />
+    
+    <!-- Poopup Analytics -->
+    <script>
+      (function(){
+        const isLocalDev = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+        if (!isLocalDev) {
+          const s = document.createElement('script');
+          s.defer = true;
+          s.setAttribute('data-domain', 'submithunt.com');
+          s.src = 'https://poopup.co/js/script.js';
+          document.head.appendChild(s);
+        }
+      })();
+    </script>
+    
+    <!-- Preact CDN -->
+    <script src="https://unpkg.com/preact@10.13.1/dist/preact.min.js"></script>
+    <script src="https://unpkg.com/preact@10.13.1/hooks/dist/hooks.umd.js"></script>
+    <script src="https://unpkg.com/htm@3.1.1/dist/htm.js"></script>
+    
+    <!-- Vercel Analytics -->
+    <script>
+      window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };
+      const isLocalDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+      if (!isLocalDev) {
+        const script = document.createElement('script');
+        script.defer = true;
+        script.src = '/_vercel/insights/script.js';
+        document.head.appendChild(script);
+      } else {
+        window.va = function(command, params) {
+          console.log(`Vercel Analytics (dev mock): ${command}`, params || '');
+        };
+      }
+    </script>
+  </head>
+  <body>
+    <div id="app-root"></div>
+    <script type="importmap">
+      {
+        "imports": {
+          "preact": "https://unpkg.com/preact@10.13.1/dist/preact.module.js",
+          "preact/hooks": "https://unpkg.com/preact@10.13.1/hooks/dist/hooks.module.js",
+          "htm": "https://unpkg.com/htm@3.1.1/dist/htm.module.js",
+          "htm/preact": "https://unpkg.com/htm@3.1.1/preact/index.module.js",
+          "@supabase/supabase-js": "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.38.4/+esm"
+        }
+      }
+    </script>
+    <script type="module" src="/src/submit.js"></script>
+  </body>
+</html>

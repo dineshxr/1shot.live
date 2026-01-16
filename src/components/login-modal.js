@@ -66,28 +66,75 @@ export const LoginModal = ({ isOpen, onClose, onLoginSuccess }) => {
       class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
       onClick=${handleBackdropClick}
     >
-      <div class="bg-white rounded-lg shadow-2xl max-w-md w-full p-6 border-2 border-black">
-        <div class="flex justify-between items-center mb-4">
-          <h2 class="text-2xl font-bold text-black">Login Required</h2>
+      <div class="bg-white rounded-2xl shadow-2xl max-w-4xl w-full overflow-hidden flex flex-col md:flex-row">
+        <!-- Left Side - Benefits -->
+        <div class="bg-gradient-to-br from-orange-50 to-yellow-50 p-8 md:p-12 md:w-1/2">
+          <div class="flex items-center gap-3 mb-8">
+            <img src="/src/sh-logo.png" alt="SubmitHunt" class="w-10 h-10" />
+            <span class="text-xl font-bold text-gray-900">SubmitHunt</span>
+          </div>
+          
+          <h2 class="text-2xl md:text-3xl font-bold text-gray-900 mb-6 leading-tight">
+            Launch your startup<br/>to thousands of users.
+          </h2>
+          
+          <div class="space-y-4">
+            <div class="flex items-start gap-3">
+              <span class="text-orange-500 mt-0.5">
+                <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                  <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                </svg>
+              </span>
+              <span class="text-gray-700">Join thousands of successful product launches on SubmitHunt</span>
+            </div>
+            
+            <div class="flex items-start gap-3">
+              <span class="text-orange-500 mt-0.5">
+                <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                  <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                </svg>
+              </span>
+              <span class="text-gray-700">High visibility to daily visitors</span>
+            </div>
+            
+            <div class="flex items-start gap-3">
+              <span class="text-orange-500 mt-0.5">
+                <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                  <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                </svg>
+              </span>
+              <span class="text-gray-700">Badge for top 3 ranking products</span>
+            </div>
+            
+            <div class="flex items-start gap-3">
+              <span class="text-orange-500 mt-0.5">
+                <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                  <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                </svg>
+              </span>
+              <span class="text-gray-700">Get a 37+ DR dofollow backlink</span>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Right Side - Login Form -->
+        <div class="p-8 md:p-12 md:w-1/2 relative">
           <button 
             onClick=${onClose}
-            class="text-gray-500 hover:text-gray-700 text-2xl"
+            class="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors"
             disabled=${loading}
           >
-            <i class="fas fa-times"></i>
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+            </svg>
           </button>
-        </div>
-        
-        <div class="mb-6">
-          <p class="text-gray-700 mb-4">
-            To submit your startup, please sign in with your Google account.
-          </p>
-        </div>
-        
-        <div class="space-y-4">
+          
+          <h3 class="text-2xl font-bold text-gray-900 mb-2">Log in to your account</h3>
+          <p class="text-gray-500 mb-8">Sign in to submit your startup and get discovered</p>
+          
           ${error && html`
-            <div class="text-red-600 text-sm bg-red-50 p-3 rounded-md">
-              <i class="fas fa-times-circle mr-2"></i>
+            <div class="mb-4 text-red-600 text-sm bg-red-50 p-3 rounded-lg border border-red-200">
+              <i class="fas fa-exclamation-circle mr-2"></i>
               ${error}
             </div>
           `}
@@ -96,7 +143,7 @@ export const LoginModal = ({ isOpen, onClose, onLoginSuccess }) => {
             type="button"
             onClick=${handleGoogleSignIn}
             disabled=${loading}
-            class="w-full flex items-center justify-center gap-3 bg-white border-2 border-gray-300 text-gray-700 py-3 px-4 rounded-md hover:bg-gray-50 hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            class="w-full flex items-center justify-center gap-3 bg-white border border-gray-300 text-gray-700 py-3.5 px-4 rounded-lg hover:bg-gray-50 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all font-medium"
           >
             <svg class="w-5 h-5" viewBox="0 0 24 24">
               <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
@@ -106,10 +153,9 @@ export const LoginModal = ({ isOpen, onClose, onLoginSuccess }) => {
             </svg>
             ${loading ? 'Signing in...' : 'Continue with Google'}
           </button>
-        </div>
-        
-        <div class="mt-6 text-center">
-          <p class="text-xs text-gray-500">
+          
+          <p class="mt-6 text-xs text-gray-400 text-center">
+            If you do not have an account with us, this will create one for you.
             By signing in, you agree to our terms of service and privacy policy.
           </p>
         </div>

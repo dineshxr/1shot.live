@@ -40,12 +40,12 @@ export const Header = ({ user }) => {
                 >
                   <i class="fas fa-tachometer-alt mr-2"></i> Dashboard
                 </a>
-                <button
-                  onClick=${() => window.openSubmitForm()}
+                <a
+                  href="/submit"
                   class="neo-button inline-flex items-center px-4 py-2 bg-green-400 border-2 border-black rounded shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:bg-green-500 font-bold animate-pulse"
                 >
                   <i class="fas fa-rocket mr-2"></i> Submit Product
-                </button>
+                </a>
                 <button
                   onClick=${() => window.auth.signOut()}
                   class="neo-button inline-flex items-center px-3 py-1 bg-red-400 border-2 border-black rounded shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:bg-red-500 font-bold text-sm"
@@ -54,12 +54,12 @@ export const Header = ({ user }) => {
                 </button>
               </div>
             ` : html`
-              <button
-                id="submit-startup-btn"
+              <a
+                href="/submit"
                 class="neo-button inline-flex items-center px-4 py-2 bg-purple-400 border-2 border-black rounded shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:bg-purple-500 font-bold"
               >
                 <i class="fas fa-plus mr-2"></i> Submit Product
-              </button>
+              </a>
             `}
           </div>
         </div>
