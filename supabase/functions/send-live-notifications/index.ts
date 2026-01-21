@@ -142,82 +142,146 @@ async function sendLiveNotification(listing: any): Promise<boolean> {
       return false
     }
 
+    const startupUrl = `https://submithunt.com/startup/${listing.slug || listing.id}`;
+    const isPremiumOrFeatured = listing.plan === 'premium' || listing.plan === 'featured';
+    const shareText = encodeURIComponent(`I just launched ${listing.title} on @SubmitHunt! Check it out and give it an upvote 🚀`);
+
     const emailData = {
-      from: 'SubmitHunt <notifications@submithunt.com>',
+      from: 'SubmitHunt <hello@submithunt.com>',
       to: [listing.author_email],
-      subject: `🚀 Your startup "${listing.title}" is now live on SubmitHunt!`,
+      subject: `🚀 ${listing.title} is now LIVE on SubmitHunt!`,
       html: `
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <meta charset="utf-8">
-          <meta name="viewport" content="width=device-width, initial-scale=1.0">
-          <title>Your Startup is Live!</title>
-        </head>
-        <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
-          <div style="background: #f8f9fa; padding: 30px; border-radius: 10px; text-align: center; margin-bottom: 30px;">
-            <h1 style="color: #2563eb; margin: 0 0 10px 0;">🚀 Congratulations!</h1>
-            <h2 style="color: #1f2937; margin: 0;">Your startup is now live on SubmitHunt!</h2>
-          </div>
-          
-          <div style="background: white; padding: 25px; border: 2px solid #e5e7eb; border-radius: 8px; margin-bottom: 25px;">
-            <h3 style="color: #1f2937; margin-top: 0;">"${listing.title}" is now featured on our homepage</h3>
-            <p>Your startup has gone live and is now visible to our community of founders, investors, and tech enthusiasts.</p>
-            
-            <div style="background: #fef3c7; border: 1px solid #f59e0b; border-radius: 6px; padding: 15px; margin: 20px 0;">
-              <p style="margin: 0; font-weight: bold; color: #92400e;">
-                📈 Pro tip: Share your launch on social media for maximum exposure!
-              </p>
-            </div>
-          </div>
-
-          <div style="text-align: center; margin: 30px 0;">
-            <a href="https://submithunt.com/startup/${listing.slug || listing.id}" 
-               style="background: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block;">
-              View Your Live Listing
-            </a>
-          </div>
-
-          <div style="background: #f3f4f6; padding: 20px; border-radius: 6px; margin-top: 30px;">
-            <h4 style="margin-top: 0; color: #374151;">What's next?</h4>
-            <ul style="color: #6b7280; padding-left: 20px;">
-              <li>Share your launch on X (Twitter), LinkedIn, and other social platforms</li>
-              <li>Engage with the SubmitHunt community</li>
-              <li>Monitor your listing performance in your <a href="https://submithunt.com/dashboard.html" style="color: #2563eb;">dashboard</a></li>
-              <li>Consider upgrading to featured for more visibility</li>
-            </ul>
-          </div>
-
-          <div style="text-align: center; margin-top: 40px; padding-top: 20px; border-top: 1px solid #e5e7eb;">
-            <p style="color: #6b7280; font-size: 14px;">
-              Best of luck with your launch!<br>
-              The SubmitHunt Team
-            </p>
-            <div style="margin-top: 15px;">
-              <a href="https://twitter.com/submithunt" style="color: #2563eb; text-decoration: none; margin: 0 10px;">Twitter</a>
-              <a href="https://submithunt.com" style="color: #2563eb; text-decoration: none; margin: 0 10px;">Website</a>
-            </div>
-          </div>
-        </body>
-        </html>
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Your Startup is Live on SubmitHunt!</title>
+</head>
+<body style="margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f5f5f5;">
+  <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; margin-top: 20px; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
+    
+    <!-- Header -->
+    <div style="background-color: #60a5fa; padding: 30px; text-align: center; border-bottom: 4px solid #000;">
+      <h1 style="margin: 0; color: #000; font-size: 28px; font-weight: bold;">🚀 Your Startup is LIVE!</h1>
+    </div>
+    
+    <!-- Main Content -->
+    <div style="padding: 30px;">
+      <p style="font-size: 18px; color: #333; margin-bottom: 20px;">
+        Hey ${listing.author_name || 'there'}! Great news!
+      </p>
+      
+      <p style="font-size: 16px; color: #555; line-height: 1.6;">
+        <strong>${listing.title}</strong> is now live on SubmitHunt and visible to thousands of daily visitors!
+      </p>
+      
+      <!-- Startup Card -->
+      <div style="background-color: #f8f9fa; border: 2px solid #e9ecef; border-radius: 8px; padding: 20px; margin: 25px 0;">
+        <h2 style="margin: 0 0 10px 0; color: #333; font-size: 20px;">${listing.title}</h2>
+        <p style="margin: 0; color: #666; font-size: 14px; line-height: 1.5;">${listing.description?.substring(0, 150) || ''}${listing.description?.length > 150 ? '...' : ''}</p>
+        <a href="${startupUrl}" style="display: inline-block; margin-top: 15px; background-color: #000; color: #fff; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">View Your Listing →</a>
+      </div>
+      
+      <!-- Vote Reminder -->
+      <div style="background-color: #fef3c7; border: 2px solid #f59e0b; border-radius: 8px; padding: 20px; margin: 25px 0;">
+        <h3 style="margin: 0 0 10px 0; color: #92400e; font-size: 18px;">⬆️ Get More Votes!</h3>
+        <p style="margin: 0; color: #78350f; font-size: 14px; line-height: 1.5;">
+          Share your listing with your audience and ask them to upvote! The more votes you get, the higher you'll rank on the homepage.
+        </p>
+        <p style="margin: 12px 0 0 0; color: #92400e; font-size: 14px; font-weight: bold;">
+          🏆 Top 3 ranking products get a special badge + high authority backlink!
+        </p>
+        <a href="https://twitter.com/intent/tweet?text=${shareText}&url=${encodeURIComponent(startupUrl)}" style="display: inline-block; margin-top: 15px; background-color: #000; color: #fff; padding: 10px 20px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 14px;">Share on X →</a>
+      </div>
+      
+      ${!isPremiumOrFeatured ? `
+      <!-- Upgrade CTA -->
+      <div style="background: linear-gradient(135deg, #f97316 0%, #ea580c 100%); border-radius: 8px; padding: 25px; margin: 25px 0; text-align: center;">
+        <h3 style="margin: 0 0 10px 0; color: #fff; font-size: 20px;">🔥 Want More Visibility?</h3>
+        <p style="margin: 0 0 15px 0; color: #fff; font-size: 14px; line-height: 1.5; opacity: 0.9;">
+          Upgrade to Premium for just $5 and get:
+        </p>
+        <ul style="text-align: left; color: #fff; font-size: 14px; margin: 0 0 20px 0; padding-left: 20px;">
+          <li style="margin-bottom: 8px;">✅ <strong>Guaranteed high authority backlink</strong></li>
+          <li style="margin-bottom: 8px;">✅ 14 days on homepage (vs 7 days)</li>
+          <li style="margin-bottom: 8px;">✅ Featured in our newsletter</li>
+          <li style="margin-bottom: 8px;">✅ Skip the queue next time</li>
+        </ul>
+        <a href="https://submithunt.com/submit" style="display: inline-block; background-color: #fff; color: #ea580c; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: bold;">Upgrade to Premium →</a>
+      </div>
+      ` : `
+      <!-- Premium Thank You -->
+      <div style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); border-radius: 8px; padding: 25px; margin: 25px 0; text-align: center;">
+        <h3 style="margin: 0 0 10px 0; color: #fff; font-size: 20px;">🎉 Thank You for Going Premium!</h3>
+        <p style="margin: 0; color: #fff; font-size: 14px; line-height: 1.5; opacity: 0.9;">
+          Your listing is featured with priority placement. You'll receive your guaranteed backlink within 24 hours!
+        </p>
+      </div>
+      `}
+      
+      <!-- Tips -->
+      <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e9ecef;">
+        <h4 style="margin: 0 0 15px 0; color: #333; font-size: 16px;">💡 Quick Tips to Maximize Your Launch:</h4>
+        <ol style="color: #555; font-size: 14px; line-height: 1.8; padding-left: 20px; margin: 0;">
+          <li>Share on social media and tag @SubmitHunt</li>
+          <li>Ask your community to upvote</li>
+          <li>Engage with comments on your listing</li>
+          <li>Reply to feedback and questions</li>
+        </ol>
+      </div>
+    </div>
+    
+    <!-- Footer -->
+    <div style="background-color: #f8f9fa; padding: 20px; text-align: center; border-top: 1px solid #e9ecef;">
+      <p style="margin: 0 0 10px 0; color: #666; font-size: 14px;">
+        Good luck with your launch! 🍀
+      </p>
+      <p style="margin: 0; color: #999; font-size: 12px;">
+        <a href="https://submithunt.com" style="color: #60a5fa; text-decoration: none;">SubmitHunt</a> - Launch your startup to thousands of daily visitors
+      </p>
+    </div>
+  </div>
+</body>
+</html>
       `,
       text: `
-🚀 Congratulations! Your startup "${listing.title}" is now live on SubmitHunt!
+🚀 ${listing.title} is now LIVE on SubmitHunt!
 
-Your startup has gone live and is now visible to our community of founders, investors, and tech enthusiasts.
+Hey ${listing.author_name || 'there'}! Great news!
 
-View your live listing: https://submithunt.com/startup/${listing.slug || listing.id}
+${listing.title} is now live on SubmitHunt and visible to thousands of daily visitors!
 
-What's next?
-- Share your launch on social media platforms
-- Engage with the SubmitHunt community  
-- Monitor your performance in your dashboard: https://submithunt.com/dashboard.html
-- Consider upgrading to featured for more visibility
+View your listing: ${startupUrl}
 
-Best of luck with your launch!
+⬆️ GET MORE VOTES!
+Share your listing with your audience and ask them to upvote! The more votes you get, the higher you'll rank on the homepage.
+
+🏆 Top 3 ranking products get a special badge + high authority backlink!
+
+Share on X: https://twitter.com/intent/tweet?text=${shareText}&url=${encodeURIComponent(startupUrl)}
+
+${!isPremiumOrFeatured ? `
+🔥 WANT MORE VISIBILITY?
+Upgrade to Premium for just $5 and get:
+- Guaranteed high authority backlink
+- 14 days on homepage (vs 7 days)
+- Featured in our newsletter
+- Skip the queue next time
+
+Upgrade now: https://submithunt.com/submit
+` : `
+🎉 Thank you for going Premium! Your listing is featured with priority placement.
+`}
+
+💡 Quick Tips:
+1. Share on social media and tag @SubmitHunt
+2. Ask your community to upvote
+3. Engage with comments on your listing
+4. Reply to feedback and questions
+
+Good luck with your launch! 🍀
 The SubmitHunt Team
-
-Follow us: https://twitter.com/submithunt
       `
     }
 
