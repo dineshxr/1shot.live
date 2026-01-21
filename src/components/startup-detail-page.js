@@ -288,17 +288,6 @@ export const StartupDetailPage = () => {
             </div>
           `}
           
-          <div class="border-t-2 border-black pt-4 mt-6">
-            <p class="text-sm text-gray-600">
-              Launch date: ${new Date(startup.launch_date).toLocaleDateString('en-US', {
-                weekday: 'long',
-                month: 'long',
-                day: 'numeric',
-                year: 'numeric',
-                timeZone: 'America/Los_Angeles'
-              })}
-            </p>
-          </div>
         </div>
       </div>
     </div>

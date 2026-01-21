@@ -209,8 +209,10 @@ export const StartupCard = ({ startup, user, onUpvoteChange }) => {
 
   const rankingClass = getRankingClass();
   const rankingLabel = getRankingLabel();
-  // Check if startup is featured (premium plan or featured flag)
-  const isFeatured = startup.featured || startup.plan === 'premium' || startup.plan === 'featured';
+  // Check if startup is featured (from database is_featured field or plan check)
+  // Featured listings have gradient border and appear at top of feed
+  // Premium listings also get featured styling but don't appear at top
+  const isFeatured = startup.is_featured || startup.plan === 'featured' || startup.plan === 'premium';
   const featuredClass = isFeatured ? 'startup-card-featured' : '';
   
   // Debug logging for ranking
@@ -224,9 +226,6 @@ export const StartupCard = ({ startup, user, onUpvoteChange }) => {
         <span class="ranking-label ranking-label-${startup.daily_rank === 1 ? '1st' : startup.daily_rank === 2 ? '2nd' : '3rd'}">
           ${rankingLabel}
         </span>
-      `}
-      ${isFeatured && html`
-        <span class="featured-badge">Featured</span>
       `}
       <div class="flex items-start gap-4">
         <!-- Logo -->
@@ -268,6 +267,12 @@ export const StartupCard = ({ startup, user, onUpvoteChange }) => {
               </a>
               
               <div class="flex items-center text-sm text-gray-600 mb-2">
+                ${startup.plan === 'featured' && html`
+                  <span class="bg-yellow-400 text-black text-xs font-bold px-2 py-0.5 rounded mr-2">FEATURED</span>
+                `}
+                ${startup.plan === 'premium' && html`
+                  <span class="bg-orange-400 text-white text-xs font-bold px-2 py-0.5 rounded mr-2">PREMIUM</span>
+                `}
                 <span class="truncate">by ${startup.author?.name || 'Anonymous'}</span>
                 ${startup.category && html`
                   <span class="mx-2 text-gray-400">•</span>
