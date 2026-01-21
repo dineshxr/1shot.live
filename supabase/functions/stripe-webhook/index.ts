@@ -94,13 +94,16 @@ async function handleCheckoutComplete(session: Stripe.Checkout.Session) {
 
   // Update startup based on product type
   if (product === "premium" && startup_id) {
-    // Premium launch - set is_live to true and plan to premium
+    // Premium launch/upgrade - set is_live to true and plan to premium
+    // Reset notification_sent so they get a new "you're live" email
     const { error } = await supabase
       .from("startups")
       .update({ 
         is_live: true, 
         plan: "premium",
-        launch_date: new Date().toISOString().split('T')[0]
+        launch_date: new Date().toISOString().split('T')[0],
+        notification_sent: false,
+        notification_sent_at: null
       })
       .eq("id", startup_id);
 
@@ -111,6 +114,7 @@ async function handleCheckoutComplete(session: Stripe.Checkout.Session) {
     }
   } else if (product === "featured" && startup_id) {
     // Featured spot - set plan to featured with 1 week duration
+    // Reset notification_sent so they get a new "you're live" email
     const featuredUntil = new Date();
     featuredUntil.setDate(featuredUntil.getDate() + 7); // 1 week subscription
     
@@ -120,7 +124,9 @@ async function handleCheckoutComplete(session: Stripe.Checkout.Session) {
         plan: "featured",
         is_live: true,
         featured_until: featuredUntil.toISOString(),
-        launch_date: new Date().toISOString().split('T')[0]
+        launch_date: new Date().toISOString().split('T')[0],
+        notification_sent: false,
+        notification_sent_at: null
       })
       .eq("id", startup_id);
 

@@ -197,6 +197,15 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
   };
 
 
+  // Check for plan query parameter from URL (e.g., /submit?plan=premium)
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const planParam = urlParams.get('plan');
+    if (planParam && ['free', 'premium', 'featured'].includes(planParam)) {
+      setFormData(prev => ({ ...prev, plan: planParam }));
+    }
+  }, []);
+
   // Load launch dates and set up refresh interval
   useEffect(() => {
     const loadLaunchDates = async () => {

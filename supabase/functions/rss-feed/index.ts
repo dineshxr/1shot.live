@@ -32,22 +32,45 @@ serve(async (req) => {
       throw error;
     }
 
-    // Build RSS XML
+    // Helper function to escape XML special characters
+    const escapeXml = (str: string) => {
+      if (!str) return "";
+      return str
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&apos;")
+        .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, ""); // Remove control characters
+    };
+
+    // Build RSS XML with tweet-ready content for Buffer
     const rssItems = (startups || []).map((startup) => {
       const authorName = startup.author?.name || "";
       const xHandle = authorName.startsWith("@") ? authorName : (authorName ? `@${authorName}` : "");
       const pubDate = new Date(startup.launch_date || startup.created_at).toUTCString();
+      const startupUrl = `https://submithunt.com/startup/${startup.slug}`;
+      
+      // Clean description for tweet
+      const cleanDesc = (startup.description || "").replace(/[\n\r]+/g, " ").trim();
+      const shortDesc = cleanDesc.substring(0, 100) + (cleanDesc.length > 100 ? "..." : "");
+      
+      // Create tweet-ready text for Buffer (plain text, no special chars)
+      const tweetText = xHandle 
+        ? `New launch: ${startup.title} - ${shortDesc} by ${xHandle} ${startupUrl}`
+        : `New launch: ${startup.title} - ${shortDesc} ${startupUrl}`;
       
       return `
     <item>
-      <title><![CDATA[${startup.title}]]></title>
-      <link>https://www.submithunt.com/startup/${startup.slug}</link>
-      <guid isPermaLink="true">https://www.submithunt.com/startup/${startup.slug}</guid>
+      <title>${escapeXml(startup.title)}</title>
+      <link>${escapeXml(startupUrl)}</link>
+      <guid isPermaLink="true">${escapeXml(startupUrl)}</guid>
       <pubDate>${pubDate}</pubDate>
-      <description><![CDATA[${startup.description || ""}]]></description>
-      <author>${xHandle}</author>
-      <category>${startup.category || "Startup"}</category>
-      <website>${startup.url}</website>
+      <description>${escapeXml(cleanDesc)}</description>
+      <author>${escapeXml(xHandle)}</author>
+      <category>${escapeXml(startup.category || "Startup")}</category>
+      <website>${escapeXml(startup.url)}</website>
+      <tweetText>${escapeXml(tweetText)}</tweetText>
     </item>`;
     }).join("");
 

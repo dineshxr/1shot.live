@@ -170,8 +170,7 @@ const PricingPage = () => {
               </div>
               
               <a
-                href="https://buy.stripe.com/YOUR_PREMIUM_LINK"
-                target="_blank"
+                href="/submit?plan=premium"
                 class="block w-full text-center py-3 px-4 bg-orange-400 border-2 border-orange-500 rounded-lg text-white font-bold hover:bg-orange-500 transition-all shadow-md"
               >
                 Choose Premium
@@ -220,11 +219,10 @@ const PricingPage = () => {
               </div>
               
               <a
-                href="https://buy.stripe.com/YOUR_FEATURED_LINK"
-                target="_blank"
+                href="/submit?plan=featured"
                 class="block w-full text-center py-3 px-4 bg-purple-500 border-2 border-purple-600 rounded-lg text-white font-bold hover:bg-purple-600 transition-all"
               >
-                Buy Now
+                Choose Featured
               </a>
             </div>
           </div>

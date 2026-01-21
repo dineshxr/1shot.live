@@ -35,6 +35,12 @@ export const Header = ({ user }) => {
                   </span>
                 </div>
                 <a
+                  href="/pricing"
+                  class="neo-button inline-flex items-center px-3 py-2 bg-yellow-400 border-2 border-black rounded shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:bg-yellow-500 font-bold text-sm"
+                >
+                  <i class="fas fa-tags mr-2"></i> Pricing
+                </a>
+                <a
                   href="/dashboard.html"
                   class="neo-button inline-flex items-center px-3 py-2 bg-blue-400 border-2 border-black rounded shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:bg-blue-500 font-bold text-sm"
                 >
@@ -54,6 +60,12 @@ export const Header = ({ user }) => {
                 </button>
               </div>
             ` : html`
+              <a
+                href="/pricing"
+                class="neo-button inline-flex items-center px-3 py-2 bg-yellow-400 border-2 border-black rounded shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:bg-yellow-500 font-bold text-sm"
+              >
+                <i class="fas fa-tags mr-2"></i> Pricing
+              </a>
               <a
                 href="/submit"
                 class="neo-button inline-flex items-center px-4 py-2 bg-purple-400 border-2 border-black rounded shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:bg-purple-500 font-bold"

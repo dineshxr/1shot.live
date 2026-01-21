@@ -298,27 +298,105 @@ class Dashboard {
                     </div>
                 </div>
                 
-                <div class="flex space-x-2">
+                <div class="flex space-x-2 mb-2">
                     <button onclick="dashboard.editListing('${listing.id}')" 
                             class="flex-1 px-3 py-2 bg-blue-400 border-2 border-black brutalist-shadow hover:bg-blue-500 font-bold text-sm">
                         <i class="fas fa-edit mr-1"></i>Edit
                     </button>
-                    ${!isPremium && !isFeatured ? `
-                        <button onclick="dashboard.upgradeListing('${listing.id}', '${listing.title}')" 
-                                class="flex-1 px-3 py-2 bg-purple-500 text-white border-2 border-purple-700 brutalist-shadow hover:bg-purple-600 font-bold text-sm">
-                            <i class="fas fa-crown mr-1"></i>Feature
-                        </button>
-                    ` : ''}
                     <a href="/startup/${listing.slug}" target="_blank"
                        class="flex-1 px-3 py-2 bg-green-400 border-2 border-black brutalist-shadow hover:bg-green-500 font-bold text-sm text-center">
                         <i class="fas fa-eye mr-1"></i>View
                     </a>
                 </div>
+                
+                ${!isPremium && !isFeatured ? `
+                <div class="border-t-2 border-gray-200 pt-3 mt-2">
+                    <p class="text-xs text-gray-500 mb-2 font-medium">🚀 Boost your listing:</p>
+                    <div class="flex space-x-2">
+                        <button onclick="dashboard.showUpgradeModal('${listing.id}', '${listing.title.replace(/'/g, "\\'")}', 'premium')" 
+                                class="flex-1 px-3 py-2 bg-orange-400 border-2 border-black brutalist-shadow hover:bg-orange-500 font-bold text-xs">
+                            <i class="fas fa-star mr-1"></i>Premium $5
+                        </button>
+                        <button onclick="dashboard.showUpgradeModal('${listing.id}', '${listing.title.replace(/'/g, "\\'")}', 'featured')" 
+                                class="flex-1 px-3 py-2 bg-purple-500 text-white border-2 border-purple-700 brutalist-shadow hover:bg-purple-600 font-bold text-xs">
+                            <i class="fas fa-crown mr-1"></i>Featured $25/wk
+                        </button>
+                    </div>
+                </div>
+                ` : ''}
             </div>
         `;
     }
 
-    async upgradeListing(listingId, listingTitle) {
+    showUpgradeModal(listingId, listingTitle, productType) {
+        const listing = this.listings.find(l => l.id === listingId);
+        if (!listing) return;
+
+        const isPremium = productType === 'premium';
+        const modalHtml = `
+            <div id="upgrade-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                <div class="bg-white border-4 border-black brutalist-shadow max-w-md w-full p-6">
+                    <div class="flex justify-between items-start mb-4">
+                        <h2 class="text-2xl font-bold">${isPremium ? '⭐ Upgrade to Premium' : '👑 Get Featured'}</h2>
+                        <button onclick="dashboard.closeUpgradeModal()" class="text-2xl font-bold hover:text-red-500">&times;</button>
+                    </div>
+                    
+                    <div class="mb-4 p-3 bg-gray-100 border-2 border-black">
+                        <p class="font-bold">${listingTitle}</p>
+                    </div>
+                    
+                    ${isPremium ? `
+                    <div class="mb-6">
+                        <div class="text-3xl font-bold text-orange-500 mb-2">$5 <span class="text-sm text-gray-500 font-normal">one-time</span></div>
+                        <ul class="space-y-2 text-sm">
+                            <li class="flex items-center"><i class="fas fa-check text-green-500 mr-2"></i><strong>Guaranteed high authority backlink</strong></li>
+                            <li class="flex items-center"><i class="fas fa-check text-green-500 mr-2"></i>14 days on homepage (vs 7 days)</li>
+                            <li class="flex items-center"><i class="fas fa-check text-green-500 mr-2"></i>Featured in our newsletter</li>
+                            <li class="flex items-center"><i class="fas fa-check text-green-500 mr-2"></i>Re-launch to the feed today</li>
+                        </ul>
+                    </div>
+                    ` : `
+                    <div class="mb-6">
+                        <div class="text-3xl font-bold text-purple-500 mb-2">$25 <span class="text-sm text-gray-500 font-normal">/week</span></div>
+                        <ul class="space-y-2 text-sm">
+                            <li class="flex items-center"><i class="fas fa-check text-green-500 mr-2"></i><strong>Guaranteed high authority backlink</strong></li>
+                            <li class="flex items-center"><i class="fas fa-check text-green-500 mr-2"></i>Featured placement at top of feed</li>
+                            <li class="flex items-center"><i class="fas fa-check text-green-500 mr-2"></i>Colorful gradient border</li>
+                            <li class="flex items-center"><i class="fas fa-check text-green-500 mr-2"></i>FEATURED badge on listing</li>
+                            <li class="flex items-center"><i class="fas fa-check text-green-500 mr-2"></i>Re-launch to the feed today</li>
+                        </ul>
+                    </div>
+                    `}
+                    
+                    <div class="flex space-x-3">
+                        <button onclick="dashboard.closeUpgradeModal()" 
+                                class="flex-1 px-4 py-3 bg-gray-200 border-2 border-black brutalist-shadow hover:bg-gray-300 font-bold">
+                            Cancel
+                        </button>
+                        <button onclick="dashboard.processUpgrade('${listingId}', '${listingTitle.replace(/'/g, "\\'")}', '${productType}')" 
+                                class="flex-1 px-4 py-3 ${isPremium ? 'bg-orange-400 hover:bg-orange-500' : 'bg-purple-500 text-white hover:bg-purple-600'} border-2 border-black brutalist-shadow font-bold">
+                            <i class="fas fa-credit-card mr-2"></i>Pay Now
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        // Remove existing modal if any
+        this.closeUpgradeModal();
+        
+        // Add modal to body
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+    }
+
+    closeUpgradeModal() {
+        const modal = document.getElementById('upgrade-modal');
+        if (modal) {
+            modal.remove();
+        }
+    }
+
+    async processUpgrade(listingId, listingTitle, productType) {
         const listing = this.listings.find(l => l.id === listingId);
         if (!listing) return;
 
@@ -327,7 +405,8 @@ class Dashboard {
             window.gtag('event', 'upgrade_attempt', {
                 event_category: 'listing',
                 event_label: listing.title,
-                listing_id: listingId
+                listing_id: listingId,
+                product_type: productType
             });
         }
 
@@ -337,7 +416,7 @@ class Dashboard {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    product: 'featured',
+                    product: productType,
                     startupId: listingId,
                     startupTitle: listingTitle || listing.title,
                     userEmail: this.currentUser?.email,
@@ -358,6 +437,11 @@ class Dashboard {
             console.error('Checkout error:', error);
             this.showError('Failed to start checkout. Please try again.');
         }
+    }
+
+    async upgradeListing(listingId, listingTitle) {
+        // Legacy method - redirect to showUpgradeModal
+        this.showUpgradeModal(listingId, listingTitle, 'featured');
     }
 
     editListing(listingId) {
