@@ -1,9 +1,10 @@
 {
   "version": 2,
   "builds": [
-    { "src": "**/*", "use": "@vercel/static" }
+    { "src": "**/*", "use": "@vercel/static" },
+    { "src": "api/**/*.js", "use": "@vercel/node" }
   ],
-    "rewrites": [
+  "rewrites": [
     { "source": "/startup/:path*", "destination": "/index.html" },
     { "source": "/featured", "destination": "/featured.html" },
     { "source": "/dashboard", "destination": "/dashboard.html" },
@@ -18,6 +19,12 @@
       "headers": [
         { "key": "Cache-Control", "value": "public, max-age=0, must-revalidate" }
       ]
+    }
+  ],
+  "crons": [
+    {
+      "path": "/api/cron/send-notifications",
+      "schedule": "0 16 * * *"
     }
   ]
 }
