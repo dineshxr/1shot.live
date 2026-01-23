@@ -39,14 +39,31 @@ serve(async (req) => {
       )
     }
 
-    // Get listings that should go live today
-    const { data: listings, error: listingsError } = await supabase
-      .rpc('get_listings_to_go_live')
+    const todayPt = pstTime.toISOString().split('T')[0]
+    const { data: startupsToGoLive, error: startupsError } = await supabase
+      .from('startups')
+      .select('id, title, slug, description, plan, author, launch_date')
+      .eq('is_live', false)
+      .eq('archived', false)
+      .not('launch_date', 'is', null)
+      .lte('launch_date', todayPt)
+      .order('launch_date', { ascending: true })
 
-    if (listingsError) {
-      console.error('Error fetching listings to go live:', listingsError)
-      throw listingsError
+    if (startupsError) {
+      console.error('Error fetching startups to go live:', startupsError)
+      throw startupsError
     }
+
+    const listings = (startupsToGoLive || [])
+      .filter((s: any) => {
+        const dow = new Date(`${s.launch_date}T00:00:00`).getUTCDay()
+        return dow >= 1 && dow <= 5
+      })
+      .map((s: any) => ({
+        ...s,
+        author_email: s.author?.email,
+        author_name: s.author?.name,
+      }))
 
     console.log(`Found ${listings?.length || 0} listings to go live`)
 
@@ -68,8 +85,14 @@ serve(async (req) => {
     const results = []
     for (const listing of listings) {
       try {
-        // Mark listing as live
-        await supabase.rpc('mark_listing_live', { listing_id: listing.id })
+        const { error: markLiveError } = await supabase
+          .from('startups')
+          .update({ is_live: true })
+          .eq('id', listing.id)
+
+        if (markLiveError) {
+          throw markLiveError
+        }
 
         // Send email notification
         const emailSent = await sendLiveNotification(listing)
