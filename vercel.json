@@ -1,30 +1,54 @@
 {
   "version": 2,
   "builds": [
-    { "src": "**/*", "use": "@vercel/static" },
-    { "src": "api/**/*.js", "use": "@vercel/node" }
+    {
+      "src": "**/*",
+      "use": "@vercel/static"
+    },
+    {
+      "src": "api/**/*.js",
+      "use": "@vercel/node"
+    }
   ],
   "rewrites": [
-    { "source": "/startup/:path*", "destination": "/index.html" },
-    { "source": "/featured", "destination": "/featured.html" },
-    { "source": "/dashboard", "destination": "/dashboard.html" },
-    { "source": "/success", "destination": "/success.html" },
-    { "source": "/submit", "destination": "/submit.html" },
-    { "source": "/pricing", "destination": "/pricing.html" },
-    { "source": "/payment-success", "destination": "/payment-success.html" }
+    {
+      "source": "/startup/:path*",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/featured",
+      "destination": "/featured.html"
+    },
+    {
+      "source": "/dashboard",
+      "destination": "/dashboard.html"
+    },
+    {
+      "source": "/success",
+      "destination": "/success.html"
+    },
+    {
+      "source": "/submit",
+      "destination": "/submit.html"
+    },
+    {
+      "source": "/pricing",
+      "destination": "/pricing.html"
+    },
+    {
+      "source": "/payment-success",
+      "destination": "/payment-success.html"
+    }
   ],
   "headers": [
     {
       "source": "/(.*)",
       "headers": [
-        { "key": "Cache-Control", "value": "public, max-age=0, must-revalidate" }
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=0, must-revalidate"
+        }
       ]
-    }
-  ],
-  "crons": [
-    {
-      "path": "/api/cron/send-notifications",
-      "schedule": "0 * * * *"
     }
   ]
 }
