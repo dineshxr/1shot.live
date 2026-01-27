@@ -56,7 +56,13 @@ serve(async (req) => {
 
     const listings = (startupsToGoLive || [])
       .filter((s: any) => {
-        const dow = new Date(`${s.launch_date}T00:00:00`).getUTCDay()
+        // Parse the launch_date as a local date to get correct day of week
+        // launch_date is in YYYY-MM-DD format, we need to check if it's a weekday
+        const [year, month, day] = s.launch_date.split('-').map(Number)
+        // Create date in UTC to avoid timezone issues - month is 0-indexed
+        const date = new Date(Date.UTC(year, month - 1, day))
+        const dow = date.getUTCDay()
+        // Monday=1, Tuesday=2, ..., Friday=5
         return dow >= 1 && dow <= 5
       })
       .map((s: any) => ({
