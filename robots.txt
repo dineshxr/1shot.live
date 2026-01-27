@@ -1,3 +1,6 @@
+# SubmitHunt Robots.txt
+# https://submithunt.com
+
 User-agent: *
 Allow: /
 
@@ -7,14 +10,22 @@ Sitemap: https://submithunt.com/sitemap.xml
 # Crawl-delay for respectful crawling
 Crawl-delay: 5
 
-# Main pages
+# Main indexed pages
 Allow: /
 Allow: /submit
 Allow: /pricing
 Allow: /featured
-Allow: /dashboard
 Allow: /startup/*
 
-# Disallow private/utility pages
+# Private/utility pages (noindex but also disallow crawling to save budget)
+Disallow: /dashboard
 Disallow: /payment-success
-Disallow: /auth/callback
+Disallow: /success
+Disallow: /auth/
+Disallow: /api/
+Disallow: /admin/
+
+# Block test/debug pages
+Disallow: /test
+Disallow: /debug-routing
+Disallow: /test-auth

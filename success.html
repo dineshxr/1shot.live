@@ -1,12 +1,32 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Submission Successful | Submithunt</title>
-  <link rel="icon" type="image/x-icon" href="/src/favicon_io/favicon.ico" />
-  <link rel="icon" type="image/png" sizes="32x32" href="/src/favicon_io/favicon-32x32.png" />
-  <link rel="icon" type="image/png" sizes="16x16" href="/src/favicon_io/favicon-16x16.png" />
+
+  <!-- Primary Meta Tags -->
+  <title>Submission Successful | SubmitHunt</title>
+  <meta name="title" content="Submission Successful | SubmitHunt">
+  <meta name="description"
+    content="Your startup has been successfully submitted to SubmitHunt. We'll review it and get it live soon!">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="author" content="SubmitHunt">
+
+  <!-- Open Graph / Facebook -->
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://submithunt.com/success">
+  <meta property="og:title" content="Submission Successful | SubmitHunt">
+  <meta property="og:description" content="Your startup has been successfully submitted to SubmitHunt.">
+  <meta property="og:image" content="https://submithunt.com/og-image.png">
+  <meta property="og:site_name" content="SubmitHunt">
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/x-icon" href="/src/favicon_io/favicon.ico">
+  <link rel="icon" type="image/png" sizes="32x32" href="/src/favicon_io/favicon-32x32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/src/favicon_io/favicon-16x16.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link rel="stylesheet" href="./src/styles.css">
   <script src="https://cdn.tailwindcss.com"></script>
@@ -20,6 +40,7 @@
     });
   </script>
 </head>
+
 <body class="bg-gray-100 min-h-screen">
   <div class="container mx-auto px-4 py-12">
     <div class="max-w-md mx-auto bg-white border-4 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] p-8 rounded">
@@ -29,7 +50,7 @@
         </div>
         <h1 class="text-3xl font-bold mb-4 text-green-700">🎉 Submission Successful!</h1>
         <p class="mb-6 text-lg">Thank you for submitting your startup! We'll review it soon. 🚀</p>
-        
+
         <div class="mb-8">
           <h2 class="text-xl font-bold mb-3">What's Next?</h2>
           <ul class="text-left space-y-3">
@@ -47,34 +68,38 @@
             </li>
           </ul>
         </div>
-        
+
         <!-- SubmitHunt Badge -->
         <div class="mb-8">
           <h2 class="text-xl font-bold mb-3">Add Our Badge to Your Site</h2>
           <p class="text-sm text-gray-600 mb-4">Show your users that you're featured on SubmitHunt!</p>
-          
+
           <div class="bg-gray-50 p-4 rounded-lg mb-4">
-            <img src="./src/submit-hunt-badge.png" alt="SubmitHunt Badge" class="mx-auto mb-3" style="max-width: 200px;">
+            <img src="./src/submit-hunt-badge.png" alt="SubmitHunt Badge" class="mx-auto mb-3"
+              style="max-width: 200px;">
           </div>
           <div class="text-left">
             <p class="text-sm font-semibold mb-2">HTML Code:</p>
             <div class="bg-gray-100 p-3 rounded border text-xs font-mono overflow-x-auto">
               <code>&lt;a href="https://submithunt.com" target="_blank"&gt;&lt;img src="https://submithunt.com/src/submit-hunt-badge.png" alt="Featured on SubmitHunt" style="max-width: 200px;"&gt;&lt;/a&gt;</code>
             </div>
-            <button onclick="copyBadgeCode()" class="mt-2 px-3 py-1 bg-blue-500 text-white text-xs rounded hover:bg-blue-600">
+            <button onclick="copyBadgeCode()"
+              class="mt-2 px-3 py-1 bg-blue-500 text-white text-xs rounded hover:bg-blue-600">
               Copy Code
             </button>
           </div>
         </div>
-        
+
         <div class="space-y-4">
-          <a href="index.html" class="neo-button inline-block px-6 py-3 bg-blue-400 border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:bg-blue-500 font-bold">
+          <a href="index.html"
+            class="neo-button inline-block px-6 py-3 bg-blue-400 border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:bg-blue-500 font-bold">
             Back to Home
           </a>
-          
+
           <div class="mt-6">
             <p class="text-sm text-gray-600">
-              Have questions? Contact us at <a href="mailto:hello@submithunt.com" class="text-blue-600 underline">hello@submithunt.com</a>
+              Have questions? Contact us at <a href="mailto:hello@submithunt.com"
+                class="text-blue-600 underline">hello@submithunt.com</a>
             </p>
           </div>
         </div>
@@ -87,18 +112,18 @@
     // Simple confetti animation
     document.addEventListener('DOMContentLoaded', () => {
       const confettiContainer = document.querySelector('.confetti-container');
-      
+
       // Create confetti elements
       for (let i = 0; i < 100; i++) {
         const confetti = document.createElement('div');
         confetti.classList.add('confetti');
-        
+
         // Random properties
         const size = Math.random() * 10 + 5;
         const color = `hsl(${Math.random() * 360}, 100%, 50%)`;
         const left = Math.random() * 100;
         const animationDuration = Math.random() * 3 + 2;
-        
+
         // Apply styles
         confetti.style.width = `${size}px`;
         confetti.style.height = `${size}px`;
@@ -106,7 +131,7 @@
         confetti.style.left = `${left}%`;
         confetti.style.animationDuration = `${animationDuration}s`;
         confetti.style.opacity = Math.random();
-        
+
         confettiContainer.appendChild(confetti);
       }
     });
@@ -139,7 +164,7 @@
       z-index: 100;
       overflow: hidden;
     }
-    
+
     .confetti {
       position: absolute;
       top: -10px;
@@ -148,12 +173,13 @@
       background-color: #f00;
       animation: fall linear forwards;
     }
-    
+
     @keyframes fall {
       0% {
         transform: translateY(-10px) rotate(0deg);
         opacity: 1;
       }
+
       100% {
         transform: translateY(100vh) rotate(720deg);
         opacity: 0;
@@ -161,4 +187,5 @@
     }
   </style>
 </body>
+
 </html>

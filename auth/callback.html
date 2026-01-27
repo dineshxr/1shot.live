@@ -1,8 +1,10 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="robots" content="noindex, nofollow">
     <title>Authentication Callback - SubmitHunt</title>
     <style>
         body {
@@ -15,6 +17,7 @@
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
         }
+
         .container {
             text-align: center;
             padding: 2rem;
@@ -23,6 +26,7 @@
             backdrop-filter: blur(10px);
             border: 1px solid rgba(255, 255, 255, 0.2);
         }
+
         .spinner {
             width: 40px;
             height: 40px;
@@ -32,10 +36,17 @@
             animation: spin 1s linear infinite;
             margin: 0 auto 1rem;
         }
+
         @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
         }
+
         .error {
             color: #ff6b6b;
             background: rgba(255, 107, 107, 0.1);
@@ -43,6 +54,7 @@
             border-radius: 8px;
             margin-top: 1rem;
         }
+
         .success {
             color: #51cf66;
             background: rgba(81, 207, 102, 0.1);
@@ -52,6 +64,7 @@
         }
     </style>
 </head>
+
 <body>
     <div class="container">
         <div class="spinner"></div>
@@ -75,13 +88,13 @@
         // Initialize Supabase client
         const supabaseUrl = 'https://lbayphzxmdtdmrqmeomt.supabase.co';
         const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxiYXlwaHp4bWR0ZG1ycW1lb210Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDA5NTAyNTYsImV4cCI6MjA1NjUyNjI1Nn0.uSt7ll1Gy_TtbHxTyRtkyToZBIbW7ud18X45k5BdzKo';
-        
+
         const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
         async function handleAuthCallback() {
             try {
                 const { data, error } = await supabase.auth.getSession();
-                
+
                 if (error) {
                     throw error;
                 }
@@ -91,14 +104,14 @@
                     const successDiv = document.getElementById('success-message');
                     successDiv.style.display = 'block';
                     successDiv.textContent = 'Authentication successful! Redirecting...';
-                    
+
                     // Hide spinner and loading text
                     document.querySelector('.spinner').style.display = 'none';
                     document.querySelector('h2').textContent = 'Welcome to SubmitHunt!';
                     document.querySelector('p').textContent = 'You have been successfully authenticated.';
-                    
+
                     console.log('Authentication successful:', data.session.user);
-                    
+
                     // Redirect to main page after a short delay
                     setTimeout(() => {
                         window.location.href = '/';
@@ -108,17 +121,17 @@
                 }
             } catch (error) {
                 console.error('Authentication callback error:', error);
-                
+
                 // Hide spinner
                 document.querySelector('.spinner').style.display = 'none';
                 document.querySelector('h2').textContent = 'Authentication Error';
                 document.querySelector('p').textContent = 'There was a problem with your authentication.';
-                
+
                 // Show error message
                 const errorDiv = document.getElementById('error-message');
                 errorDiv.style.display = 'block';
                 errorDiv.textContent = `Authentication failed: ${error.message}`;
-                
+
                 // Redirect to home page after 5 seconds
                 setTimeout(() => {
                     window.location.href = '/';
@@ -130,4 +143,5 @@
         handleAuthCallback();
     </script>
 </body>
+
 </html>
