@@ -18,8 +18,8 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
-    // Get startup ID from request body
-    const { startupId } = await req.json()
+    // Get startup ID and optional payment date from request body
+    const { startupId, paymentDate } = await req.json()
     
     if (!startupId) {
       return new Response(
@@ -31,7 +31,9 @@ serve(async (req) => {
       )
     }
 
-    console.log(`Publishing paid startup: ${startupId}`)
+    // Use provided payment date or default to today in PST
+    const launchDate = paymentDate || new Date().toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' })
+    console.log(`Publishing paid startup: ${startupId} with launch date (PST): ${launchDate}`)
 
     // Get the startup details
     const { data: startup, error: startupError } = await supabase
@@ -83,7 +85,7 @@ serve(async (req) => {
       .from('startups')
       .update({ 
         is_live: true,
-        launch_date: new Date().toISOString().split('T')[0], // Set launch date to today
+        launch_date: launchDate, // Use payment date instead of today
         notification_sent: false, // Reset so notification gets sent
         notification_sent_at: null
       })
@@ -118,7 +120,7 @@ serve(async (req) => {
         startup: {
           ...startup,
           is_live: true,
-          launch_date: new Date().toISOString().split('T')[0]
+          launch_date: launchDate
         },
         emailSent
       }),

@@ -18,146 +18,87 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
-    // Get current time in PST - ensure consistent timezone handling
-    const now = new Date()
-    const pstTime = new Date(now.toLocaleString("en-US", {timeZone: "America/Los_Angeles"}))
-    const currentHour = pstTime.getHours()
+    // Get startup ID from request body
+    const { startupId } = await req.json()
     
-    // Get PST date string for consistent date comparison
-    const todayPst = pstTime.toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' }) // YYYY-MM-DD format
-    
-    console.log(`Current PST time: ${pstTime.toISOString()}, Hour: ${currentHour}, Date: ${todayPst}`)
-    const { data: startupsToGoLive, error: startupsError } = await supabase
-      .from('startups')
-      .select('id, title, slug, description, plan, author, launch_date')
-      .eq('is_live', false)
-      .eq('archived', false)
-      .or(`launch_date.lte.${todayPst},plan.in.(premium,featured)`)
-      .order('plan', { ascending: false }) // Premium/featured first
-      .order('launch_date', { ascending: true })
-
-    if (startupsError) {
-      console.error('Error fetching startups to go live:', startupsError)
-      throw startupsError
-    }
-
-    const listings = (startupsToGoLive || [])
-      .filter((s: any) => {
-        // Paid startups (premium/featured) should go live immediately regardless of launch_date or time
-        if (s.plan === 'premium' || s.plan === 'featured') {
-          console.log(`Processing paid startup: ${s.title} (${s.plan})`)
-          return true
-        }
-        
-        // For free startups, check if it's past 8 AM PST
-        if (currentHour < 8) {
-          console.log(`Skipping free startup ${s.title} - too early (${currentHour} PST < 8 AM PST)`)
-          return false
-        }
-        
-        // For free startups, only process if launch_date is not null and is a weekday
-        if (!s.launch_date) {
-          return false
-        }
-        
-        // Parse the launch_date as PST date to get correct day of week
-        // launch_date is in YYYY-MM-DD format, we need to check if it's a weekday in PST
-        const [year, month, day] = s.launch_date.split('-').map(Number)
-        // Create date in PST timezone - month is 0-indexed
-        const date = new Date(year, month - 1, day)
-        // Get PST weekday string and convert to numeric (0=Sunday, 1=Monday, ..., 6=Saturday)
-        const pstWeekdayString = date.toLocaleDateString('en-US', { 
-          timeZone: 'America/Los_Angeles', 
-          weekday: 'long' 
-        })
-        
-        // Convert weekday string to numeric
-        const weekdayMap: { [key: string]: number } = {
-          'Sunday': 0, 'Monday': 1, 'Tuesday': 2, 'Wednesday': 3, 
-          'Thursday': 4, 'Friday': 5, 'Saturday': 6
-        }
-        const dow = weekdayMap[pstWeekdayString] || 0
-        
-        // Monday=1, Tuesday=2, ..., Friday=5 are weekdays
-        const isWeekday = dow >= 1 && dow <= 5
-        
-        console.log(`Free startup ${s.title}: launch_date=${s.launch_date}, dow=${dow}, isWeekday=${isWeekday}`)
-        return isWeekday
-      })
-      .map((s: any) => ({
-        ...s,
-        author_email: s.author?.email,
-        author_name: s.author?.name,
-      }))
-
-    console.log(`Found ${listings?.length || 0} listings to go live`)
-
-    if (!listings || listings.length === 0) {
+    if (!startupId) {
       return new Response(
-        JSON.stringify({ 
-          message: 'No listings to go live today',
-          success: true,
-          count: 0
-        }),
+        JSON.stringify({ error: 'startupId is required' }),
         { 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: 200 
+          status: 400 
         }
       )
     }
 
-    // Process each listing
-    const results = []
-    for (const listing of listings) {
-      try {
-        const { error: markLiveError } = await supabase
-          .from('startups')
-          .update({ is_live: true })
-          .eq('id', listing.id)
+    console.log(`Triggering live email for startup: ${startupId}`)
 
-        if (markLiveError) {
-          throw markLiveError
+    // Get the startup details
+    const { data: startup, error: startupError } = await supabase
+      .from('startups')
+      .select('id, title, slug, description, plan, author, launch_date, is_live, notification_sent')
+      .eq('id', startupId)
+      .single()
+
+    if (startupError || !startup) {
+      console.error('Startup not found:', startupError)
+      return new Response(
+        JSON.stringify({ error: 'Startup not found' }),
+        { 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 404 
         }
-
-        // Send email notification
-        const emailSent = await sendLiveNotification(listing)
-
-        // Update notification status
-        await supabase
-          .from('startups')
-          .update({
-            notification_sent: true,
-            notification_sent_at: new Date().toISOString()
-          })
-          .eq('id', listing.id)
-
-        results.push({
-          id: listing.id,
-          title: listing.title,
-          email: listing.author_email,
-          emailSent,
-          success: true
-        })
-
-        console.log(`Processed listing: ${listing.title} for ${listing.author_email}`)
-
-      } catch (error) {
-        console.error(`Error processing listing ${listing.id}:`, error)
-        results.push({
-          id: listing.id,
-          title: listing.title,
-          email: listing.author_email,
-          error: error.message,
-          success: false
-        })
-      }
+      )
     }
+
+    console.log(`Startup found: ${startup.title}, notification_sent: ${startup.notification_sent}`)
+
+    // Check if startup has a valid email
+    if (!startup.author?.email) {
+      console.error('No email address found for startup author')
+      return new Response(
+        JSON.stringify({ 
+          error: 'No email address found for startup author',
+          author: startup.author
+        }),
+        { 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 400 
+        }
+      )
+    }
+
+    // Send live notification
+    const emailSent = await sendLiveNotification({
+      ...startup,
+      author_email: startup.author.email,
+      author_name: startup.author.name,
+    })
+
+    // Update notification status
+    await supabase
+      .from('startups')
+      .update({
+        notification_sent: emailSent,
+        notification_sent_at: new Date().toISOString()
+      })
+      .eq('id', startupId)
+
+    console.log(`Email sending result: ${emailSent}`)
 
     return new Response(
       JSON.stringify({ 
-        message: `Processed ${results.length} listings`,
-        success: true,
-        results
+        message: 'Live email trigger completed',
+        startup: {
+          id: startup.id,
+          title: startup.title,
+          email: startup.author.email,
+          plan: startup.plan,
+          is_live: startup.is_live,
+          previous_notification_sent: startup.notification_sent
+        },
+        emailSent,
+        success: true
       }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -193,6 +134,8 @@ async function sendLiveNotification(listing: any): Promise<boolean> {
     const startupUrl = `https://submithunt.com/startup/${listing.slug || listing.id}`;
     const isPremiumOrFeatured = listing.plan === 'premium' || listing.plan === 'featured';
     const shareText = encodeURIComponent(`I just launched ${listing.title} on @SubmitHunt! Check it out and give it an upvote 🚀`);
+
+    console.log(`Preparing email for: ${listing.author_email} (${listing.title})`)
 
     const emailData = {
       from: 'SubmitHunt <hello@submithunt.com>',
@@ -333,6 +276,8 @@ The SubmitHunt Team
       `
     }
 
+    console.log(`Sending email to: ${listing.author_email}`)
+
     const response = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: {
@@ -341,6 +286,8 @@ The SubmitHunt Team
       },
       body: JSON.stringify(emailData),
     })
+
+    console.log(`Resend API response status: ${response.status}`)
 
     if (!response.ok) {
       const errorData = await response.text()

@@ -29,12 +29,12 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
   const [checkingPreviousSubmissions, setCheckingPreviousSubmissions] = useState(false); // Loading state for checking submissions
   const [loadingDates, setLoadingDates] = useState(false); // Loading state for date fetching
 
-  // Helper to get EST date string (YYYY-MM-DD) from a Date object
-  const getESTDateString = (date) => {
-    const estDate = new Date(date.toLocaleString("en-US", {timeZone: "America/New_York"}));
-    return estDate.getFullYear() + '-' + 
-           String(estDate.getMonth() + 1).padStart(2, '0') + '-' + 
-           String(estDate.getDate()).padStart(2, '0');
+  // Helper to get PST date string (YYYY-MM-DD) from a Date object
+  const getPSTDateString = (date) => {
+    const pstDate = new Date(date.toLocaleString("en-US", {timeZone: "America/Los_Angeles"}));
+    return pstDate.getFullYear() + '-' + 
+           String(pstDate.getMonth() + 1).padStart(2, '0') + '-' + 
+           String(pstDate.getDate()).padStart(2, '0');
   };
 
   // Fetch real-time slot availability from database
@@ -78,12 +78,12 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
     setLoadingDates(true);
     const dates = [];
     
-    // Get current time in EST
+    // Get current time in PST
     const now = new Date();
-    const estNow = new Date(now.toLocaleString("en-US", {timeZone: "America/New_York"}));
+    const pstNow = new Date(now.toLocaleString("en-US", {timeZone: "America/Los_Angeles"}));
     
-    // Start from EST today + 7 days (free slots are always 1 week away)
-    let workingDate = new Date(estNow);
+    // Start from PST today + 7 days (free slots are always 1 week away)
+    let workingDate = new Date(pstNow);
     workingDate.setHours(0, 0, 0, 0);
     workingDate.setDate(workingDate.getDate() + 7); // Add 7 days
     
@@ -97,11 +97,11 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
       // Only use weekdays (Monday = 1 through Friday = 5)
       if (dayOfWeek >= 1 && dayOfWeek <= 5) {
         // Format date for display
-        const dateOptions = { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'America/New_York' };
+        const dateOptions = { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'America/Los_Angeles' };
         const formattedDate = workingDate.toLocaleDateString('en-US', dateOptions);
         
-        // Get date value in YYYY-MM-DD format (EST)
-        const dateValue = getESTDateString(workingDate);
+        // Get date value in YYYY-MM-DD format (PST)
+        const dateValue = getPSTDateString(workingDate);
         
         // Fetch real-time slot availability from database
         const slotData = await fetchSlotAvailability(dateValue);
@@ -508,9 +508,9 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
                   if (dateError) {
                     console.error('Error getting next launch date:', dateError);
                     // Fallback to next weekday
-                    const pdt = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/New_York' }));
-                    let nextDay = new Date(pdt);
-                    nextDay.setDate(pdt.getDate() + 1);
+                    const pst = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Los_Angeles' }));
+                    let nextDay = new Date(pst);
+                    nextDay.setDate(pst.getDate() + 1);
                     
                     // Find next weekday (Monday-Friday)
                     while (nextDay.getDay() === 0 || nextDay.getDay() === 6) {
@@ -561,13 +561,13 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
                     screenshot_url: screenshotUrl,
                     plan: formData.plan,
                     launch_date: formData.launchDate || (() => {
-                      // Fallback to next available weekday based on 8 AM EST rule
-                      const pdt = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/New_York' }));
-                      let nextDay = new Date(pdt);
-                      const currentHour = pdt.getHours();
-                      const currentDayOfWeek = pdt.getDay();
+                      // Fallback to next available weekday based on 8 AM PST rule
+                      const pst = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Los_Angeles' }));
+                      let nextDay = new Date(pst);
+                      const currentHour = pst.getHours();
+                      const currentDayOfWeek = pst.getDay();
                       
-                      // If it's a weekday and before 8 AM EST, use today
+                      // If it's a weekday and before 8 AM PST, use today
                       if (currentDayOfWeek >= 1 && currentDayOfWeek <= 5 && currentHour < 8) {
                         return nextDay.getFullYear() + '-' + 
                                String(nextDay.getMonth() + 1).padStart(2, '0') + '-' + 
@@ -575,7 +575,7 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
                       }
                       
                       // Otherwise, find next weekday
-                      nextDay.setDate(pdt.getDate() + 1);
+                      nextDay.setDate(nextDay.getDate() + 1);
                       
                       // Find next weekday (Monday-Friday)
                       while (nextDay.getDay() === 0 || nextDay.getDay() === 6) {
@@ -1193,7 +1193,7 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
                     Live
                   </span>
                 </div>
-                <p class="text-gray-600 text-sm mb-4">Startups launch at 8 AM EST, Monday-Friday. Max 6 free slots per day.</p>
+                <p class="text-gray-600 text-sm mb-4">Startups launch at 8 AM PST, Monday-Friday. Max 6 free slots per day.</p>
                 
                 ${loadingDates ? html`
                   <div class="flex items-center justify-center py-8">

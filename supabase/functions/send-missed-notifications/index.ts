@@ -18,85 +18,28 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
-    // Get current time in PST - ensure consistent timezone handling
-    const now = new Date()
-    const pstTime = new Date(now.toLocaleString("en-US", {timeZone: "America/Los_Angeles"}))
-    const currentHour = pstTime.getHours()
-    
-    // Get PST date string for consistent date comparison
-    const todayPst = pstTime.toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' }) // YYYY-MM-DD format
-    
-    console.log(`Current PST time: ${pstTime.toISOString()}, Hour: ${currentHour}, Date: ${todayPst}`)
-    const { data: startupsToGoLive, error: startupsError } = await supabase
+    console.log("Sending missed notifications for all startups...")
+
+    // Get all live startups that haven't received notifications but have emails
+    const { data: startups, error: startupsError } = await supabase
       .from('startups')
-      .select('id, title, slug, description, plan, author, launch_date')
-      .eq('is_live', false)
-      .eq('archived', false)
-      .or(`launch_date.lte.${todayPst},plan.in.(premium,featured)`)
-      .order('plan', { ascending: false }) // Premium/featured first
-      .order('launch_date', { ascending: true })
+      .select('id, title, slug, description, plan, author, launch_date, is_live, notification_sent, notification_sent_at, created_at')
+      .eq('is_live', true)
+      .eq('notification_sent', false)
+      .not('author->>email', 'is', null)
+      .order('created_at', { ascending: false })
 
     if (startupsError) {
-      console.error('Error fetching startups to go live:', startupsError)
+      console.error('Error fetching startups:', startupsError)
       throw startupsError
     }
 
-    const listings = (startupsToGoLive || [])
-      .filter((s: any) => {
-        // Paid startups (premium/featured) should go live immediately regardless of launch_date or time
-        if (s.plan === 'premium' || s.plan === 'featured') {
-          console.log(`Processing paid startup: ${s.title} (${s.plan})`)
-          return true
-        }
-        
-        // For free startups, check if it's past 8 AM PST
-        if (currentHour < 8) {
-          console.log(`Skipping free startup ${s.title} - too early (${currentHour} PST < 8 AM PST)`)
-          return false
-        }
-        
-        // For free startups, only process if launch_date is not null and is a weekday
-        if (!s.launch_date) {
-          return false
-        }
-        
-        // Parse the launch_date as PST date to get correct day of week
-        // launch_date is in YYYY-MM-DD format, we need to check if it's a weekday in PST
-        const [year, month, day] = s.launch_date.split('-').map(Number)
-        // Create date in PST timezone - month is 0-indexed
-        const date = new Date(year, month - 1, day)
-        // Get PST weekday string and convert to numeric (0=Sunday, 1=Monday, ..., 6=Saturday)
-        const pstWeekdayString = date.toLocaleDateString('en-US', { 
-          timeZone: 'America/Los_Angeles', 
-          weekday: 'long' 
-        })
-        
-        // Convert weekday string to numeric
-        const weekdayMap: { [key: string]: number } = {
-          'Sunday': 0, 'Monday': 1, 'Tuesday': 2, 'Wednesday': 3, 
-          'Thursday': 4, 'Friday': 5, 'Saturday': 6
-        }
-        const dow = weekdayMap[pstWeekdayString] || 0
-        
-        // Monday=1, Tuesday=2, ..., Friday=5 are weekdays
-        const isWeekday = dow >= 1 && dow <= 5
-        
-        console.log(`Free startup ${s.title}: launch_date=${s.launch_date}, dow=${dow}, isWeekday=${isWeekday}`)
-        return isWeekday
-      })
-      .map((s: any) => ({
-        ...s,
-        author_email: s.author?.email,
-        author_name: s.author?.name,
-      }))
+    console.log(`Found ${startups?.length || 0} startups with missed notifications`)
 
-    console.log(`Found ${listings?.length || 0} listings to go live`)
-
-    if (!listings || listings.length === 0) {
+    if (!startups || startups.length === 0) {
       return new Response(
         JSON.stringify({ 
-          message: 'No listings to go live today',
-          success: true,
+          message: 'No missed notifications found',
           count: 0
         }),
         { 
@@ -106,47 +49,50 @@ serve(async (req) => {
       )
     }
 
-    // Process each listing
+    // Process each startup with missed notifications
     const results = []
-    for (const listing of listings) {
+    for (const startup of startups) {
       try {
-        const { error: markLiveError } = await supabase
-          .from('startups')
-          .update({ is_live: true })
-          .eq('id', listing.id)
+        console.log(`Sending missed notification for: ${startup.title} (${startup.plan})`)
 
-        if (markLiveError) {
-          throw markLiveError
-        }
-
-        // Send email notification
-        const emailSent = await sendLiveNotification(listing)
+        // Send live notification
+        const emailSent = await sendLiveNotification({
+          ...startup,
+          author_email: startup.author.email,
+          author_name: startup.author.name,
+        })
 
         // Update notification status
         await supabase
           .from('startups')
           .update({
-            notification_sent: true,
+            notification_sent: emailSent,
             notification_sent_at: new Date().toISOString()
           })
-          .eq('id', listing.id)
+          .eq('id', startup.id)
 
         results.push({
-          id: listing.id,
-          title: listing.title,
-          email: listing.author_email,
+          id: startup.id,
+          title: startup.title,
+          plan: startup.plan,
+          email: startup.author.email,
+          created_at: startup.created_at,
+          launch_date: startup.launch_date,
           emailSent,
           success: true
         })
 
-        console.log(`Processed listing: ${listing.title} for ${listing.author_email}`)
+        console.log(`Processed missed notification: ${startup.title} for ${startup.author.email}`)
 
       } catch (error) {
-        console.error(`Error processing listing ${listing.id}:`, error)
+        console.error(`Error processing missed notification ${startup.id}:`, error)
         results.push({
-          id: listing.id,
-          title: listing.title,
-          email: listing.author_email,
+          id: startup.id,
+          title: startup.title,
+          plan: startup.plan,
+          email: startup.author.email,
+          created_at: startup.created_at,
+          launch_date: startup.launch_date,
           error: error.message,
           success: false
         })
@@ -155,7 +101,7 @@ serve(async (req) => {
 
     return new Response(
       JSON.stringify({ 
-        message: `Processed ${results.length} listings`,
+        message: `Processed ${results.length} missed notifications`,
         success: true,
         results
       }),
@@ -193,6 +139,8 @@ async function sendLiveNotification(listing: any): Promise<boolean> {
     const startupUrl = `https://submithunt.com/startup/${listing.slug || listing.id}`;
     const isPremiumOrFeatured = listing.plan === 'premium' || listing.plan === 'featured';
     const shareText = encodeURIComponent(`I just launched ${listing.title} on @SubmitHunt! Check it out and give it an upvote 🚀`);
+
+    console.log(`Sending missed email to: ${listing.author_email} (${listing.title})`)
 
     const emailData = {
       from: 'SubmitHunt <hello@submithunt.com>',
@@ -349,11 +297,11 @@ The SubmitHunt Team
     }
 
     const result = await response.json()
-    console.log('Email sent successfully:', result)
+    console.log('Missed email sent successfully:', result)
     return true
 
   } catch (error) {
-    console.error('Error sending email:', error)
+    console.error('Error sending missed email:', error)
     return false
   }
 }

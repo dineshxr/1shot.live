@@ -74,6 +74,12 @@ async function handleCheckoutComplete(session: Stripe.Checkout.Session) {
   
   console.log("Processing checkout complete:", { product, startup_id, sessionId: session.id });
 
+  // Get the actual payment date from the session and convert to PST
+  const paymentDate = session.created ? 
+    new Date(session.created * 1000).toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' }) : 
+    new Date().toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' });
+  console.log("Payment date (PST):", paymentDate);
+
   // Record the payment
   const { error: paymentError } = await supabase.from("payments").insert({
     stripe_session_id: session.id,
@@ -101,7 +107,7 @@ async function handleCheckoutComplete(session: Stripe.Checkout.Session) {
       .update({ 
         is_live: true, 
         plan: "premium",
-        launch_date: new Date().toISOString().split('T')[0],
+        launch_date: paymentDate, // Use payment date instead of today
         notification_sent: false,
         notification_sent_at: null
       })
@@ -110,7 +116,7 @@ async function handleCheckoutComplete(session: Stripe.Checkout.Session) {
     if (error) {
       console.error("Error updating startup for premium:", error);
     } else {
-      console.log("Startup set to live with premium plan:", startup_id);
+      console.log("Startup set to live with premium plan:", startup_id, "launch_date:", paymentDate);
     }
 
     // Call the publish-paid-startup function to send immediate notification
@@ -123,7 +129,7 @@ async function handleCheckoutComplete(session: Stripe.Checkout.Session) {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${supabaseServiceKey}`
           },
-          body: JSON.stringify({ startupId: startup_id })
+          body: JSON.stringify({ startupId: startup_id, paymentDate })
         }
       );
 
@@ -148,7 +154,7 @@ async function handleCheckoutComplete(session: Stripe.Checkout.Session) {
         plan: "featured",
         is_live: true,
         featured_until: featuredUntil.toISOString(),
-        launch_date: new Date().toISOString().split('T')[0],
+        launch_date: paymentDate, // Use payment date instead of today
         notification_sent: false,
         notification_sent_at: null
       })
@@ -157,7 +163,7 @@ async function handleCheckoutComplete(session: Stripe.Checkout.Session) {
     if (error) {
       console.error("Error updating startup for featured:", error);
     } else {
-      console.log("Startup set to featured until:", featuredUntil.toISOString(), "startup_id:", startup_id);
+      console.log("Startup set to featured until:", featuredUntil.toISOString(), "startup_id:", startup_id, "launch_date:", paymentDate);
     }
 
     // Call the publish-paid-startup function to send immediate notification
@@ -170,7 +176,7 @@ async function handleCheckoutComplete(session: Stripe.Checkout.Session) {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${supabaseServiceKey}`
           },
-          body: JSON.stringify({ startupId: startup_id })
+          body: JSON.stringify({ startupId: startup_id, paymentDate })
         }
       );
 
