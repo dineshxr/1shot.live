@@ -18,74 +18,28 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
-    // Get current time in PST
-    const now = new Date()
-    const pstTime = new Date(now.toLocaleString("en-US", {timeZone: "America/Los_Angeles"}))
-    const currentHour = pstTime.getHours()
-    
-    console.log(`Current PST time: ${pstTime.toISOString()}, Hour: ${currentHour}`)
+    console.log("Finding stuck paid startups...")
 
-    // Only run at 8 AM PST or later for regular scheduled startups
-    // But paid startups should go live immediately at any time
-    const todayPt = pstTime.toISOString().split('T')[0]
-    const { data: startupsToGoLive, error: startupsError } = await supabase
+    // Find all paid startups that are not live yet
+    const { data: stuckStartups, error: findError } = await supabase
       .from('startups')
-      .select('id, title, slug, description, plan, author, launch_date')
+      .select('id, title, slug, description, plan, author, launch_date, is_live, created_at')
       .eq('is_live', false)
       .eq('archived', false)
-      .or(`launch_date.lte.${todayPt},plan.in.(premium,featured)`)
-      .order('plan', { ascending: false }) // Premium/featured first
-      .order('launch_date', { ascending: true })
+      .in('plan', ['premium', 'featured'])
+      .order('created_at', { ascending: true })
 
-    if (startupsError) {
-      console.error('Error fetching startups to go live:', startupsError)
-      throw startupsError
+    if (findError) {
+      console.error('Error finding stuck paid startups:', findError)
+      throw findError
     }
 
-    const listings = (startupsToGoLive || [])
-      .filter((s: any) => {
-        // Paid startups (premium/featured) should go live immediately regardless of launch_date or time
-        if (s.plan === 'premium' || s.plan === 'featured') {
-          console.log(`Processing paid startup: ${s.title} (${s.plan})`)
-          return true
-        }
-        
-        // For free startups, check if it's past 8 AM PST
-        if (currentHour < 8) {
-          console.log(`Skipping free startup ${s.title} - too early (${currentHour} PST < 8 AM PST)`)
-          return false
-        }
-        
-        // For free startups, only process if launch_date is not null and is a weekday
-        if (!s.launch_date) {
-          return false
-        }
-        
-        // Parse the launch_date as a local date to get correct day of week
-        // launch_date is in YYYY-MM-DD format, we need to check if it's a weekday
-        const [year, month, day] = s.launch_date.split('-').map(Number)
-        // Create date in UTC to avoid timezone issues - month is 0-indexed
-        const date = new Date(Date.UTC(year, month - 1, day))
-        const dow = date.getUTCDay()
-        // Monday=1, Tuesday=2, ..., Friday=5
-        const isWeekday = dow >= 1 && dow <= 5
-        
-        console.log(`Free startup ${s.title}: launch_date=${s.launch_date}, dow=${dow}, isWeekday=${isWeekday}`)
-        return isWeekday
-      })
-      .map((s: any) => ({
-        ...s,
-        author_email: s.author?.email,
-        author_name: s.author?.name,
-      }))
+    console.log(`Found ${stuckStartups?.length || 0} paid startups that are not live`)
 
-    console.log(`Found ${listings?.length || 0} listings to go live`)
-
-    if (!listings || listings.length === 0) {
+    if (!stuckStartups || stuckStartups.length === 0) {
       return new Response(
         JSON.stringify({ 
-          message: 'No listings to go live today',
-          success: true,
+          message: 'No stuck paid startups found',
           count: 0
         }),
         { 
@@ -95,47 +49,63 @@ serve(async (req) => {
       )
     }
 
-    // Process each listing
+    // Process each stuck startup
     const results = []
-    for (const listing of listings) {
+    for (const startup of stuckStartups) {
       try {
-        const { error: markLiveError } = await supabase
-          .from('startups')
-          .update({ is_live: true })
-          .eq('id', listing.id)
+        console.log(`Publishing stuck paid startup: ${startup.title} (${startup.plan})`)
 
-        if (markLiveError) {
-          throw markLiveError
+        // Update startup to live immediately
+        const { error: updateError } = await supabase
+          .from('startups')
+          .update({ 
+            is_live: true,
+            launch_date: new Date().toISOString().split('T')[0], // Set launch date to today
+            notification_sent: false, // Reset so notification gets sent
+            notification_sent_at: null
+          })
+          .eq('id', startup.id)
+
+        if (updateError) {
+          throw updateError
         }
 
-        // Send email notification
-        const emailSent = await sendLiveNotification(listing)
+        console.log(`Successfully published stuck startup: ${startup.title}`)
+
+        // Send live notification
+        const emailSent = await sendLiveNotification({
+          ...startup,
+          author_email: startup.author?.email,
+          author_name: startup.author?.name,
+        })
 
         // Update notification status
         await supabase
           .from('startups')
           .update({
-            notification_sent: true,
+            notification_sent: emailSent,
             notification_sent_at: new Date().toISOString()
           })
-          .eq('id', listing.id)
+          .eq('id', startup.id)
 
         results.push({
-          id: listing.id,
-          title: listing.title,
-          email: listing.author_email,
+          id: startup.id,
+          title: startup.title,
+          plan: startup.plan,
+          created_at: startup.created_at,
           emailSent,
           success: true
         })
 
-        console.log(`Processed listing: ${listing.title} for ${listing.author_email}`)
+        console.log(`Processed stuck startup: ${startup.title} for ${startup.author?.email}`)
 
       } catch (error) {
-        console.error(`Error processing listing ${listing.id}:`, error)
+        console.error(`Error processing stuck startup ${startup.id}:`, error)
         results.push({
-          id: listing.id,
-          title: listing.title,
-          email: listing.author_email,
+          id: startup.id,
+          title: startup.title,
+          plan: startup.plan,
+          created_at: startup.created_at,
           error: error.message,
           success: false
         })
@@ -144,7 +114,7 @@ serve(async (req) => {
 
     return new Response(
       JSON.stringify({ 
-        message: `Processed ${results.length} listings`,
+        message: `Processed ${results.length} stuck paid startups`,
         success: true,
         results
       }),

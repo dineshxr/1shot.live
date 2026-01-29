@@ -112,6 +112,30 @@ async function handleCheckoutComplete(session: Stripe.Checkout.Session) {
     } else {
       console.log("Startup set to live with premium plan:", startup_id);
     }
+
+    // Call the publish-paid-startup function to send immediate notification
+    try {
+      const publishResponse = await fetch(
+        `${supabaseUrl}/functions/v1/publish-paid-startup`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${supabaseServiceKey}`
+          },
+          body: JSON.stringify({ startupId: startup_id })
+        }
+      );
+
+      if (publishResponse.ok) {
+        const result = await publishResponse.json();
+        console.log("Paid startup published immediately:", result);
+      } else {
+        console.error("Failed to publish paid startup immediately:", await publishResponse.text());
+      }
+    } catch (publishError) {
+      console.error("Error calling publish-paid-startup function:", publishError);
+    }
   } else if (product === "featured" && startup_id) {
     // Featured spot - set plan to featured with 1 week duration
     // Reset notification_sent so they get a new "you're live" email
@@ -134,6 +158,30 @@ async function handleCheckoutComplete(session: Stripe.Checkout.Session) {
       console.error("Error updating startup for featured:", error);
     } else {
       console.log("Startup set to featured until:", featuredUntil.toISOString(), "startup_id:", startup_id);
+    }
+
+    // Call the publish-paid-startup function to send immediate notification
+    try {
+      const publishResponse = await fetch(
+        `${supabaseUrl}/functions/v1/publish-paid-startup`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${supabaseServiceKey}`
+          },
+          body: JSON.stringify({ startupId: startup_id })
+        }
+      );
+
+      if (publishResponse.ok) {
+        const result = await publishResponse.json();
+        console.log("Featured startup published immediately:", result);
+      } else {
+        console.error("Failed to publish featured startup immediately:", await publishResponse.text());
+      }
+    } catch (publishError) {
+      console.error("Error calling publish-paid-startup function:", publishError);
     }
   } else if (product === "featured") {
     // Featured spot without startup_id - just log for manual handling

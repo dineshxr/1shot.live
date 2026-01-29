@@ -18,75 +18,46 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
-    // Get current time in PST
-    const now = new Date()
-    const pstTime = new Date(now.toLocaleString("en-US", {timeZone: "America/Los_Angeles"}))
-    const currentHour = pstTime.getHours()
+    // Get startup ID from request body
+    const { startupId } = await req.json()
     
-    console.log(`Current PST time: ${pstTime.toISOString()}, Hour: ${currentHour}`)
-
-    // Only run at 8 AM PST or later for regular scheduled startups
-    // But paid startups should go live immediately at any time
-    const todayPt = pstTime.toISOString().split('T')[0]
-    const { data: startupsToGoLive, error: startupsError } = await supabase
-      .from('startups')
-      .select('id, title, slug, description, plan, author, launch_date')
-      .eq('is_live', false)
-      .eq('archived', false)
-      .or(`launch_date.lte.${todayPt},plan.in.(premium,featured)`)
-      .order('plan', { ascending: false }) // Premium/featured first
-      .order('launch_date', { ascending: true })
-
-    if (startupsError) {
-      console.error('Error fetching startups to go live:', startupsError)
-      throw startupsError
+    if (!startupId) {
+      return new Response(
+        JSON.stringify({ error: 'startupId is required' }),
+        { 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 400 
+        }
+      )
     }
 
-    const listings = (startupsToGoLive || [])
-      .filter((s: any) => {
-        // Paid startups (premium/featured) should go live immediately regardless of launch_date or time
-        if (s.plan === 'premium' || s.plan === 'featured') {
-          console.log(`Processing paid startup: ${s.title} (${s.plan})`)
-          return true
-        }
-        
-        // For free startups, check if it's past 8 AM PST
-        if (currentHour < 8) {
-          console.log(`Skipping free startup ${s.title} - too early (${currentHour} PST < 8 AM PST)`)
-          return false
-        }
-        
-        // For free startups, only process if launch_date is not null and is a weekday
-        if (!s.launch_date) {
-          return false
-        }
-        
-        // Parse the launch_date as a local date to get correct day of week
-        // launch_date is in YYYY-MM-DD format, we need to check if it's a weekday
-        const [year, month, day] = s.launch_date.split('-').map(Number)
-        // Create date in UTC to avoid timezone issues - month is 0-indexed
-        const date = new Date(Date.UTC(year, month - 1, day))
-        const dow = date.getUTCDay()
-        // Monday=1, Tuesday=2, ..., Friday=5
-        const isWeekday = dow >= 1 && dow <= 5
-        
-        console.log(`Free startup ${s.title}: launch_date=${s.launch_date}, dow=${dow}, isWeekday=${isWeekday}`)
-        return isWeekday
-      })
-      .map((s: any) => ({
-        ...s,
-        author_email: s.author?.email,
-        author_name: s.author?.name,
-      }))
+    console.log(`Publishing paid startup: ${startupId}`)
 
-    console.log(`Found ${listings?.length || 0} listings to go live`)
+    // Get the startup details
+    const { data: startup, error: startupError } = await supabase
+      .from('startups')
+      .select('id, title, slug, description, plan, author, launch_date, is_live')
+      .eq('id', startupId)
+      .single()
 
-    if (!listings || listings.length === 0) {
+    if (startupError || !startup) {
+      console.error('Startup not found:', startupError)
+      return new Response(
+        JSON.stringify({ error: 'Startup not found' }),
+        { 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 404 
+        }
+      )
+    }
+
+    // Check if it's already live
+    if (startup.is_live) {
+      console.log(`Startup ${startup.title} is already live`)
       return new Response(
         JSON.stringify({ 
-          message: 'No listings to go live today',
-          success: true,
-          count: 0
+          message: 'Startup is already live',
+          startup: startup
         }),
         { 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -95,58 +66,61 @@ serve(async (req) => {
       )
     }
 
-    // Process each listing
-    const results = []
-    for (const listing of listings) {
-      try {
-        const { error: markLiveError } = await supabase
-          .from('startups')
-          .update({ is_live: true })
-          .eq('id', listing.id)
-
-        if (markLiveError) {
-          throw markLiveError
+    // Check if it's a paid startup
+    if (startup.plan !== 'premium' && startup.plan !== 'featured') {
+      console.log(`Startup ${startup.title} is not a paid plan (plan: ${startup.plan})`)
+      return new Response(
+        JSON.stringify({ error: 'Only premium/featured startups can be published immediately' }),
+        { 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 400 
         }
-
-        // Send email notification
-        const emailSent = await sendLiveNotification(listing)
-
-        // Update notification status
-        await supabase
-          .from('startups')
-          .update({
-            notification_sent: true,
-            notification_sent_at: new Date().toISOString()
-          })
-          .eq('id', listing.id)
-
-        results.push({
-          id: listing.id,
-          title: listing.title,
-          email: listing.author_email,
-          emailSent,
-          success: true
-        })
-
-        console.log(`Processed listing: ${listing.title} for ${listing.author_email}`)
-
-      } catch (error) {
-        console.error(`Error processing listing ${listing.id}:`, error)
-        results.push({
-          id: listing.id,
-          title: listing.title,
-          email: listing.author_email,
-          error: error.message,
-          success: false
-        })
-      }
+      )
     }
+
+    // Update startup to live immediately
+    const { error: updateError } = await supabase
+      .from('startups')
+      .update({ 
+        is_live: true,
+        launch_date: new Date().toISOString().split('T')[0], // Set launch date to today
+        notification_sent: false, // Reset so notification gets sent
+        notification_sent_at: null
+      })
+      .eq('id', startupId)
+
+    if (updateError) {
+      console.error('Error updating startup:', updateError)
+      throw updateError
+    }
+
+    console.log(`Successfully published startup: ${startup.title}`)
+
+    // Send live notification
+    const emailSent = await sendLiveNotification({
+      ...startup,
+      author_email: startup.author?.email,
+      author_name: startup.author?.name,
+    })
+
+    // Update notification status
+    await supabase
+      .from('startups')
+      .update({
+        notification_sent: emailSent,
+        notification_sent_at: new Date().toISOString()
+      })
+      .eq('id', startupId)
 
     return new Response(
       JSON.stringify({ 
-        message: `Processed ${results.length} listings`,
-        success: true,
-        results
+        message: 'Startup published successfully',
+        startup: {
+          ...startup,
+          is_live: true,
+          launch_date: new Date().toISOString().split('T')[0]
+        },
+        emailSent
       }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
