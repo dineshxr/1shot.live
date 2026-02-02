@@ -1,5 +1,4 @@
 import { supabaseClient } from '../lib/supabase-client.js';
-import { captureScreenshot, uploadScreenshot } from '../lib/screenshot-service.js';
 // Using global analytics functions defined in main.js instead of imports
 // html and useState are defined globally in main.js
 /* global html, useState, useEffect */
@@ -12,10 +11,11 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
     xProfile: "",
     projectName: "",
     description: "",
-    slug: "",
     category: "", // Category selection
     plan: "free", // Default plan selection
-    launchDate: "" // Launch date selection
+    launchDate: "", // Launch date selection
+    logo: null, // Logo file
+    screenshots: [] // Array of screenshot files
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -31,10 +31,10 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
 
   // Helper to get PST date string (YYYY-MM-DD) from a Date object
   const getPSTDateString = (date) => {
-    const pstDate = new Date(date.toLocaleString("en-US", {timeZone: "America/Los_Angeles"}));
-    return pstDate.getFullYear() + '-' + 
-           String(pstDate.getMonth() + 1).padStart(2, '0') + '-' + 
-           String(pstDate.getDate()).padStart(2, '0');
+    const pstDate = new Date(date.toLocaleString("en-US", { timeZone: "America/Los_Angeles" }));
+    return pstDate.getFullYear() + '-' +
+      String(pstDate.getMonth() + 1).padStart(2, '0') + '-' +
+      String(pstDate.getDate()).padStart(2, '0');
   };
 
   // Fetch real-time slot availability from database
@@ -43,7 +43,7 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
     try {
       // Use the database function for accurate real-time data
       const { data, error } = await supabase.rpc('get_available_slots', { target_date: dateValue });
-      
+
       if (error) {
         console.error('Error fetching slot availability:', error);
         // Fallback to direct query
@@ -52,19 +52,19 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
           .select('id', { count: 'exact' })
           .eq('plan', 'free')
           .eq('launch_date', dateValue);
-        
+
         const { count: totalCount } = await supabase
           .from('startups')
           .select('id', { count: 'exact' })
           .eq('launch_date', dateValue);
-        
+
         return {
           free_slots_remaining: 6 - (freeCount || 0),
           free_count: freeCount || 0,
           total_count: totalCount || 0
         };
       }
-      
+
       return data?.[0] || { free_slots_remaining: 6, free_count: 0, total_count: 0 };
     } catch (err) {
       console.error('Error in fetchSlotAvailability:', err);
@@ -77,38 +77,38 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
   const generateLaunchDates = async () => {
     setLoadingDates(true);
     const dates = [];
-    
+
     // Get current time in PST
     const now = new Date();
-    const pstNow = new Date(now.toLocaleString("en-US", {timeZone: "America/Los_Angeles"}));
-    
+    const pstNow = new Date(now.toLocaleString("en-US", { timeZone: "America/Los_Angeles" }));
+
     // Start from PST today + 7 days (free slots are always 1 week away)
     let workingDate = new Date(pstNow);
     workingDate.setHours(0, 0, 0, 0);
     workingDate.setDate(workingDate.getDate() + 7); // Add 7 days
-    
+
     let daysChecked = 0;
     const MAX_FREE_PER_DAY = 6;
-    
+
     // Generate 5 available weekday dates (a full work week)
     while (dates.length < 5 && daysChecked < 30) {
       const dayOfWeek = workingDate.getDay();
-      
+
       // Only use weekdays (Monday = 1 through Friday = 5)
       if (dayOfWeek >= 1 && dayOfWeek <= 5) {
         // Format date for display
         const dateOptions = { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'America/Los_Angeles' };
         const formattedDate = workingDate.toLocaleDateString('en-US', dateOptions);
-        
+
         // Get date value in YYYY-MM-DD format (PST)
         const dateValue = getPSTDateString(workingDate);
-        
+
         // Fetch real-time slot availability from database
         const slotData = await fetchSlotAvailability(dateValue);
-        
+
         const slotsRemaining = slotData.free_slots_remaining;
         const freeAvailable = slotsRemaining > 0;
-        
+
         dates.push({
           date: formattedDate,
           value: dateValue,
@@ -120,20 +120,20 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
           dayOfWeek: dayOfWeek
         });
       }
-      
+
       // Move to next day
       workingDate.setDate(workingDate.getDate() + 1);
       daysChecked++;
     }
-    
+
     setLoadingDates(false);
     return dates;
   };
-  
+
   // Refresh slot availability for all dates (called periodically)
   const refreshSlotAvailability = async () => {
     if (availableLaunchDates.length === 0) return;
-    
+
     const updatedDates = await Promise.all(
       availableLaunchDates.map(async (dateInfo) => {
         const slotData = await fetchSlotAvailability(dateInfo.value);
@@ -146,9 +146,9 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
         };
       })
     );
-    
+
     setAvailableLaunchDates(updatedDates);
-    
+
     // If selected date is now full, clear selection
     if (formData.launchDate) {
       const selectedDate = updatedDates.find(d => d.value === formData.launchDate);
@@ -157,12 +157,12 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
       }
     }
   };
-  
+
   // Select a launch date
   const selectLaunchDate = (dateValue) => {
     setFormData(prev => ({ ...prev, launchDate: dateValue }));
   };
-  
+
   // Removed daily submission limit check - users can submit unlimited times
 
   // Check if user has previous submissions
@@ -207,28 +207,28 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
 
   useEffect(() => {
     if (!isOpen) return;
-    
+
     // Track form open event
     if (typeof window.trackEvent === 'function') {
       window.trackEvent('form_open');
     }
-    
+
     // Generate available launch dates when form opens
     const loadLaunchDates = async () => {
       const dates = await generateLaunchDates();
       setAvailableLaunchDates(dates);
     };
-    
+
     // Check if user has previous submissions
     checkUserPreviousSubmissions();
-    
+
     loadLaunchDates();
-    
+
     // Set up periodic refresh of slot availability (every 10 seconds)
     const refreshInterval = setInterval(() => {
       refreshSlotAvailability();
     }, 10000);
-    
+
     // Cleanup interval on unmount or when modal closes
     return () => {
       clearInterval(refreshInterval);
@@ -244,7 +244,7 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
       .replace(/^-+|-+$/g, '') // Remove leading/trailing hyphens
       .substring(0, 50); // Limit length
   };
-  
+
   // Add random suffix to make a slug unique
   const makeUniqueSlug = (baseSlug) => {
     const randomSuffix = Math.floor(Math.random() * 10000);
@@ -253,18 +253,50 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    
-    // If project name changes, auto-generate a slug if slug is empty or was auto-generated
-    if (name === 'projectName' && value) {
-      setFormData((prev) => ({
-        ...prev,
-        [name]: value,
-        // Only auto-update slug if it's empty or matches previous auto-generated pattern
-        slug: !prev.slug || prev.slug === generateSlug(prev.projectName) ? generateSlug(value) : prev.slug
-      }));
-    } else {
-      setFormData((prev) => ({ ...prev, [name]: value }));
+    setFormData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  // Handle logo file upload
+  const handleLogoUpload = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      // Validate file size (max 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        setError('Logo file size must be less than 5MB');
+        return;
+      }
+      setFormData(prev => ({ ...prev, logo: file }));
+      setError(null);
     }
+  };
+
+  // Handle screenshots file upload
+  const handleScreenshotsUpload = (e) => {
+    const files = Array.from(e.target.files);
+
+    // Validate number of files
+    if (files.length > 5) {
+      setError('You can upload a maximum of 5 screenshots');
+      return;
+    }
+
+    // Validate file sizes
+    const oversizedFiles = files.filter(f => f.size > 5 * 1024 * 1024);
+    if (oversizedFiles.length > 0) {
+      setError('Each screenshot must be less than 5MB');
+      return;
+    }
+
+    setFormData(prev => ({ ...prev, screenshots: files }));
+    setError(null);
+  };
+
+  // Remove a screenshot from the list
+  const removeScreenshot = (index) => {
+    setFormData(prev => ({
+      ...prev,
+      screenshots: prev.screenshots.filter((_, i) => i !== index)
+    }));
   };
 
   // Removed existing submission check - users can submit multiple startups
@@ -310,19 +342,32 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
         setError("Please enter a valid URL");
         return;
       }
-      
+
       // Validate URL format - must start with http:// or https://
       if (!formData.url.startsWith('http://') && !formData.url.startsWith('https://')) {
         setError("Please enter a valid URL starting with http:// or https://");
         return;
       }
-      
-      if (!formData.slug) {
-        setError("Please enter a slug for your product");
-        return;
-      }
+
       if (!formData.xProfile) {
         setError("Please enter your X username");
+        return;
+      }
+
+      // Validate logo upload
+      if (!formData.logo) {
+        setError('Please upload a logo for your startup');
+        return;
+      }
+
+      // Validate screenshots upload
+      if (!formData.screenshots || formData.screenshots.length === 0) {
+        setError('Please upload at least one screenshot');
+        return;
+      }
+
+      if (formData.screenshots.length > 5) {
+        setError('Maximum 5 screenshots allowed');
         return;
       }
 
@@ -331,7 +376,7 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
       if (isDuplicate) {
         return; // Stop if it's a duplicate
       }
-      
+
       // Clear any existing errors and proceed to next page
       setError(null);
       setCurrentPage(2);
@@ -352,7 +397,7 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
-    
+
     // Track form submission attempt
     window.trackEvent(window.ANALYTICS_EVENTS.FORM_SUBMIT);
 
@@ -362,16 +407,13 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
       if (!formData.url) {
         throw new Error("Please enter a valid URL");
       }
-      
+
       // Validate URL format - must start with http:// or https://
       if (!formData.url.startsWith('http://') && !formData.url.startsWith('https://')) {
         throw new Error("Please enter a valid URL starting with http:// or https://");
       }
       if (!formData.projectName) {
         throw new Error("Please enter a project name");
-      }
-      if (!formData.slug) {
-        throw new Error("Please enter a slug for your project");
       }
       if (!formData.category) {
         throw new Error("Please select a category for your startup");
@@ -386,7 +428,7 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
         console.error("Failed to initialize Supabase client:", initError);
         throw new Error("Database connection failed. Please try again later.");
       }
-      
+
       // Check connection to Supabase before proceeding
       try {
         // Simple ping to check connection
@@ -394,55 +436,106 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
           .from('startups')
           .select('count')
           .limit(1);
-          
+
         if (pingError) {
           console.error("Supabase connection check failed:", pingError);
           throw new Error("Could not connect to the database. Please check your internet connection and try again.");
         }
-        
+
         console.log("Supabase connection verified successfully");
       } catch (connectionError) {
         console.error("Database connection test failed:", connectionError);
         throw new Error("Network error: Could not connect to the database. Please check your internet connection and try again.");
       }
 
+      // Generate a unique slug from the project name
+      const baseSlug = generateSlug(formData.projectName);
+      const uniqueSlug = makeUniqueSlug(baseSlug);
+
       console.log("Submitting startup to Supabase:", {
         title: formData.projectName,
         url: formData.url,
-        slug: formData.slug
+        slug: uniqueSlug
       });
-      
-      // Capture screenshot of the website
-      let screenshotUrl = null;
-      try {
-        console.log(`Attempting to capture screenshot for ${formData.url}`);
-        // First try to capture the screenshot
-        const capturedScreenshotUrl = await captureScreenshot(formData.url, {
-          width: 1280,
-          height: 800,
-          waitUntil: 'networkidle2'
-        });
-        
-        if (capturedScreenshotUrl) {
-          console.log(`Screenshot captured, uploading to Supabase storage`);
-          // Then upload it to Supabase storage
-          screenshotUrl = await uploadScreenshot(supabase, capturedScreenshotUrl, formData.slug);
-          console.log(`Screenshot uploaded successfully: ${screenshotUrl}`);
+
+
+      // Upload logo to Supabase Storage
+      let logoUrl = null;
+      if (formData.logo) {
+        try {
+          console.log('Uploading logo to Supabase Storage...');
+          const logoExt = formData.logo.name.split('.').pop();
+          const logoPath = `logos/${uniqueSlug}.${logoExt}`;
+
+          const { error: logoUploadError } = await supabase.storage
+            .from('startup-images')
+            .upload(logoPath, formData.logo, {
+              cacheControl: '3600',
+              upsert: false
+            });
+
+          if (logoUploadError) {
+            console.error('Logo upload error:', logoUploadError);
+            throw new Error('Failed to upload logo. Please try again.');
+          }
+
+          const { data: { publicUrl } } = supabase.storage
+            .from('startup-images')
+            .getPublicUrl(logoPath);
+
+          logoUrl = publicUrl;
+          console.log(`Logo uploaded successfully: ${logoUrl}`);
+        } catch (logoError) {
+          console.error('Error uploading logo:', logoError);
+          throw new Error('Failed to upload logo. Please try again.');
         }
-      } catch (screenshotError) {
-        // Don't fail the whole submission if screenshot fails
-        console.error('Error capturing/uploading screenshot:', screenshotError);
       }
+
+      // Upload screenshots to Supabase Storage
+      const screenshotUrls = [];
+      if (formData.screenshots && formData.screenshots.length > 0) {
+        try {
+          console.log(`Uploading ${formData.screenshots.length} screenshots to Supabase Storage...`);
+          for (let i = 0; i < formData.screenshots.length; i++) {
+            const file = formData.screenshots[i];
+            const ext = file.name.split('.').pop();
+            const screenshotPath = `screenshots/${uniqueSlug}-${i + 1}.${ext}`;
+
+            const { error: uploadError } = await supabase.storage
+              .from('startup-images')
+              .upload(screenshotPath, file, {
+                cacheControl: '3600',
+                upsert: false
+              });
+
+            if (uploadError) {
+              console.error(`Screenshot ${i + 1} upload error:`, uploadError);
+              throw new Error(`Failed to upload screenshot ${i + 1}. Please try again.`);
+            }
+
+            const { data: { publicUrl } } = supabase.storage
+              .from('startup-images')
+              .getPublicUrl(screenshotPath);
+
+            screenshotUrls.push(publicUrl);
+            console.log(`Screenshot ${i + 1} uploaded successfully: ${publicUrl}`);
+          }
+        } catch (screenshotError) {
+          console.error('Error uploading screenshots:', screenshotError);
+          throw new Error('Failed to upload screenshots. Please try again.');
+        }
+      }
+
 
       // Submit to Supabase with better error handling and retry logic
       let retryCount = 0;
       const maxRetries = 3;
       let lastError = null;
-      
+
       while (retryCount < maxRetries) {
         try {
           console.log(`Attempt ${retryCount + 1} of ${maxRetries} to submit startup`);
-          
+
           // Check Supabase connection before attempting insert
           try {
             // Simple ping query to verify connection
@@ -450,7 +543,7 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
               .from('startups')
               .select('count')
               .limit(1);
-              
+
             if (pingError) {
               console.error('Supabase connection test failed:', pingError);
               throw new Error(`Connection test failed: ${pingError.message || 'Unknown error'}`);
@@ -468,14 +561,14 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
               throw pingErr; // Let the outer catch handle it
             }
           }
-          
+
           // Get authenticated user info if available
           let authorInfo = {
             name: formData.xProfile.replace('@', ''),
             profile_url: `https://x.com/${formData.xProfile.replace('@', '')}`,
             avatar: `https://unavatar.io/twitter/${formData.xProfile.replace('@', '')}`
           };
-          
+
           // If user is authenticated via Supabase, use their email info
           if (window.auth && window.auth.isAuthenticated()) {
             const authUser = window.auth.getCurrentUser();
@@ -497,10 +590,12 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
                 title: formData.projectName,
                 url: formData.url,
                 description: formData.description,
-                slug: formData.slug,
+                slug: uniqueSlug,
                 category: formData.category,
                 author: authorInfo,
-                screenshot_url: screenshotUrl,
+                logo_url: logoUrl,
+                images: screenshotUrls,
+                screenshot_url: screenshotUrls[0] || null,
                 plan: formData.plan,
                 launch_date: formData.launchDate || await (async () => {
                   // Always use database function to get next available launch date
@@ -511,15 +606,15 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
                     const pst = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Los_Angeles' }));
                     let nextDay = new Date(pst);
                     nextDay.setDate(pst.getDate() + 1);
-                    
+
                     // Find next weekday (Monday-Friday)
                     while (nextDay.getDay() === 0 || nextDay.getDay() === 6) {
                       nextDay.setDate(nextDay.getDate() + 1);
                     }
-                    
-                    return nextDay.getFullYear() + '-' + 
-                           String(nextDay.getMonth() + 1).padStart(2, '0') + '-' + 
-                           String(nextDay.getDate()).padStart(2, '0');
+
+                    return nextDay.getFullYear() + '-' +
+                      String(nextDay.getMonth() + 1).padStart(2, '0') + '-' +
+                      String(nextDay.getDate()).padStart(2, '0');
                   }
                   return nextDate;
                 })()
@@ -532,84 +627,66 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
             console.error(`Supabase insert error (attempt ${retryCount + 1}):`, error);
             console.error('Error details:', JSON.stringify(error, null, 2));
             lastError = error;
-            
+
             // Handle specific database constraint errors
             if (error.code === '23505') { // PostgreSQL unique constraint violation code
               // Check which constraint was violated
               if (error.message && error.message.includes('startups_slug_key')) {
-                // Slug already exists - try with a unique slug automatically
-                console.log(`Slug "${formData.slug}" already exists, trying with a unique slug...`);
-                
-                // Generate a unique slug by adding a random suffix
-                const uniqueSlug = makeUniqueSlug(formData.slug);
-                console.log(`Generated unique slug: ${uniqueSlug}`);
-                
-                // Try again with the unique slug
+                // This should be extremely rare now since we generate unique slugs
+                // But if it happens, regenerate with a new random suffix
+                console.log(`Slug collision detected, regenerating...`);
+                const newUniqueSlug = makeUniqueSlug(baseSlug);
+
+                // Try again with the new unique slug
                 const { data: retryData, error: retryError } = await supabase
                   .from('startups')
                   .insert([{
                     title: formData.projectName,
                     url: formData.url,
                     description: formData.description,
-                    slug: uniqueSlug,
+                    slug: newUniqueSlug,
                     category: formData.category,
-                    author: {
-                      name: formData.xProfile.replace('@', ''),
-                      profile_url: `https://x.com/${formData.xProfile.replace('@', '')}`,
-                      avatar: `https://unavatar.io/twitter/${formData.xProfile.replace('@', '')}`
-                    },
-                    screenshot_url: screenshotUrl,
+                    author: authorInfo,
+                    logo_url: logoUrl,
+                    images: screenshotUrls,
+                    screenshot_url: screenshotUrls[0] || null,
                     plan: formData.plan,
-                    launch_date: formData.launchDate || (() => {
-                      // Fallback to next available weekday based on 8 AM PST rule
-                      const pst = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Los_Angeles' }));
-                      let nextDay = new Date(pst);
-                      const currentHour = pst.getHours();
-                      const currentDayOfWeek = pst.getDay();
-                      
-                      // If it's a weekday and before 8 AM PST, use today
-                      if (currentDayOfWeek >= 1 && currentDayOfWeek <= 5 && currentHour < 8) {
-                        return nextDay.getFullYear() + '-' + 
-                               String(nextDay.getMonth() + 1).padStart(2, '0') + '-' + 
-                               String(nextDay.getDate()).padStart(2, '0');
+                    launch_date: formData.launchDate || await (async () => {
+                      const { data: nextDate, error: dateError } = await supabase.rpc('get_next_launch_date');
+                      if (dateError) {
+                        console.error('Error getting next launch date:', dateError);
+                        const pst = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Los_Angeles' }));
+                        let nextDay = new Date(pst);
+                        nextDay.setDate(pst.getDate() + 1);
+                        while (nextDay.getDay() === 0 || nextDay.getDay() === 6) {
+                          nextDay.setDate(nextDay.getDate() + 1);
+                        }
+                        return nextDay.getFullYear() + '-' +
+                          String(nextDay.getMonth() + 1).padStart(2, '0') + '-' +
+                          String(nextDay.getDate()).padStart(2, '0');
                       }
-                      
-                      // Otherwise, find next weekday
-                      nextDay.setDate(nextDay.getDate() + 1);
-                      
-                      // Find next weekday (Monday-Friday)
-                      while (nextDay.getDay() === 0 || nextDay.getDay() === 6) {
-                        nextDay.setDate(nextDay.getDate() + 1);
-                      }
-                      
-                      return nextDay.getFullYear() + '-' + 
-                             String(nextDay.getMonth() + 1).padStart(2, '0') + '-' + 
-                             String(nextDay.getDate()).padStart(2, '0');
-                    })(),
+                      return nextDate;
+                    })()
                   }])
                   .select('id, title, url, description, slug, author, screenshot_url, plan, launch_date')
                   .single();
-                
+
                 if (retryError) {
-                  // If still failing, now show an error message
                   window.trackEvent(window.ANALYTICS_EVENTS.FORM_SUBMIT, { success: false, error: 'duplicate_slug_retry_failed' });
-                  throw new Error(`Unable to generate a unique slug. Please try again with a different name.`);
+                  throw new Error(`Unable to generate a unique slug. Please try again.`);
                 } else {
-                  // Success with the unique slug!
-                  console.log("Startup submitted successfully with a unique slug:", retryData);
+                  console.log("Startup submitted successfully with regenerated slug:", retryData);
                   window.trackEvent(window.ANALYTICS_EVENTS.FORM_SUBMIT, { success: true, used_unique_slug: true });
-                  
+
                   // Reset form
-                  setFormData({ url: "", xProfile: "", projectName: "", description: "", slug: "", category: "" });
+                  setFormData({ url: "", xProfile: "", projectName: "", description: "", category: "" });
                   setTurnstileToken(null);
-                  // Reset the widget
                   if (window.turnstile) {
                     window.turnstile.reset();
                   }
                   setSuccess(true);
-                  // Trigger refresh of startups list
                   window.dispatchEvent(new Event("refresh-startups"));
-                  return retryData; // Exit the retry loop on success
+                  return retryData;
                 }
               } else if (error.message && error.message.includes('startups_url_key')) {
                 // URL already exists
@@ -645,27 +722,27 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
           } else {
             // Success!
             console.log("Startup submitted successfully:", data);
-            
+
             // Show success page
             setSuccess(true);
             setShowSuccessPage(true);
-            
+
             // Save the submitted data for the success page
             const submittedData = { ...formData };
-            
+
             // Track success page view
             try {
               window.trackEvent(window.ANALYTICS_EVENTS.SUCCESS_PAGE_VIEW, { plan: submittedData.plan });
             } catch (analyticsError) {
               console.warn('Analytics error:', analyticsError);
             }
-            
+
             return data; // Exit the retry loop on success
           }
         } catch (dbError) {
           console.error(`Database operation failed (attempt ${retryCount + 1}):`, dbError);
           lastError = dbError;
-          
+
           // If it's a network error, retry
           if (dbError.message && (dbError.message.includes("fetch") || dbError.message.includes("network"))) {
             retryCount++;
@@ -682,12 +759,12 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
           }
         }
       }
-      
+
       // If we've exhausted all retries
       if (lastError) {
         // Track submission error after all retries
         window.trackEvent(window.ANALYTICS_EVENTS.FORM_SUBMIT, { success: false, error: lastError.message });
-        
+
         if (lastError.message && (lastError.message.includes("fetch") || lastError.message.includes("network"))) {
           throw new Error("Network error: Could not connect to the database after multiple attempts. Please check your internet connection and try again later.");
         } else {
@@ -697,25 +774,25 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
 
       // Track successful submission
       window.trackEvent(window.ANALYTICS_EVENTS.FORM_SUBMIT, { success: true });
-      
+
       // Trigger refresh of startups list
       window.dispatchEvent(new Event("refresh-startups"));
-      
+
       // Save the submitted data for the success page
       const submittedData = { ...formData };
-      
+
       // Reset form data
-      setFormData({ url: "", xProfile: "", projectName: "", description: "", slug: "", category: "" });
+      setFormData({ url: "", xProfile: "", projectName: "", description: "", category: "" });
       setTurnstileToken(null);
       // Reset the widget
       if (window.turnstile) {
         window.turnstile.reset();
       }
-      
+
       // Show success page
       setSuccess(true);
       setShowSuccessPage(true);
-      
+
       // Track success page view
       window.trackEvent(window.ANALYTICS_EVENTS.SUCCESS_PAGE_VIEW, { plan: submittedData.plan });
     } catch (err) {
@@ -733,16 +810,16 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
       <div
         class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto"
         onClick=${(e) => {
-          // Close modal when clicking the backdrop
-          if (e.target === e.currentTarget) onClose();
-        }}
+        // Close modal when clicking the backdrop
+        if (e.target === e.currentTarget) onClose();
+      }}
       >
         <div
           class="bg-white border-4 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] p-6 w-full max-w-md rounded relative my-8 max-h-[90vh] overflow-y-auto"
           onClick=${(e) => {
-            // Prevent modal close when clicking inside the content
-            e.stopPropagation();
-          }}
+        // Prevent modal close when clicking inside the content
+        e.stopPropagation();
+      }}
         >
           <button
             onClick=${onClose}
@@ -792,30 +869,30 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
                 <p class="text-sm text-gray-600 mb-3">Download our badge image and add it to your website manually.</p>
                 <button 
                   onClick=${() => {
-                    // Create badge download
-                    const canvas = document.createElement('canvas');
-                    const ctx = canvas.getContext('2d');
-                    canvas.width = 200;
-                    canvas.height = 60;
-                    
-                    // Draw badge background
-                    ctx.fillStyle = '#3B82F6';
-                    ctx.fillRect(0, 0, 200, 60);
-                    
-                    // Draw text
-                    ctx.fillStyle = 'white';
-                    ctx.font = 'bold 12px Arial';
-                    ctx.textAlign = 'center';
-                    ctx.fillText('Featured on', 100, 20);
-                    ctx.font = 'bold 16px Arial';
-                    ctx.fillText('SubmitHunt', 100, 40);
-                    
-                    // Download
-                    const link = document.createElement('a');
-                    link.download = 'submithunt-badge.png';
-                    link.href = canvas.toDataURL();
-                    link.click();
-                  }}
+        // Create badge download
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        canvas.width = 200;
+        canvas.height = 60;
+
+        // Draw badge background
+        ctx.fillStyle = '#3B82F6';
+        ctx.fillRect(0, 0, 200, 60);
+
+        // Draw text
+        ctx.fillStyle = 'white';
+        ctx.font = 'bold 12px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText('Featured on', 100, 20);
+        ctx.font = 'bold 16px Arial';
+        ctx.fillText('SubmitHunt', 100, 40);
+
+        // Download
+        const link = document.createElement('a');
+        link.download = 'submithunt-badge.png';
+        link.href = canvas.toDataURL();
+        link.click();
+      }}
                   class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 font-bold"
                 >
                   Download Badge PNG
@@ -835,21 +912,21 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
                 </div>
                 <button 
                   onClick=${() => {
-                    const embedCode = document.getElementById('embed-code').textContent;
-                    navigator.clipboard.writeText(embedCode).then(() => {
-                      // Show copied feedback
-                      const btn = event.target;
-                      const originalText = btn.textContent;
-                      btn.textContent = 'Copied!';
-                      btn.classList.add('bg-green-500');
-                      btn.classList.remove('bg-gray-500');
-                      setTimeout(() => {
-                        btn.textContent = originalText;
-                        btn.classList.remove('bg-green-500');
-                        btn.classList.add('bg-gray-500');
-                      }, 2000);
-                    });
-                  }}
+        const embedCode = document.getElementById('embed-code').textContent;
+        navigator.clipboard.writeText(embedCode).then(() => {
+          // Show copied feedback
+          const btn = event.target;
+          const originalText = btn.textContent;
+          btn.textContent = 'Copied!';
+          btn.classList.add('bg-green-500');
+          btn.classList.remove('bg-gray-500');
+          setTimeout(() => {
+            btn.textContent = originalText;
+            btn.classList.remove('bg-green-500');
+            btn.classList.add('bg-gray-500');
+          }, 2000);
+        });
+      }}
                   class="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600 font-bold"
                 >
                   Copy Embed Code
@@ -898,16 +975,16 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
     <div
       class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto"
       onClick=${(e) => {
-        // Close modal when clicking the backdrop
-        if (e.target === e.currentTarget) onClose();
-      }}
+      // Close modal when clicking the backdrop
+      if (e.target === e.currentTarget) onClose();
+    }}
     >
       <div
         class="bg-white border-4 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] p-6 w-full max-w-md rounded relative my-8 max-h-[90vh] overflow-y-auto"
         onClick=${(e) => {
-          // Prevent modal close when clicking inside the form
-          e.stopPropagation();
-        }}
+      // Prevent modal close when clicking inside the form
+      e.stopPropagation();
+    }}
       >
         <button
           onClick=${onClose}
@@ -937,7 +1014,7 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
           </div>
 
           ${error &&
-          html`
+      html`
             <div class="mb-4 p-3 bg-red-100 border-2 border-red-500 rounded">
               <p class="text-red-700">${error}</p>
             </div>
@@ -978,24 +1055,7 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
             />
           </div>
 
-          <div class="mb-4">
-            <label class="block text-black font-bold mb-2" for="slug">
-              Slug
-            </label>
-            <input
-              type="text"
-              id="slug"
-              name="slug"
-              value=${formData.slug}
-              onInput=${handleChange}
-              class="w-full px-3 py-2 border-2 border-black focus:outline-none focus:ring-2 focus:ring-blue-400"
-              placeholder="my-awesome-startup"
-              required
-            />
-            <div class="text-sm text-gray-500 mt-2">
-              A unique identifier for your startup that will be used in the URL (e.g. submit-startup/#my-startup)
-            </div>
-          </div>
+
 
           <div class="mb-4">
             <label class="block text-black font-bold mb-2" for="description">
@@ -1042,6 +1102,64 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
               <option value="Chrome Extension">🧩 Chrome Extension</option>
               <option value="Mobile App">📱 Mobile App</option>
             </select>
+          </div>
+
+          <div class="mb-4">
+            <label class="block text-black font-bold mb-2" for="logo">
+              Logo <span class="text-red-500">*</span>
+            </label>
+            <input
+              type="file"
+              id="logo"
+              name="logo"
+              accept="image/*"
+              onChange=${handleLogoUpload}
+              class="w-full px-3 py-2 border-2 border-black focus:outline-none focus:ring-2 focus:ring-blue-400 bg-white"
+              required
+            />
+            <div class="text-sm text-gray-500 mt-2">
+              Upload your startup's logo (PNG, JPG, or SVG recommended, max 5MB)
+            </div>
+            ${formData.logo ? html`
+              <div class="mt-2 p-2 bg-green-50 border border-green-300 rounded">
+                <span class="text-green-700 text-sm">✓ ${formData.logo.name}</span>
+              </div>
+            ` : ''}
+          </div>
+
+          <div class="mb-4">
+            <label class="block text-black font-bold mb-2" for="screenshots">
+              Screenshots <span class="text-red-500">*</span>
+            </label>
+            <input
+              type="file"
+              id="screenshots"
+              name="screenshots"
+              accept="image/*"
+              multiple
+              onChange=${handleScreenshotsUpload}
+              class="w-full px-3 py-2 border-2 border-black focus:outline-none focus:ring-2 focus:ring-blue-400 bg-white"
+              required
+            />
+            <div class="text-sm text-gray-500 mt-2">
+              Upload 1-5 screenshots of your product (PNG or JPG, max 5MB each)
+            </div>
+            ${formData.screenshots.length > 0 ? html`
+              <div class="mt-2 space-y-1">
+                ${formData.screenshots.map((file, index) => html`
+                  <div class="p-2 bg-green-50 border border-green-300 rounded flex justify-between items-center">
+                    <span class="text-green-700 text-sm">✓ ${file.name}</span>
+                    <button
+                      type="button"
+                      onClick=${() => removeScreenshot(index)}
+                      class="text-red-500 hover:text-red-700 text-sm font-bold"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                `)}
+              </div>
+            ` : ''}
           </div>
 
           <div class="mb-6">
@@ -1159,8 +1277,8 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
                   <div 
                     class="border-4 ${formData.plan === 'premium' ? 'border-blue-500' : 'border-black'} p-4 rounded-lg cursor-pointer hover:bg-gray-50 transition-all relative"
                     onClick=${() => {
-                      window.open('/featured.html', '_blank');
-                    }}
+          window.open('/featured.html', '_blank');
+        }}
                   >
                     <div class="absolute -top-2 -right-2 bg-yellow-400 text-black text-xs font-bold px-2 py-1 rounded border border-black">
                       RECOMMENDED
@@ -1211,8 +1329,8 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
                     <button
                       type="button"
                       onClick=${() => {
-                        window.open('/featured.html', '_blank');
-                      }}
+              window.open('/featured.html', '_blank');
+            }}
                       class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 font-bold"
                     >
                       Upgrade to Featured ($5)
@@ -1222,21 +1340,20 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
                   <!-- Calendar-style grid -->
                   <div class="grid grid-cols-5 gap-2 mb-4">
                     ${availableLaunchDates.map(date => {
-                      const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-                      const dayName = dayNames[date.dayOfWeek];
-                      const dateNum = date.date.split(' ')[2]; // Get day number
-                      const isSelected = formData.launchDate === date.value;
-                      const isAvailable = date.freeAvailable;
-                      
-                      return html`
+              const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+              const dayName = dayNames[date.dayOfWeek];
+              const dateNum = date.date.split(' ')[2]; // Get day number
+              const isSelected = formData.launchDate === date.value;
+              const isAvailable = date.freeAvailable;
+
+              return html`
                         <div 
-                          class="text-center p-2 rounded-lg border-2 transition-all ${
-                            isSelected 
-                              ? 'border-blue-500 bg-blue-100' 
-                              : isAvailable 
-                                ? 'border-black hover:bg-gray-50 cursor-pointer' 
-                                : 'border-gray-300 bg-gray-200 cursor-not-allowed'
-                          }"
+                          class="text-center p-2 rounded-lg border-2 transition-all ${isSelected
+                  ? 'border-blue-500 bg-blue-100'
+                  : isAvailable
+                    ? 'border-black hover:bg-gray-50 cursor-pointer'
+                    : 'border-gray-300 bg-gray-200 cursor-not-allowed'
+                }"
                           onClick=${isAvailable ? () => selectLaunchDate(date.value) : null}
                         >
                           <div class="text-xs font-bold ${isAvailable ? 'text-gray-600' : 'text-gray-400'}">${dayName}</div>
@@ -1247,7 +1364,7 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
                           ${isSelected ? html`<div class="text-xs text-blue-600 mt-1">✓</div>` : ''}
                         </div>
                       `;
-                    })}
+            })}
                   </div>
                   
                   <!-- Selected date details -->
@@ -1260,9 +1377,9 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
                         </div>
                         <div class="text-sm text-blue-600">
                           ${(() => {
-                            const selected = availableLaunchDates.find(d => d.value === formData.launchDate);
-                            return selected ? `${selected.slotsRemaining} of 6 slots available` : '';
-                          })()}
+                const selected = availableLaunchDates.find(d => d.value === formData.launchDate);
+                return selected ? `${selected.slotsRemaining} of 6 slots available` : '';
+              })()}
                         </div>
                       </div>
                     </div>

@@ -4,7 +4,7 @@ import { addReferralParam } from '../lib/url-utils.js';
 import { UpvoteButton } from './upvote-button.js';
 import { RankingBadge } from './ranking-badge.js';
 
-export const StartupCard = ({ startup, user, onUpvoteChange }) => {
+export const StartupCard = ({ startup, user, onUpvoteChange, allStartups }) => {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
   const copyStartupLinkLabel = `Copy project link: Submit Hunt/#${startup.slug}`;
@@ -62,7 +62,7 @@ export const StartupCard = ({ startup, user, onUpvoteChange }) => {
       if (startup.screenshot_url) {
         return startup.screenshot_url;
       }
-      
+
       // If we don't have a stored screenshot and there's no cached URL, generate one
       if (!startup._generatedScreenshotUrl) {
         try {
@@ -72,7 +72,7 @@ export const StartupCard = ({ startup, user, onUpvoteChange }) => {
           apiUrl.searchParams.append('meta', 'false');
           apiUrl.searchParams.append('embed', 'screenshot.url');
           apiUrl.searchParams.append('waitUntil', 'networkidle2');
-          
+
           // Cache the generated URL
           startup._generatedScreenshotUrl = apiUrl.toString();
         } catch (error) {
@@ -80,23 +80,23 @@ export const StartupCard = ({ startup, user, onUpvoteChange }) => {
           // If there's an error, we'll fall through to the fallback options below
         }
       }
-      
+
       // Return the cached URL if available
       if (startup._generatedScreenshotUrl) {
         return startup._generatedScreenshotUrl;
       }
     }
-    
+
     // Handle new format (images array)
     if (startup.images && startup.images.length > 0) {
       return startup.images[currentImageIndex];
     }
-    
+
     // Handle old format (single image property)
     if (startup.image) {
       return startup.image;
     }
-    
+
     // Fallback
     const firstLetter = startup.title?.charAt(0)?.toUpperCase() || 'S';
     return `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='225' viewBox='0 0 400 225'%3E%3Crect width='400' height='225' fill='%23f0f0f0'/%3E%3Ctext x='50%25' y='50%25' font-family='Arial' font-size='24' fill='%23999' text-anchor='middle' dominant-baseline='middle'%3E${firstLetter}%3C/text%3E%3C/svg%3E`;
@@ -111,14 +111,14 @@ export const StartupCard = ({ startup, user, onUpvoteChange }) => {
       try {
         const url = `${window.location.origin}${window.location.pathname}#${startup.slug}`;
         await navigator.clipboard.writeText(url);
-        
+
         // Track link copy event
         trackEvent(ANALYTICS_EVENTS.LINK_CLICK, {
           startupId: startup.id,
           startupName: startup.title,
           startupSlug: startup.slug
         });
-        
+
         setTooltipText("Link copied!");
         setTimeout(() => {
           setTooltipText(copyStartupLinkLabel);
@@ -133,33 +133,33 @@ export const StartupCard = ({ startup, user, onUpvoteChange }) => {
   const handleShareOnX = (e) => {
     e.preventDefault();
     e.stopPropagation();
-    
+
     const url = `${window.location.origin}${window.location.pathname}#${startup.slug}`;
-    
+
     // Create a more detailed share text
     let shareText = `Check out ${startup.title} on Submithunt`;
-    
+
     // Add description if available
     if (startup.description) {
       shareText += `: ${startup.description.substring(0, 80)}`;
       if (startup.description.length > 80) shareText += '...';
     }
-    
+
     // Add the free backlink message
     shareText += `\n\nEarning free DR 37+ backlink on submithunt`;
-    
+
     // Add creator tag if available
     if (startup.author && startup.author.name) {
       shareText += ` @${startup.author.name.replace('@', '')}`;
     }
-    
+
     // Add tags if available
     if (startup.tags && startup.tags.length > 0) {
       // Add up to 3 tags as hashtags
       const hashtags = startup.tags.slice(0, 3).map(tag => `#${tag.replace(/\s+/g, '')}`).join(' ');
       shareText += `\n\n${hashtags}`;
     }
-    
+
     // Track share event with detailed properties
     trackEvent(ANALYTICS_EVENTS.SHARE_CLICK, {
       startupId: startup.id,
@@ -170,7 +170,7 @@ export const StartupCard = ({ startup, user, onUpvoteChange }) => {
       startupTags: startup.tags?.join(',') || '',
       shareText: shareText.substring(0, 50) + '...' // Log truncated version for analytics
     });
-    
+
     // Open X share dialog with the detailed text
     const shareUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(url)}`;
     window.open(shareUrl, '_blank', 'width=550,height=420');
@@ -181,19 +181,24 @@ export const StartupCard = ({ startup, user, onUpvoteChange }) => {
     return `/startup/${startup.slug}`;
   };
 
-  // Check if this startup is from today (for ranking borders)
-  const isToday = () => {
-    if (!startup.launch_date) return false;
-    const today = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/New_York' }));
-    const todayStr = today.getFullYear() + '-' + 
-                  String(today.getMonth() + 1).padStart(2, '0') + '-' + 
-                  String(today.getDate()).padStart(2, '0');
-    return startup.launch_date === todayStr;
+  // Check if this startup is from the most recent launch (for ranking borders)
+  // Rankings persist until a new launch happens, not just for today
+  const isFromMostRecentLaunch = () => {
+    if (!startup.launch_date || !allStartups || allStartups.length === 0) return false;
+
+    // Find the most recent launch date from all startups
+    const mostRecentLaunchDate = allStartups.reduce((latest, s) => {
+      if (!s.launch_date) return latest;
+      return s.launch_date > latest ? s.launch_date : latest;
+    }, '');
+
+    // Check if this startup is from the most recent launch
+    return startup.launch_date === mostRecentLaunchDate;
   };
 
-  // Get ranking class for today's top 3
+  // Get ranking class for most recent launch's top 3
   const getRankingClass = () => {
-    if (!isToday() || !startup.daily_rank) return '';
+    if (!isFromMostRecentLaunch() || !startup.daily_rank) return '';
     if (startup.daily_rank === 1) return 'startup-card-1st';
     if (startup.daily_rank === 2) return 'startup-card-2nd';
     if (startup.daily_rank === 3) return 'startup-card-3rd';
@@ -202,7 +207,7 @@ export const StartupCard = ({ startup, user, onUpvoteChange }) => {
 
   // Get ranking label text
   const getRankingLabel = () => {
-    if (!isToday() || !startup.daily_rank || startup.daily_rank > 3) return null;
+    if (!isFromMostRecentLaunch() || !startup.daily_rank || startup.daily_rank > 3) return null;
     const labels = { 1: '1st Place', 2: '2nd Place', 3: '3rd Place' };
     return labels[startup.daily_rank];
   };
@@ -214,12 +219,12 @@ export const StartupCard = ({ startup, user, onUpvoteChange }) => {
   // Premium listings also get featured styling but don't appear at top
   const isFeatured = startup.is_featured || startup.plan === 'featured' || startup.plan === 'premium';
   const featuredClass = isFeatured ? 'startup-card-featured' : '';
-  
+
   // Debug logging for ranking
   if (startup.daily_rank) {
-    console.log(`Startup "${startup.title}" - daily_rank: ${startup.daily_rank}, launch_date: ${startup.launch_date}, isToday: ${isToday()}, rankingClass: ${rankingClass}`);
+    console.log(`Startup "${startup.title}" - daily_rank: ${startup.daily_rank}, launch_date: ${startup.launch_date}, isFromMostRecentLaunch: ${isFromMostRecentLaunch()}, rankingClass: ${rankingClass}`);
   }
-  
+
   return html`
     <div class="startup-card bg-white border border-gray-200 rounded-xl p-6 hover:shadow-md transition-all duration-200 w-full max-w-4xl ${rankingClass} ${featuredClass}">
       ${rankingLabel && html`
@@ -236,9 +241,9 @@ export const StartupCard = ({ startup, user, onUpvoteChange }) => {
               alt=${`${startup.title} logo`}
               class="w-full h-full object-cover"
               onError=${(e) => {
-                const firstLetter = startup.title?.charAt(0)?.toUpperCase() || 'S';
-                e.target.src = `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='48' height='48' viewBox='0 0 48 48'%3E%3Crect width='48' height='48' fill='%23f0f0f0'/%3E%3Ctext x='50%25' y='50%25' font-family='Arial' font-size='20' fill='%23999' text-anchor='middle' dominant-baseline='middle'%3E${firstLetter}%3C/text%3E%3C/svg%3E`;
-              }}
+      const firstLetter = startup.title?.charAt(0)?.toUpperCase() || 'S';
+      e.target.src = `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='48' height='48' viewBox='0 0 48 48'%3E%3Crect width='48' height='48' fill='%23f0f0f0'/%3E%3Ctext x='50%25' y='50%25' font-family='Arial' font-size='20' fill='%23999' text-anchor='middle' dominant-baseline='middle'%3E${firstLetter}%3C/text%3E%3C/svg%3E`;
+    }}
             />
           </div>
         </div>
@@ -251,15 +256,15 @@ export const StartupCard = ({ startup, user, onUpvoteChange }) => {
                 href=${getInternalDetailUrl()} 
                 class="block group" 
                 onClick=${(e) => {
-                  e.preventDefault();
-                  trackEvent(ANALYTICS_EVENTS.LINK_CLICK, {
-                    startupId: startup.id,
-                    startupName: startup.title,
-                    startupUrl: getInternalDetailUrl()
-                  });
-                  window.history.pushState({}, "", getInternalDetailUrl());
-                  window.dispatchEvent(new PopStateEvent('popstate'));
-                }}
+      e.preventDefault();
+      trackEvent(ANALYTICS_EVENTS.LINK_CLICK, {
+        startupId: startup.id,
+        startupName: startup.title,
+        startupUrl: getInternalDetailUrl()
+      });
+      window.history.pushState({}, "", getInternalDetailUrl());
+      window.dispatchEvent(new PopStateEvent('popstate'));
+    }}
               >
                 <h3 class="text-lg font-semibold text-gray-900 group-hover:text-blue-600 transition-colors mb-1 truncate">
                   ${startup.title}
@@ -293,19 +298,19 @@ export const StartupCard = ({ startup, user, onUpvoteChange }) => {
               
               <button
                 onClick=${(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  
-                  // Track external link click
-                  trackEvent(ANALYTICS_EVENTS.STARTUP_VIEW, {
-                    startupId: startup.id,
-                    startupName: startup.title,
-                    startupUrl: startup.url
-                  });
-                  
-                  // Open startup URL in new tab
-                  window.open(addReferralParam(startup.url), '_blank', 'noopener,noreferrer');
-                }}
+      e.preventDefault();
+      e.stopPropagation();
+
+      // Track external link click
+      trackEvent(ANALYTICS_EVENTS.STARTUP_VIEW, {
+        startupId: startup.id,
+        startupName: startup.title,
+        startupUrl: startup.url
+      });
+
+      // Open startup URL in new tab
+      window.open(addReferralParam(startup.url), '_blank', 'noopener,noreferrer');
+    }}
                 class="p-2 text-gray-400 hover:text-gray-600 transition-colors rounded-lg hover:bg-gray-50"
                 aria-label="Visit startup"
               >

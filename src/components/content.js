@@ -27,16 +27,16 @@ export const Content = ({ user, onStartupsChange, selectedCategory, sortBy, sear
         const supabase = supabaseClient();
         // Get today's date in YYYY-MM-DD format using EST time zone
         const today = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/New_York' }));
-        const todayStr = today.getFullYear() + '-' + 
-                      String(today.getMonth() + 1).padStart(2, '0') + '-' + 
-                      String(today.getDate()).padStart(2, '0');
-        
+        const todayStr = today.getFullYear() + '-' +
+          String(today.getMonth() + 1).padStart(2, '0') + '-' +
+          String(today.getDate()).padStart(2, '0');
+
         // Get user email for vote checking
         const userEmail = user?.email || null;
-        
+
         const { data, error } = await supabase
           .rpc('get_startups_with_votes', { user_email_param: userEmail });
-        
+
         // Filter results to only show startups launched today or earlier
         const filteredData = data?.filter(startup => startup.launch_date <= todayStr) || [];
 
@@ -44,7 +44,7 @@ export const Content = ({ user, onStartupsChange, selectedCategory, sortBy, sear
           setStartups(filteredData);
           setFilteredStartups(filteredData);
           onStartupsChange?.(filteredData);
-          
+
           // Group startups by launch date
           const grouped = {};
           filteredData.forEach(startup => {
@@ -57,7 +57,7 @@ export const Content = ({ user, onStartupsChange, selectedCategory, sortBy, sear
             grouped[adjustedDate].push(startup);
           });
           setGroupedStartups(grouped);
-          
+
           // Check for hash in URL
           const hash = window.location.hash.slice(1); // Remove the # symbol
           if (hash) {
@@ -69,12 +69,12 @@ export const Content = ({ user, onStartupsChange, selectedCategory, sortBy, sear
       } catch (supabaseErr) {
         console.log("Supabase fetch failed, using placeholder data", supabaseErr);
       }
-      
+
       // If Supabase fetch fails or returns no data, use placeholder data
       setStartups(placeholderProducts);
       setFilteredStartups(placeholderProducts);
       onStartupsChange?.(placeholderProducts);
-      
+
       // Group placeholder startups by launch date
       const grouped = {};
       placeholderProducts.forEach(startup => {
@@ -86,7 +86,7 @@ export const Content = ({ user, onStartupsChange, selectedCategory, sortBy, sear
         grouped[launchDate].push(startup);
       });
       setGroupedStartups(grouped);
-      
+
       // Check for hash in URL with placeholder data
       const hash = window.location.hash.slice(1);
       if (hash) {
@@ -112,7 +112,7 @@ export const Content = ({ user, onStartupsChange, selectedCategory, sortBy, sear
       }
     };
     updateRankings();
-    
+
     fetchStartups();
 
     // Listen for refresh requests
@@ -146,7 +146,7 @@ export const Content = ({ user, onStartupsChange, selectedCategory, sortBy, sear
   // Filter and sort startups based on category, sort, and search
   useEffect(() => {
     let filtered = [...startups];
-    
+
     // Apply category filter
     if (selectedCategory && selectedCategory !== 'all') {
       filtered = filtered.filter(startup => {
@@ -157,7 +157,7 @@ export const Content = ({ user, onStartupsChange, selectedCategory, sortBy, sear
     // Apply search filter
     if (searchQuery && searchQuery.trim()) {
       const query = searchQuery.toLowerCase().trim();
-      filtered = filtered.filter(startup => 
+      filtered = filtered.filter(startup =>
         startup.title?.toLowerCase().includes(query) ||
         startup.description?.toLowerCase().includes(query) ||
         startup.category?.toLowerCase().includes(query) ||
@@ -169,7 +169,7 @@ export const Content = ({ user, onStartupsChange, selectedCategory, sortBy, sear
     if (timeFilter !== 'daily') {
       const now = new Date();
       const filterDate = new Date();
-      
+
       if (timeFilter === 'weekly') {
         filterDate.setDate(now.getDate() - 7);
       } else if (timeFilter === 'monthly') {
@@ -177,7 +177,7 @@ export const Content = ({ user, onStartupsChange, selectedCategory, sortBy, sear
       } else if (timeFilter === 'yearly') {
         filterDate.setFullYear(now.getFullYear() - 1);
       }
-      
+
       filtered = filtered.filter(startup => {
         const launchDate = new Date(startup.launch_date || startup.created_at);
         return launchDate >= filterDate;
@@ -202,7 +202,7 @@ export const Content = ({ user, onStartupsChange, selectedCategory, sortBy, sear
     filtered.forEach(startup => {
       const launchDate = startup.launch_date || startup.created_at;
       const dateKey = launchDate.split('T')[0]; // Use YYYY-MM-DD format from database
-      
+
       if (!grouped[dateKey]) {
         grouped[dateKey] = [];
       }
@@ -278,14 +278,14 @@ export const Content = ({ user, onStartupsChange, selectedCategory, sortBy, sear
     if (searchQuery) {
       params.set('search', searchQuery);
     }
-    
-    const newURL = params.toString() ? 
-      `${window.location.pathname}?${params.toString()}` : 
+
+    const newURL = params.toString() ?
+      `${window.location.pathname}?${params.toString()}` :
       window.location.pathname;
-    
+
     window.history.replaceState(
-      null, 
-      '', 
+      null,
+      '',
       newURL + window.location.hash
     );
   };
@@ -301,14 +301,14 @@ export const Content = ({ user, onStartupsChange, selectedCategory, sortBy, sear
     const categoryParam = urlParams.get('category');
     const sortParam = urlParams.get('sort');
     const searchParam = urlParams.get('search');
-    
+
     if (categoryParam && onCategoryFilter) {
       onCategoryFilter(categoryParam);
     }
     if (sortParam && onSortChange) {
       onSortChange(sortParam);
     }
-    
+
     // Note: search is handled by parent component
   }, []);
 
@@ -318,7 +318,7 @@ export const Content = ({ user, onStartupsChange, selectedCategory, sortBy, sear
       const urlParams = new URLSearchParams(window.location.search);
       const categoryParam = urlParams.get('category') || 'all';
       const sortParam = urlParams.get('sort') || 'trending';
-      
+
       if (onCategoryFilter) {
         onCategoryFilter(categoryParam);
       }
@@ -326,7 +326,7 @@ export const Content = ({ user, onStartupsChange, selectedCategory, sortBy, sear
         onSortChange(sortParam);
       }
     };
-    
+
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
   }, [onCategoryFilter, onSortChange]);
@@ -342,9 +342,9 @@ export const Content = ({ user, onStartupsChange, selectedCategory, sortBy, sear
 
   const handleUpvoteChange = (startupId, newUpvoteCount, userVoted) => {
     // Update the startup in the local state
-    setStartups(prevStartups => 
-      prevStartups.map(startup => 
-        startup.id === startupId 
+    setStartups(prevStartups =>
+      prevStartups.map(startup =>
+        startup.id === startupId
           ? { ...startup, upvote_count: newUpvoteCount, user_voted: userVoted }
           : startup
       )
@@ -396,55 +396,51 @@ export const Content = ({ user, onStartupsChange, selectedCategory, sortBy, sear
         <div class="flex items-center justify-between mb-6">
           <div>
             <h1 class="text-3xl font-bold text-gray-900">
-              ${timeFilter === 'daily' ? 'Daily launches' : 
-                timeFilter === 'weekly' ? 'Weekly launches' :
-                timeFilter === 'monthly' ? 'Monthly launches' : 'Yearly launches'}
+              ${timeFilter === 'daily' ? 'Daily launches' :
+      timeFilter === 'weekly' ? 'Weekly launches' :
+        timeFilter === 'monthly' ? 'Monthly launches' : 'Yearly launches'}
             </h1>
             <p class="text-gray-600 mt-1">
-              ${timeFilter === 'daily' ? 'Discover the best products launched today' : 
-                timeFilter === 'weekly' ? 'Discover the best products launched this week' :
-                timeFilter === 'monthly' ? 'Discover the best products launched this month' : 'Discover the best products launched this year'}
+              ${timeFilter === 'daily' ? 'Discover the best products launched today' :
+      timeFilter === 'weekly' ? 'Discover the best products launched this week' :
+        timeFilter === 'monthly' ? 'Discover the best products launched this month' : 'Discover the best products launched this year'}
             </p>
           </div>
           <div class="flex items-center gap-4">
             <div class="flex gap-2">
               <button 
                 onClick=${() => setTimeFilter('daily')}
-                class="px-3 py-1 text-sm rounded-full font-medium ${
-                  timeFilter === 'daily' 
-                    ? 'bg-black text-white' 
-                    : 'text-gray-600 hover:bg-gray-100'
-                }"
+                class="px-3 py-1 text-sm rounded-full font-medium ${timeFilter === 'daily'
+      ? 'bg-black text-white'
+      : 'text-gray-600 hover:bg-gray-100'
+    }"
               >
                 Daily
               </button>
               <button 
                 onClick=${() => setTimeFilter('weekly')}
-                class="px-3 py-1 text-sm rounded-full ${
-                  timeFilter === 'weekly' 
-                    ? 'bg-black text-white font-medium' 
-                    : 'text-gray-600 hover:bg-gray-100'
-                }"
+                class="px-3 py-1 text-sm rounded-full ${timeFilter === 'weekly'
+      ? 'bg-black text-white font-medium'
+      : 'text-gray-600 hover:bg-gray-100'
+    }"
               >
                 Weekly
               </button>
               <button 
                 onClick=${() => setTimeFilter('monthly')}
-                class="px-3 py-1 text-sm rounded-full ${
-                  timeFilter === 'monthly' 
-                    ? 'bg-black text-white font-medium' 
-                    : 'text-gray-600 hover:bg-gray-100'
-                }"
+                class="px-3 py-1 text-sm rounded-full ${timeFilter === 'monthly'
+      ? 'bg-black text-white font-medium'
+      : 'text-gray-600 hover:bg-gray-100'
+    }"
               >
                 Monthly
               </button>
               <button 
                 onClick=${() => setTimeFilter('yearly')}
-                class="px-3 py-1 text-sm rounded-full ${
-                  timeFilter === 'yearly' 
-                    ? 'bg-black text-white font-medium' 
-                    : 'text-gray-600 hover:bg-gray-100'
-                }"
+                class="px-3 py-1 text-sm rounded-full ${timeFilter === 'yearly'
+      ? 'bg-black text-white font-medium'
+      : 'text-gray-600 hover:bg-gray-100'
+    }"
               >
                 Yearly
               </button>
@@ -460,7 +456,7 @@ export const Content = ({ user, onStartupsChange, selectedCategory, sortBy, sear
       <div>
 
       ${loading &&
-      html`
+    html`
         <div
           class="flex flex-col gap-2 justify-center items-center min-h-[200px]"
         >
@@ -471,37 +467,37 @@ export const Content = ({ user, onStartupsChange, selectedCategory, sortBy, sear
         </div>
       `}
       ${error &&
-      html`
+    html`
         <div class="bg-red-100 border-2 border-red-500 p-4 rounded mb-8">
           <p class="text-red-700">${error}</p>
         </div>
       `}
       ${!loading &&
-      !error &&
-      html`
+    !error &&
+    html`
         <section aria-labelledby="startups-heading" class="mt-8">
-          ${Object.keys(groupedStartups).length > 0 ? 
-            (() => {
-              const sortedDateKeys = Object.keys(groupedStartups).sort((a, b) => new Date(b) - new Date(a));
-              let totalStartupsRendered = 0;
-              let featuredCardShown = false;
-              
-              return sortedDateKeys.map((dateKey, index) => {
-                const startups = groupedStartups[dateKey];
-                // Construct date at noon UTC to avoid timezone shifting to previous day
-                const date = new Date(`${dateKey}T12:00:00Z`);
-                const formattedDate = date.toLocaleDateString('en-US', {
-                  weekday: 'long',
-                  year: 'numeric',
-                  month: 'long',
-                  day: 'numeric',
-                  timeZone: 'America/New_York'
-                });
-                
-                const shouldShowFeatured = !featuredCardShown && totalStartupsRendered + startups.length >= 6;
-                if (shouldShowFeatured) featuredCardShown = true;
-                
-                const result = html`
+          ${Object.keys(groupedStartups).length > 0 ?
+        (() => {
+          const sortedDateKeys = Object.keys(groupedStartups).sort((a, b) => new Date(b) - new Date(a));
+          let totalStartupsRendered = 0;
+          let featuredCardShown = false;
+
+          return sortedDateKeys.map((dateKey, index) => {
+            const startups = groupedStartups[dateKey];
+            // Construct date at noon UTC to avoid timezone shifting to previous day
+            const date = new Date(`${dateKey}T12:00:00Z`);
+            const formattedDate = date.toLocaleDateString('en-US', {
+              weekday: 'long',
+              year: 'numeric',
+              month: 'long',
+              day: 'numeric',
+              timeZone: 'America/New_York'
+            });
+
+            const shouldShowFeatured = !featuredCardShown && totalStartupsRendered + startups.length >= 6;
+            if (shouldShowFeatured) featuredCardShown = true;
+
+            const result = html`
                   <div class="mb-8">
                     <div class="flex items-center mb-6">
                       <h2 class="text-lg font-semibold text-gray-900">
@@ -511,8 +507,14 @@ export const Content = ({ user, onStartupsChange, selectedCategory, sortBy, sear
                     </div>
                     <div class="space-y-4">
                       ${startups.map(
-                        (startup) => html`<${StartupCard} key=${startup.id} startup=${startup} user=${user} onUpvoteChange=${handleUpvoteChange} />`
-                      )}
+              (startup) => html`<${StartupCard} 
+                          key=${startup.id} 
+                          startup=${startup} 
+                          user=${user} 
+                          onUpvoteChange=${handleUpvoteChange}
+                          allStartups=${filteredStartups}
+                        />`
+            )}
                     </div>
                   </div>
                   
@@ -570,25 +572,25 @@ export const Content = ({ user, onStartupsChange, selectedCategory, sortBy, sear
                     </div>
                   ` : ''}
                 `;
-                
-                totalStartupsRendered += startups.length;
-                return result;
-              });
-            })()
-            : html`
+
+            totalStartupsRendered += startups.length;
+            return result;
+          });
+        })()
+        : html`
               <div class="text-center py-16">
                 <div class="text-6xl mb-4">🔍</div>
                 <h3 class="text-xl font-semibold text-gray-900 mb-2">No products found</h3>
                 <p class="text-gray-600">Try adjusting your filters or check back later for new launches.</p>
               </div>
             `
-          }
+      }
         </section>
       `}
       </div>
       
       ${selectedStartup &&
-      html`<${StartupModal} startup=${selectedStartup} onClose=${closeModal} />`}
+    html`<${StartupModal} startup=${selectedStartup} onClose=${closeModal} />`}
     </div>
   `;
 };

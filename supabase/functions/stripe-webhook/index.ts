@@ -71,14 +71,35 @@ serve(async (req) => {
 
 async function handleCheckoutComplete(session: Stripe.Checkout.Session) {
   const { product, startup_id } = session.metadata || {};
-  
-  console.log("Processing checkout complete:", { product, startup_id, sessionId: session.id });
 
-  // Get the actual payment date from the session and convert to PST
-  const paymentDate = session.created ? 
-    new Date(session.created * 1000).toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' }) : 
-    new Date().toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' });
-  console.log("Payment date (PST):", paymentDate);
+  console.log("Processing checkout complete:", {
+    product,
+    startup_id,
+    sessionId: session.id,
+    payment_status: session.payment_status,
+    status: session.status
+  });
+
+  // CRITICAL: Only process if payment was actually completed
+  // This prevents upgrades when users just visit checkout without paying
+  if (session.payment_status !== 'paid') {
+    console.log("Payment not completed, skipping upgrade. Payment status:", session.payment_status);
+    return;
+  }
+
+  if (session.status !== 'complete') {
+    console.log("Session not complete, skipping upgrade. Status:", session.status);
+    return;
+  }
+
+  // Get the actual payment completion date from the session
+  // Use the current timestamp (when webhook is received) as this is when payment completed
+  // Convert to PST date string for launch_date
+  const now = new Date();
+  const paymentDate = now.toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' });
+  const paymentTimestamp = now.toISOString();
+
+  console.log("Payment completed at:", paymentTimestamp, "PST date:", paymentDate);
 
   // Record the payment
   const { error: paymentError } = await supabase.from("payments").insert({
@@ -90,6 +111,7 @@ async function handleCheckoutComplete(session: Stripe.Checkout.Session) {
     currency: session.currency,
     status: "completed",
     startup_id: startup_id || null,
+    payment_date: paymentTimestamp,
   });
 
   if (paymentError) {
@@ -101,22 +123,24 @@ async function handleCheckoutComplete(session: Stripe.Checkout.Session) {
   // Update startup based on product type
   if (product === "premium" && startup_id) {
     // Premium launch/upgrade - set is_live to true and plan to premium
+    // Use payment date for launch_date so it launches immediately
     // Reset notification_sent so they get a new "you're live" email
     const { error } = await supabase
       .from("startups")
-      .update({ 
-        is_live: true, 
+      .update({
+        is_live: true,
         plan: "premium",
-        launch_date: paymentDate, // Use payment date instead of today
+        launch_date: paymentDate, // Use payment date for immediate launch
         notification_sent: false,
-        notification_sent_at: null
+        notification_sent_at: null,
+        updated_at: paymentTimestamp
       })
       .eq("id", startup_id);
 
     if (error) {
       console.error("Error updating startup for premium:", error);
     } else {
-      console.log("Startup set to live with premium plan:", startup_id, "launch_date:", paymentDate);
+      console.log("Startup upgraded to premium and set live:", startup_id, "launch_date:", paymentDate);
     }
 
     // Call the publish-paid-startup function to send immediate notification
@@ -144,26 +168,28 @@ async function handleCheckoutComplete(session: Stripe.Checkout.Session) {
     }
   } else if (product === "featured" && startup_id) {
     // Featured spot - set plan to featured with 1 week duration
+    // Use payment date for launch_date so it launches immediately
     // Reset notification_sent so they get a new "you're live" email
     const featuredUntil = new Date();
     featuredUntil.setDate(featuredUntil.getDate() + 7); // 1 week subscription
-    
+
     const { error } = await supabase
       .from("startups")
-      .update({ 
+      .update({
         plan: "featured",
         is_live: true,
         featured_until: featuredUntil.toISOString(),
-        launch_date: paymentDate, // Use payment date instead of today
+        launch_date: paymentDate, // Use payment date for immediate launch
         notification_sent: false,
-        notification_sent_at: null
+        notification_sent_at: null,
+        updated_at: paymentTimestamp
       })
       .eq("id", startup_id);
 
     if (error) {
       console.error("Error updating startup for featured:", error);
     } else {
-      console.log("Startup set to featured until:", featuredUntil.toISOString(), "startup_id:", startup_id, "launch_date:", paymentDate);
+      console.log("Startup upgraded to featured and set live:", startup_id, "launch_date:", paymentDate, "featured_until:", featuredUntil.toISOString());
     }
 
     // Call the publish-paid-startup function to send immediate notification
@@ -192,12 +218,14 @@ async function handleCheckoutComplete(session: Stripe.Checkout.Session) {
   } else if (product === "featured") {
     // Featured spot without startup_id - just log for manual handling
     console.log("Featured spot purchased without startup_id, customer:", session.customer_email);
+  } else if (!startup_id) {
+    console.log("Payment completed without startup_id, product:", product, "customer:", session.customer_email);
   }
 }
 
 async function handleSubscriptionCancelled(subscription: Stripe.Subscription) {
   console.log("Subscription cancelled:", subscription.id);
-  
+
   // Find the payment record and update status
   const { data: payment } = await supabase
     .from("payments")
@@ -228,7 +256,7 @@ async function handleSubscriptionCancelled(subscription: Stripe.Subscription) {
 
 async function handleSubscriptionRenewal(invoice: Stripe.Invoice) {
   console.log("Processing subscription renewal:", invoice.subscription);
-  
+
   // Find the payment record to get the startup_id
   const { data: payment } = await supabase
     .from("payments")
@@ -240,7 +268,7 @@ async function handleSubscriptionRenewal(invoice: Stripe.Invoice) {
     // Extend featured_until by another week
     const featuredUntil = new Date();
     featuredUntil.setDate(featuredUntil.getDate() + 7);
-    
+
     const { error } = await supabase
       .from("startups")
       .update({ featured_until: featuredUntil.toISOString() })
