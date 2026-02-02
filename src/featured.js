@@ -51,37 +51,37 @@ const LaunchCountdown = () => {
   const getNextLaunchDate = () => {
     const now = new Date();
     const pstNow = new Date(now.toLocaleString('en-US', { timeZone: 'America/Los_Angeles' }));
-    
+
     let nextDate = new Date(pstNow);
-    
+
     // If it's before 8 AM today and it's a weekday, launch is today at 8 AM PST
     if (pstNow.getHours() < 8) {
       nextDate.setHours(8, 0, 0, 0);
       const dayOfWeek = nextDate.getDay(); // 0 = Sunday, 1 = Monday, etc.
-      
+
       // If today is a weekday, use today
       if (dayOfWeek >= 1 && dayOfWeek <= 5) {
         return nextDate;
       }
     }
-    
+
     // Otherwise, find the next weekday at 8 AM PST
     nextDate.setDate(pstNow.getDate() + 1);
     nextDate.setHours(8, 0, 0, 0);
-    
+
     // Keep incrementing until we hit a weekday
     while (true) {
       const dayOfWeek = nextDate.getDay();
-      
+
       // If it's a weekday (Monday = 1 through Friday = 5), we found our date
       if (dayOfWeek >= 1 && dayOfWeek <= 5) {
         break;
       }
-      
+
       // Otherwise, move to next day
       nextDate.setDate(nextDate.getDate() + 1);
     }
-    
+
     return nextDate;
   };
 
@@ -90,7 +90,7 @@ const LaunchCountdown = () => {
     const now = new Date();
     const pstNow = new Date(now.toLocaleString('en-US', { timeZone: 'America/Los_Angeles' }));
     const dayOfWeek = pstNow.getDay(); // 0 = Sunday, 6 = Saturday
-    
+
     return dayOfWeek === 0 || dayOfWeek === 6;
   };
 
@@ -99,9 +99,9 @@ const LaunchCountdown = () => {
     const now = new Date();
     const pstNow = new Date(now.toLocaleString('en-US', { timeZone: 'America/Los_Angeles' }));
     const target = getNextLaunchDate();
-    
+
     const difference = target.getTime() - pstNow.getTime();
-    
+
     if (difference > 0) {
       return {
         days: Math.floor(difference / (1000 * 60 * 60 * 24)),
@@ -110,7 +110,7 @@ const LaunchCountdown = () => {
         seconds: Math.floor((difference / 1000) % 60)
       };
     }
-    
+
     return { days: 0, hours: 0, minutes: 0, seconds: 0 };
   };
 
@@ -121,20 +121,20 @@ const LaunchCountdown = () => {
       setNextLaunchDate(getNextLaunchDate());
       setIsWeekend(checkIfWeekend());
     };
-    
+
     updateCountdown();
-    
+
     // Update every second
     const timer = setInterval(updateCountdown, 1000);
-    
+
     return () => clearInterval(timer);
   }, []);
 
   const formatDate = (date) => {
     if (!date) return '';
-    return date.toLocaleDateString('en-US', { 
-      weekday: 'long', 
-      month: 'long', 
+    return date.toLocaleDateString('en-US', {
+      weekday: 'long',
+      month: 'long',
       day: 'numeric',
       timeZone: 'America/New_York'
     });
@@ -142,7 +142,7 @@ const LaunchCountdown = () => {
 
   const formatTime = (date) => {
     if (!date) return '';
-    return date.toLocaleTimeString('en-US', { 
+    return date.toLocaleTimeString('en-US', {
       hour: 'numeric',
       minute: '2-digit',
       timeZoneName: 'short',
@@ -172,7 +172,7 @@ const FeaturedPage = () => {
 
   useEffect(() => {
     document.title = "Featured Submissions | SubmitHunt";
-    
+
     // Track page view with custom event
     trackEvent("FEATURED_PAGE_VIEW");
 
@@ -193,9 +193,9 @@ const FeaturedPage = () => {
   const handleContactClick = () => {
     // Track when users click to contact for featured placement
     trackEvent("FEATURED_CONTACT_CLICK");
-    
-    // Open Twitter in a new tab
-    window.open("https://buy.stripe.com/YOUR_FEATURED_LINK", "_blank");
+
+    // Open submission form with featured plan
+    handleSubmitClick();
   };
 
   // Handle submit button click with authentication check
@@ -234,13 +234,12 @@ const FeaturedPage = () => {
               class="mt-4 md:mt-0 flex flex-col md:flex-row items-center gap-4"
             >
               <${OnlineVisitors} />
-              <a
-                href="https://buy.stripe.com/YOUR_FEATURED_LINK"
-                target="_blank"
-                class="neo-button inline-flex items-center px-6 py-3 bg-yellow-400 border-2 border-black rounded shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:bg-yellow-500 font-bold text-lg"
+              <button
+                onClick=${handleContactClick}
+                class="neo-button inline-flex items-center px-6 py-3 bg-yellow-400 border-2 border-black rounded shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:bg-yellow-500 font-bold text-lg cursor-pointer"
               >
                 <i class="fas fa-star mr-2"></i> Ready to be Featured
-              </a>
+              </button>
             </div>
           </div>
         </div>
@@ -294,9 +293,9 @@ const FeaturedPage = () => {
                       <span class="bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-0.5 rounded">Premium</span>
                       <span class="bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-0.5 rounded">Sponsored</span>
                     </div>
-                    <a href="https://buy.stripe.com/YOUR_FEATURED_LINK" target="_blank" class="inline-block bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded">
+                    <button onClick=${handleSubmitClick} class="inline-block bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded cursor-pointer">
                       Get Featured
-                    </a>
+                    </button>
                   </div>
                 </div>
               </div>
@@ -396,18 +395,17 @@ const FeaturedPage = () => {
                   <div class="text-gray-500">/week</div>
                 </div>
                 
-                <a 
-                  href="https://buy.stripe.com/YOUR_FEATURED_LINK"
-                  target="_blank"
-                  class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-6 rounded-lg shadow-md transition-all transform hover:scale-105 inline-block"
+                <button 
+                  onClick=${handleSubmitClick}
+                  class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-6 rounded-lg shadow-md transition-all transform hover:scale-105 inline-block cursor-pointer"
                 >
                   Ready to get featured?
-                </a>
+                </button>
               </div>
               
               <div class="bg-blue-50 p-4 rounded-lg">
                 <p class="text-center font-medium">
-                  Click the button above or <a href="https://buy.stripe.com/YOUR_FEATURED_LINK" target="_blank" class="text-blue-600 hover:underline">visit our payment page</a> to get started
+                  Click the button above or <button onClick=${handleSubmitClick} class="text-blue-600 hover:underline cursor-pointer bg-transparent border-0 p-0 inline font-inherit">submit your startup</button> to get started
                 </p>
               </div>
             </div>
@@ -445,13 +443,12 @@ const FeaturedPage = () => {
             <p class="text-xl max-w-3xl mx-auto mb-8">
               Get your product in front of our engaged audience of tech enthusiasts, investors, and early adopters.
             </p>
-            <a 
-              href="https://buy.stripe.com/YOUR_FEATURED_LINK"
-              target="_blank"
-              class="bg-white text-blue-600 hover:bg-gray-100 font-bold py-3 px-8 rounded-lg shadow-lg transition-all transform hover:scale-105 inline-block"
+            <button 
+              onClick=${handleSubmitClick}
+              class="bg-white text-blue-600 hover:bg-gray-100 font-bold py-3 px-8 rounded-lg shadow-lg transition-all transform hover:scale-105 inline-block cursor-pointer"
             >
               Get Featured Today
-            </a>
+            </button>
           </div>
         </section>
       </main>

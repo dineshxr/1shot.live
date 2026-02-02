@@ -28,6 +28,7 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
   const [userHasPreviousSubmissions, setUserHasPreviousSubmissions] = useState(false); // Track if user has submitted before
   const [checkingPreviousSubmissions, setCheckingPreviousSubmissions] = useState(false); // Loading state for checking submissions
   const [loadingDates, setLoadingDates] = useState(false); // Loading state for date fetching
+  const [timeLeft, setTimeLeft] = useState(15 * 60); // Urgency timer: 15 minutes in seconds
 
   // Helper to get PST date string (YYYY-MM-DD) from a Date object
   const getPSTDateString = (date) => {
@@ -234,6 +235,14 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
       clearInterval(refreshInterval);
     };
   }, [isOpen]); // Re-run when modal opens
+
+  // Countdown timer effect for urgency
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setTimeLeft(prev => prev > 0 ? prev - 1 : 0);
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
 
   // Generate a slug from the project name
   const generateSlug = (name) => {
@@ -1293,11 +1302,48 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
                       <li>Launch immediately (skip the queue)</li>
                       <li>Featured in our startup newsletter</li>
                     </ul>
+                    
                     ${formData.plan === 'premium' ? html`
-                      <div class="bg-blue-100 text-blue-800 text-sm font-bold py-1 px-2 rounded inline-block">
+                      <!-- Early Bird Urgency Section -->
+                      <div class="mt-4 p-3 bg-gradient-to-r from-orange-100 to-yellow-100 border-2 border-orange-400 rounded-lg">
+                        <div class="flex items-center gap-2 mb-2">
+                          <span class="text-orange-700 font-bold text-sm">🔥 Early Bird Special</span>
+                        </div>
+                        <div class="flex items-center justify-between gap-3 mb-2">
+                          <div class="flex gap-1">
+                            <!-- Slot 1: Taken -->
+                            <div class="w-10 h-10 bg-gray-400 border-2 border-gray-600 rounded flex items-center justify-center" title="Taken">
+                              <i class="fas fa-check text-white text-sm"></i>
+                            </div>
+                            <!-- Slot 2: Available -->
+                            <div class="w-10 h-10 bg-yellow-300 border-2 border-orange-500 rounded flex items-center justify-center animate-pulse" title="Available">
+                              <i class="fas fa-star text-orange-600 text-sm"></i>
+                            </div>
+                            <!-- Slot 3: Available -->
+                            <div class="w-10 h-10 bg-yellow-300 border-2 border-orange-500 rounded flex items-center justify-center animate-pulse" title="Available">
+                              <i class="fas fa-star text-orange-600 text-sm"></i>
+                            </div>
+                          </div>
+                          <div class="flex-1">
+                            <div class="text-orange-800 font-bold text-xs">2 of 3 slots left today</div>
+                            <div class="text-orange-700 text-xs">Offer expires soon!</div>
+                          </div>
+                        </div>
+                        <div class="bg-white border border-orange-300 rounded px-2 py-1 text-center">
+                          <div class="text-xs font-bold text-orange-600">
+                            ⏰ ${String(Math.floor(timeLeft / 60)).padStart(2, '0')}:${String(timeLeft % 60).padStart(2, '0')}
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div class="mt-3 bg-blue-100 text-blue-800 text-sm font-bold py-1 px-2 rounded inline-block">
                         <i class="fas fa-check mr-1"></i> Selected
                       </div>
-                    ` : ''}
+                    ` : html`
+                      <div class="bg-gray-100 text-gray-700 text-sm font-bold py-1 px-2 rounded inline-block">
+                        Click to select
+                      </div>
+                    `}
                   </div>
                 </div>
               </div>

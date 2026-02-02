@@ -26,38 +26,39 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
   const [userHasPreviousSubmissions, setUserHasPreviousSubmissions] = useState(false);
   const [checkingPreviousSubmissions, setCheckingPreviousSubmissions] = useState(false);
   const [loadingDates, setLoadingDates] = useState(false);
+  const [timeLeft, setTimeLeft] = useState(15 * 60); // Urgency timer: 15 minutes in seconds
 
   const getESTDateString = (date) => {
-    const estDate = new Date(date.toLocaleString("en-US", {timeZone: "America/New_York"}));
-    return estDate.getFullYear() + '-' + 
-           String(estDate.getMonth() + 1).padStart(2, '0') + '-' + 
-           String(estDate.getDate()).padStart(2, '0');
+    const estDate = new Date(date.toLocaleString("en-US", { timeZone: "America/New_York" }));
+    return estDate.getFullYear() + '-' +
+      String(estDate.getMonth() + 1).padStart(2, '0') + '-' +
+      String(estDate.getDate()).padStart(2, '0');
   };
 
   const fetchSlotAvailability = async (dateValue) => {
     const supabase = supabaseClient();
     try {
       const { data, error } = await supabase.rpc('get_available_slots', { target_date: dateValue });
-      
+
       if (error) {
         const { count: freeCount } = await supabase
           .from('startups')
           .select('id', { count: 'exact' })
           .eq('plan', 'free')
           .eq('launch_date', dateValue);
-        
+
         const { count: totalCount } = await supabase
           .from('startups')
           .select('id', { count: 'exact' })
           .eq('launch_date', dateValue);
-        
+
         return {
           free_slots_remaining: 6 - (freeCount || 0),
           free_count: freeCount || 0,
           total_count: totalCount || 0
         };
       }
-      
+
       return data?.[0] || { free_slots_remaining: 6, free_count: 0, total_count: 0 };
     } catch (err) {
       console.error('Error in fetchSlotAvailability:', err);
@@ -68,19 +69,19 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
   const generateLaunchDates = async () => {
     setLoadingDates(true);
     const dates = [];
-    
+
     const now = new Date();
-    const estNow = new Date(now.toLocaleString("en-US", {timeZone: "America/New_York"}));
-    
+    const estNow = new Date(now.toLocaleString("en-US", { timeZone: "America/New_York" }));
+
     let workingDate = new Date(estNow);
     workingDate.setHours(0, 0, 0, 0);
     workingDate.setDate(workingDate.getDate() + 7);
-    
+
     let daysChecked = 0;
-    
+
     while (dates.length < 5 && daysChecked < 30) {
       const dayOfWeek = workingDate.getDay();
-      
+
       if (dayOfWeek >= 1 && dayOfWeek <= 5) {
         const dateOptions = { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'America/New_York' };
         const formattedDate = workingDate.toLocaleDateString('en-US', dateOptions);
@@ -88,7 +89,7 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
         const slotData = await fetchSlotAvailability(dateValue);
         const slotsRemaining = slotData.free_slots_remaining;
         const freeAvailable = slotsRemaining > 0;
-        
+
         dates.push({
           date: formattedDate,
           value: dateValue,
@@ -100,18 +101,18 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
           dayOfWeek: dayOfWeek
         });
       }
-      
+
       workingDate.setDate(workingDate.getDate() + 1);
       daysChecked++;
     }
-    
+
     setLoadingDates(false);
     return dates;
   };
 
   const refreshSlotAvailability = async () => {
     if (availableLaunchDates.length === 0) return;
-    
+
     const updatedDates = await Promise.all(
       availableLaunchDates.map(async (dateInfo) => {
         const slotData = await fetchSlotAvailability(dateInfo.value);
@@ -124,9 +125,9 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
         };
       })
     );
-    
+
     setAvailableLaunchDates(updatedDates);
-    
+
     if (formData.launchDate) {
       const selectedDate = updatedDates.find(d => d.value === formData.launchDate);
       if (selectedDate && !selectedDate.freeAvailable && formData.plan === 'free') {
@@ -142,17 +143,17 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
   // Calculate days until first available free launch date
   const getDelayText = () => {
     if (availableLaunchDates.length === 0) return 'Loading...';
-    
+
     const firstAvailable = availableLaunchDates.find(d => d.freeAvailable);
     if (!firstAvailable) return 'No slots available';
-    
+
     const today = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/New_York' }));
     today.setHours(0, 0, 0, 0);
-    
+
     const launchDate = new Date(firstAvailable.value + 'T12:00:00');
     const diffTime = launchDate - today;
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    
+
     if (diffDays <= 1) return '1 day';
     if (diffDays < 7) return `${diffDays} days`;
     if (diffDays === 7) return '1 week';
@@ -212,13 +213,13 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
       const dates = await generateLaunchDates();
       setAvailableLaunchDates(dates);
     };
-    
+
     loadLaunchDates();
-    
+
     const refreshInterval = setInterval(() => {
       refreshSlotAvailability();
     }, 10000);
-    
+
     return () => {
       clearInterval(refreshInterval);
     };
@@ -230,6 +231,14 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
       checkUserPreviousSubmissions();
     }
   }, [user]);
+
+  // Countdown timer effect for urgency
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setTimeLeft(prev => prev > 0 ? prev - 1 : 0);
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
 
   const generateSlug = (name) => {
     if (!name) return '';
@@ -247,7 +256,7 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    
+
     if (name === 'projectName' && value) {
       setFormData((prev) => ({
         ...prev,
@@ -292,17 +301,17 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
         onLoginRequired();
         return;
       }
-      
+
       if (!formData.url) {
         setError("Please enter a valid URL");
         return;
       }
-      
+
       if (!formData.url.startsWith('http://') && !formData.url.startsWith('https://')) {
         setError("Please enter a valid URL starting with http:// or https://");
         return;
       }
-      
+
       if (!formData.slug) {
         setError("Please enter a slug for your product");
         return;
@@ -316,7 +325,7 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
       if (isDuplicate) {
         return;
       }
-      
+
       setError(null);
       setCurrentPage(2);
       window.trackEvent('form_next_page', { page: 1 });
@@ -334,15 +343,15 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (!user) {
       onLoginRequired();
       return;
     }
-    
+
     setLoading(true);
     setError(null);
-    
+
     window.trackEvent('form_submit');
 
     try {
@@ -355,7 +364,7 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
       if (!formData.category) throw new Error("Please select a category for your startup");
 
       const supabase = supabaseClient();
-      
+
       let screenshotUrl = null;
       try {
         const capturedScreenshotUrl = await captureScreenshot(formData.url, {
@@ -363,7 +372,7 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
           height: 800,
           waitUntil: 'networkidle2'
         });
-        
+
         if (capturedScreenshotUrl) {
           screenshotUrl = await uploadScreenshot(supabase, capturedScreenshotUrl, formData.slug);
         }
@@ -399,9 +408,9 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
               while (nextDay.getDay() === 0 || nextDay.getDay() === 6) {
                 nextDay.setDate(nextDay.getDate() + 1);
               }
-              return nextDay.getFullYear() + '-' + 
-                     String(nextDay.getMonth() + 1).padStart(2, '0') + '-' + 
-                     String(nextDay.getDate()).padStart(2, '0');
+              return nextDay.getFullYear() + '-' +
+                String(nextDay.getMonth() + 1).padStart(2, '0') + '-' +
+                String(nextDay.getDate()).padStart(2, '0');
             }
             return nextDate;
           })()
@@ -427,7 +436,7 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
             }])
             .select()
             .single();
-          
+
           if (retryError) {
             throw new Error('Unable to generate a unique slug. Please try again.');
           }
@@ -442,7 +451,7 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
       setShowSuccessPage(true);
       window.trackEvent('form_submit_success', { plan: formData.plan });
       window.dispatchEvent(new Event("refresh-startups"));
-      
+
       // If premium plan, redirect to Stripe checkout
       if (formData.plan === 'premium' && data?.id) {
         setTimeout(() => {
@@ -453,7 +462,7 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
           });
         }, 2000); // Show success briefly then redirect to payment
       }
-      
+
     } catch (err) {
       setError(err.message);
       window.trackEvent('form_submit_error', { error: err.message });
@@ -530,9 +539,9 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
               </div>
               <button 
                 onClick=${() => {
-                  const embedCode = document.getElementById('embed-code').textContent;
-                  navigator.clipboard.writeText(embedCode);
-                }}
+        const embedCode = document.getElementById('embed-code').textContent;
+        navigator.clipboard.writeText(embedCode);
+      }}
                 class="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600 font-bold"
               >
                 Copy Embed Code
@@ -799,6 +808,40 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
                       ${formData.plan === 'premium' ? html`<i class="fas fa-check"></i> Selected` : html`Choose Premium <i class="fas fa-arrow-right"></i>`}
                     </button>
                     
+                    ${formData.plan === 'premium' ? html`
+                      <!-- Early Bird Urgency Section -->
+                      <div class="mb-4 p-3 bg-gradient-to-r from-orange-100 to-yellow-100 border-2 border-orange-400 rounded-lg">
+                        <div class="flex items-center gap-2 mb-2">
+                          <span class="text-orange-700 font-bold text-sm">🔥 Early Bird Special</span>
+                        </div>
+                        <div class="flex items-center justify-between gap-3 mb-2">
+                          <div class="flex gap-1">
+                            <!-- Slot 1: Taken -->
+                            <div class="w-10 h-10 bg-gray-400 border-2 border-gray-600 rounded flex items-center justify-center" title="Taken">
+                              <i class="fas fa-check text-white text-sm"></i>
+                            </div>
+                            <!-- Slot 2: Available -->
+                            <div class="w-10 h-10 bg-yellow-300 border-2 border-orange-500 rounded flex items-center justify-center animate-pulse" title="Available">
+                              <i class="fas fa-star text-orange-600 text-sm"></i>
+                            </div>
+                            <!-- Slot 3: Available -->
+                            <div class="w-10 h-10 bg-yellow-300 border-2 border-orange-500 rounded flex items-center justify-center animate-pulse" title="Available">
+                              <i class="fas fa-star text-orange-600 text-sm"></i>
+                            </div>
+                          </div>
+                          <div class="flex-1">
+                            <div class="text-orange-800 font-bold text-xs">2 of 3 slots left today</div>
+                            <div class="text-orange-700 text-xs">Offer expires soon!</div>
+                          </div>
+                        </div>
+                        <div class="bg-white border border-orange-300 rounded px-2 py-1 text-center">
+                          <div class="text-xs font-bold text-orange-600">
+                            ⏰ ${String(Math.floor(timeLeft / 60)).padStart(2, '0')}:${String(timeLeft % 60).padStart(2, '0')}
+                          </div>
+                        </div>
+                      </div>
+                    ` : ''}
+                    
                     <div class="space-y-3 flex-1">
                       <div class="flex items-start gap-2">
                         <span class="text-green-500 mt-0.5"><i class="fas fa-check-circle"></i></span>
@@ -883,21 +926,20 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
                   ` : html`
                     <div class="grid grid-cols-5 gap-2 mb-4">
                       ${availableLaunchDates.map(date => {
-                        const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-                        const dayName = dayNames[date.dayOfWeek];
-                        const dateNum = date.date.split(' ')[2];
-                        const isSelected = formData.launchDate === date.value;
-                        const isAvailable = date.freeAvailable;
-                        
-                        return html`
+    const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const dayName = dayNames[date.dayOfWeek];
+    const dateNum = date.date.split(' ')[2];
+    const isSelected = formData.launchDate === date.value;
+    const isAvailable = date.freeAvailable;
+
+    return html`
                           <div 
-                            class="text-center p-2 rounded-lg border-2 transition-all ${
-                              isSelected 
-                                ? 'border-blue-500 bg-blue-100' 
-                                : isAvailable 
-                                  ? 'border-black hover:bg-gray-50 cursor-pointer' 
-                                  : 'border-gray-300 bg-gray-200 cursor-not-allowed'
-                            }"
+                            class="text-center p-2 rounded-lg border-2 transition-all ${isSelected
+        ? 'border-blue-500 bg-blue-100'
+        : isAvailable
+          ? 'border-black hover:bg-gray-50 cursor-pointer'
+          : 'border-gray-300 bg-gray-200 cursor-not-allowed'
+      }"
                             onClick=${isAvailable ? () => selectLaunchDate(date.value) : null}
                           >
                             <div class="text-xs font-bold ${isAvailable ? 'text-gray-600' : 'text-gray-400'}">${dayName}</div>
@@ -907,7 +949,7 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
                             </div>
                           </div>
                         `;
-                      })}
+  })}
                     </div>
                   `}
                 </div>
