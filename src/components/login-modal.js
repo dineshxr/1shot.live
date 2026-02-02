@@ -45,6 +45,7 @@ export const LoginModal = ({ isOpen, onClose, onLoginSuccess }) => {
     const handleEscape = (e) => {
       if (e.key === 'Escape' && isOpen) {
         onClose();
+        window.location.href = '/';
       }
     };
 
@@ -56,6 +57,7 @@ export const LoginModal = ({ isOpen, onClose, onLoginSuccess }) => {
   const handleBackdropClick = (e) => {
     if (e.target === e.currentTarget) {
       onClose();
+      window.location.href = '/';
     }
   };
 
@@ -120,7 +122,10 @@ export const LoginModal = ({ isOpen, onClose, onLoginSuccess }) => {
         <!-- Right Side - Login Form -->
         <div class="p-8 md:p-12 md:w-1/2 relative">
           <button 
-            onClick=${onClose}
+            onClick=${() => {
+      onClose();
+      window.location.href = '/';
+    }}
             class="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors"
             disabled=${loading}
           >

@@ -181,19 +181,50 @@ export const StartupCard = ({ startup, user, onUpvoteChange, allStartups }) => {
     return `/startup/${startup.slug}`;
   };
 
-  // Check if this startup is from the most recent launch (for ranking borders)
-  // Rankings persist until a new launch happens, not just for today
+  // Check if this startup is from the previous business day's launch (for ranking badges)
+  // Monday: Show Friday's launches
+  // Tuesday-Friday: Show previous day's launches
+  // Saturday-Sunday: Show Friday's launches
   const isFromMostRecentLaunch = () => {
     if (!startup.launch_date || !allStartups || allStartups.length === 0) return false;
 
-    // Find the most recent launch date from all startups
-    const mostRecentLaunchDate = allStartups.reduce((latest, s) => {
-      if (!s.launch_date) return latest;
-      return s.launch_date > latest ? s.launch_date : latest;
-    }, '');
+    // Get current date in EST (America/New_York timezone)
+    const now = new Date();
+    const estNow = new Date(now.toLocaleString("en-US", { timeZone: "America/New_York" }));
+    const currentDayOfWeek = estNow.getDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
 
-    // Check if this startup is from the most recent launch
-    return startup.launch_date === mostRecentLaunchDate;
+    // Calculate the target launch date (previous business day)
+    let daysToSubtract;
+    if (currentDayOfWeek === 1) {
+      // Monday: Show Friday's launches (3 days ago)
+      daysToSubtract = 3;
+    } else if (currentDayOfWeek === 0) {
+      // Sunday: Show Friday's launches (2 days ago)
+      daysToSubtract = 2;
+    } else if (currentDayOfWeek === 6) {
+      // Saturday: Show Friday's launches (1 day ago)
+      daysToSubtract = 1;
+    } else {
+      // Tuesday-Friday: Show previous day's launches (1 day ago)
+      daysToSubtract = 1;
+    }
+
+    const targetDate = new Date(estNow);
+    targetDate.setDate(targetDate.getDate() - daysToSubtract);
+
+    // Format date as YYYY-MM-DD in EST (not UTC!)
+    const year = targetDate.getFullYear();
+    const month = String(targetDate.getMonth() + 1).padStart(2, '0');
+    const day = String(targetDate.getDate()).padStart(2, '0');
+    const targetDateString = `${year}-${month}-${day}`;
+
+    // Check if this startup is from the target launch date
+    const isFromTargetDate = startup.launch_date === targetDateString;
+
+    // Debug logging
+    console.log(`[Ranking Debug] Current day: ${currentDayOfWeek}, Target date: ${targetDateString}, Startup "${startup.title}" launch_date: ${startup.launch_date}, Match: ${isFromTargetDate}`);
+
+    return isFromTargetDate;
   };
 
   // Get ranking class for most recent launch's top 3
