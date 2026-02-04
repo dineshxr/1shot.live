@@ -249,14 +249,55 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
     if (!name) return '';
     return name
       .toLowerCase()
-      .replace(/[^a-z0-9]+/g, '-') // Replace non-alphanumeric with hyphens
-      .replace(/^-+|-+$/g, '') // Remove leading/trailing hyphens
+      .trim()
+      .replace(/[^a-z0-9\s-]/g, '') // Remove special characters except spaces and hyphens
+      .replace(/\s+/g, '-') // Replace spaces with hyphens
+      .replace(/-+/g, '-') // Replace multiple hyphens with single hyphen
+      .replace(/^-|-$/g, '') // Remove leading/trailing hyphens
       .substring(0, 50); // Limit length
   };
 
-  // Add random suffix to make a slug unique
-  const makeUniqueSlug = (baseSlug) => {
-    const randomSuffix = Math.floor(Math.random() * 10000);
+  // Generate a unique slug with collision detection
+  const generateUniqueSlug = async (baseSlug) => {
+    const supabase = supabaseClient();
+    
+    // First try the base slug
+    let slug = baseSlug;
+    let attempts = 0;
+    const maxAttempts = 10;
+    
+    while (attempts < maxAttempts) {
+      try {
+        // Check if slug exists
+        const { data: existing, error } = await supabase
+          .from('startups')
+          .select('slug')
+          .eq('slug', slug)
+          .single();
+        
+        // If no error and no data, slug is unique
+        if (error && error.code === 'PGRST116') {
+          return slug;
+        }
+        
+        // If slug exists, add a suffix
+        attempts++;
+        if (attempts === 1) {
+          slug = `${baseSlug}-${attempts}`;
+        } else {
+          // Remove previous suffix and add new one
+          slug = slug.replace(/-\d+$/, '') + `-${attempts}`;
+        }
+      } catch (e) {
+        console.error('Error checking slug uniqueness:', e);
+        // Fallback to random suffix if database check fails
+        const randomSuffix = Math.floor(Math.random() * 10000);
+        return `${baseSlug}-${randomSuffix}`;
+      }
+    }
+    
+    // If all attempts fail, use random suffix
+    const randomSuffix = Math.floor(Math.random() * 100000);
     return `${baseSlug}-${randomSuffix}`;
   };
 
@@ -410,6 +451,17 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
     // Track form submission attempt
     window.trackEvent(window.ANALYTICS_EVENTS.FORM_SUBMIT);
 
+    // VALIDATION: Check if selected date is still available for free plan
+    if (formData.plan === 'free' && formData.launchDate) {
+      const selectedDate = availableLaunchDates.find(d => d.value === formData.launchDate);
+      if (!selectedDate) {
+        throw new Error('Selected launch date is no longer available. Please refresh the page and choose a different date.');
+      }
+      if (!selectedDate.freeAvailable) {
+        throw new Error('Selected date is now full. Please choose a different date from the available options.');
+      }
+    }
+
     try {
 
       // Validate form data before submission
@@ -459,7 +511,7 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
 
       // Generate a unique slug from the project name
       const baseSlug = generateSlug(formData.projectName);
-      const uniqueSlug = makeUniqueSlug(baseSlug);
+      const uniqueSlug = await generateUniqueSlug(baseSlug);
 
       console.log("Submitting startup to Supabase:", {
         title: formData.projectName,
@@ -591,6 +643,62 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
             }
           }
 
+          // Get launch date - for free plan, require explicit selection
+          let launchDate = formData.launchDate;
+          if (!launchDate) {
+            if (formData.plan === 'free') {
+              throw new Error('Please select a launch date for your free submission.');
+            }
+            
+            // For paid plans, get next available date
+            const { data: nextDate, error: dateError } = await supabase.rpc('get_next_launch_date');
+            if (dateError) {
+              console.error('Error getting next launch date:', dateError);
+              // Fallback to next weekday for paid plans only
+              const pst = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Los_Angeles' }));
+              let nextDay = new Date(pst);
+              nextDay.setDate(pst.getDate() + 1);
+
+              // Find next weekday (Monday-Friday)
+              while (nextDay.getDay() === 0 || nextDay.getDay() === 6) {
+                nextDay.setDate(nextDay.getDate() + 1);
+              }
+
+              launchDate = nextDay.getFullYear() + '-' +
+                String(nextDay.getMonth() + 1).padStart(2, '0') + '-' +
+                String(nextDay.getDate()).padStart(2, '0');
+            } else {
+              launchDate = nextDate;
+            }
+          }
+
+          // Calculate initial upvotes based on submission position and plan
+          const getInitialUpvotes = async () => {
+            // Count existing startups for the same launch date
+            const { count: existingCount } = await supabase
+              .from('startups')
+              .select('id', { count: 'exact' })
+              .eq('launch_date', launchDate)
+              .eq('is_live', true);
+
+            const position = (existingCount || 0) + 1;
+            const plan = formData.plan || 'free';
+            
+            // Upvote rules: First gets 3, second gets 2, third gets 1
+            // Premium/featured gets +1 upvote bonus
+            let baseUpvotes = 0;
+            if (position <= 3) {
+              baseUpvotes = 4 - position; // 3, 2, 1
+              if (plan === 'premium' || plan === 'featured') {
+                baseUpvotes += 1; // Bonus for premium/featured
+              }
+            }
+            
+            return baseUpvotes;
+          };
+
+          const initialUpvotes = await getInitialUpvotes();
+
           // Proceed with the actual insert
           const { data, error } = await supabase
             .from('startups')
@@ -606,30 +714,11 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
                 images: screenshotUrls,
                 screenshot_url: screenshotUrls[0] || null,
                 plan: formData.plan,
-                launch_date: formData.launchDate || await (async () => {
-                  // Always use database function to get next available launch date
-                  const { data: nextDate, error: dateError } = await supabase.rpc('get_next_launch_date');
-                  if (dateError) {
-                    console.error('Error getting next launch date:', dateError);
-                    // Fallback to next weekday
-                    const pst = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Los_Angeles' }));
-                    let nextDay = new Date(pst);
-                    nextDay.setDate(pst.getDate() + 1);
-
-                    // Find next weekday (Monday-Friday)
-                    while (nextDay.getDay() === 0 || nextDay.getDay() === 6) {
-                      nextDay.setDate(nextDay.getDate() + 1);
-                    }
-
-                    return nextDay.getFullYear() + '-' +
-                      String(nextDay.getMonth() + 1).padStart(2, '0') + '-' +
-                      String(nextDay.getDate()).padStart(2, '0');
-                  }
-                  return nextDate;
-                })()
+                launch_date: launchDate,
+                upvote_count: initialUpvotes
               }
             ])
-            .select('id, title, url, description, slug, author, screenshot_url, plan, launch_date')
+            .select('id, title, url, description, slug, author, screenshot_url, plan, launch_date, upvote_count')
             .single();
 
           if (error) {
@@ -644,7 +733,7 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
                 // This should be extremely rare now since we generate unique slugs
                 // But if it happens, regenerate with a new random suffix
                 console.log(`Slug collision detected, regenerating...`);
-                const newUniqueSlug = makeUniqueSlug(baseSlug);
+                const newUniqueSlug = await generateUniqueSlug(baseSlug);
 
                 // Try again with the new unique slug
                 const { data: retryData, error: retryError } = await supabase
@@ -660,24 +749,10 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
                     images: screenshotUrls,
                     screenshot_url: screenshotUrls[0] || null,
                     plan: formData.plan,
-                    launch_date: formData.launchDate || await (async () => {
-                      const { data: nextDate, error: dateError } = await supabase.rpc('get_next_launch_date');
-                      if (dateError) {
-                        console.error('Error getting next launch date:', dateError);
-                        const pst = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Los_Angeles' }));
-                        let nextDay = new Date(pst);
-                        nextDay.setDate(pst.getDate() + 1);
-                        while (nextDay.getDay() === 0 || nextDay.getDay() === 6) {
-                          nextDay.setDate(nextDay.getDate() + 1);
-                        }
-                        return nextDay.getFullYear() + '-' +
-                          String(nextDay.getMonth() + 1).padStart(2, '0') + '-' +
-                          String(nextDay.getDate()).padStart(2, '0');
-                      }
-                      return nextDate;
-                    })()
+                    launch_date: launchDate,
+                    upvote_count: initialUpvotes
                   }])
-                  .select('id, title, url, description, slug, author, screenshot_url, plan, launch_date')
+                  .select('id, title, url, description, slug, author, screenshot_url, plan, launch_date, upvote_count')
                   .single();
 
                 if (retryError) {
@@ -1462,7 +1537,15 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
                 >
                   Previous
                 </button>
-                ${formData.plan === 'free' && availableLaunchDates.filter(date => date.freeAvailable).length > 0 ? html`
+                ${formData.plan === 'free' && (() => {
+                  // Check if selected date is available
+                  if (formData.launchDate) {
+                    const selectedDate = availableLaunchDates.find(d => d.value === formData.launchDate);
+                    return selectedDate && selectedDate.freeAvailable;
+                  }
+                  // Check if any dates are available for selection
+                  return availableLaunchDates.filter(date => date.freeAvailable).length > 0;
+                })() ? html`
                   <button
                     type="submit"
                     class="neo-button px-4 py-2 bg-green-400 border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:bg-green-500 font-bold disabled:opacity-50"
