@@ -56,14 +56,28 @@ export const StartupCard = ({ startup, user, onUpvoteChange, allStartups }) => {
 
   // Get current image URL
   const getCurrentImage = () => {
-    // Generate a screenshot URL using Microlink API
-    if (startup.url) {
-      // Check if we already have a screenshot URL stored in the database
-      if (startup.screenshot_url) {
-        return startup.screenshot_url;
-      }
+    // 1. Stored screenshot URL from database (highest priority)
+    if (startup.screenshot_url) {
+      return startup.screenshot_url;
+    }
 
-      // If we don't have a stored screenshot and there's no cached URL, generate one
+    // 2. Images array from new submission form (uploaded to Supabase Storage)
+    if (startup.images && startup.images.length > 0) {
+      return startup.images[currentImageIndex];
+    }
+
+    // 3. Logo URL as fallback image
+    if (startup.logo_url) {
+      return startup.logo_url;
+    }
+
+    // 4. Old format (single image property)
+    if (startup.image) {
+      return startup.image;
+    }
+
+    // 5. Microlink API fallback for old startups with no stored images
+    if (startup.url) {
       if (!startup._generatedScreenshotUrl) {
         try {
           const apiUrl = new URL('https://api.microlink.io');
@@ -72,32 +86,17 @@ export const StartupCard = ({ startup, user, onUpvoteChange, allStartups }) => {
           apiUrl.searchParams.append('meta', 'false');
           apiUrl.searchParams.append('embed', 'screenshot.url');
           apiUrl.searchParams.append('waitUntil', 'networkidle2');
-
-          // Cache the generated URL
           startup._generatedScreenshotUrl = apiUrl.toString();
         } catch (error) {
           console.error('Error generating screenshot URL:', error);
-          // If there's an error, we'll fall through to the fallback options below
         }
       }
-
-      // Return the cached URL if available
       if (startup._generatedScreenshotUrl) {
         return startup._generatedScreenshotUrl;
       }
     }
 
-    // Handle new format (images array)
-    if (startup.images && startup.images.length > 0) {
-      return startup.images[currentImageIndex];
-    }
-
-    // Handle old format (single image property)
-    if (startup.image) {
-      return startup.image;
-    }
-
-    // Fallback
+    // 6. SVG placeholder as last resort
     const firstLetter = startup.title?.charAt(0)?.toUpperCase() || 'S';
     return `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='225' viewBox='0 0 400 225'%3E%3Crect width='400' height='225' fill='%23f0f0f0'/%3E%3Ctext x='50%25' y='50%25' font-family='Arial' font-size='24' fill='%23999' text-anchor='middle' dominant-baseline='middle'%3E${firstLetter}%3C/text%3E%3C/svg%3E`;
   };
