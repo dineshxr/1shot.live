@@ -9,6 +9,7 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
   const [formData, setFormData] = useState({
     url: "",
     xProfile: "",
+    contactEmail: "", // Email for launch notifications
     projectName: "",
     description: "",
     category: "", // Category selection
@@ -220,6 +221,14 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
       setAvailableLaunchDates(dates);
     };
 
+    // Auto-fill email from auth session if logged in
+    if (window.auth && window.auth.isAuthenticated()) {
+      const authUser = window.auth.getCurrentUser();
+      if (authUser?.email && !formData.contactEmail) {
+        setFormData(prev => ({ ...prev, contactEmail: authUser.email }));
+      }
+    }
+
     // Check if user has previous submissions
     checkUserPreviousSubmissions();
 
@@ -401,6 +410,11 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
 
       if (!formData.xProfile) {
         setError("Please enter your X username");
+        return;
+      }
+
+      if (!formData.contactEmail) {
+        setError("Please enter your email address so we can notify you when your listing goes live");
         return;
       }
 
@@ -624,24 +638,16 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
           }
 
           // Get authenticated user info if available
+          // Use form email, or fall back to auth session email
+          const authUser = (window.auth && window.auth.isAuthenticated()) ? window.auth.getCurrentUser() : null;
+          const contactEmail = formData.contactEmail || authUser?.email || '';
+          
           let authorInfo = {
-            name: formData.xProfile.replace('@', ''),
+            name: authUser?.email?.split('@')[0] || formData.xProfile.replace('@', ''),
             profile_url: `https://x.com/${formData.xProfile.replace('@', '')}`,
-            avatar: `https://unavatar.io/twitter/${formData.xProfile.replace('@', '')}`
+            avatar: `https://unavatar.io/twitter/${formData.xProfile.replace('@', '')}`,
+            email: contactEmail
           };
-
-          // If user is authenticated via Supabase, use their email info
-          if (window.auth && window.auth.isAuthenticated()) {
-            const authUser = window.auth.getCurrentUser();
-            if (authUser) {
-              authorInfo = {
-                name: authUser.email?.split('@')[0] || formData.xProfile.replace('@', ''),
-                profile_url: `https://x.com/${formData.xProfile.replace('@', '')}`,
-                avatar: `https://unavatar.io/twitter/${formData.xProfile.replace('@', '')}`,
-                email: authUser.email
-              };
-            }
-          }
 
           // Get launch date
           // For paid plans: use today's date (PST) so it launches immediately on payment
@@ -750,7 +756,7 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
                   window.trackEvent(window.ANALYTICS_EVENTS.FORM_SUBMIT, { success: true, used_unique_slug: true });
 
                   // Reset form
-                  setFormData({ url: "", xProfile: "", projectName: "", description: "", category: "" });
+                  setFormData({ url: "", xProfile: "", contactEmail: "", projectName: "", description: "", category: "" });
                   setTurnstileToken(null);
                   if (window.turnstile) {
                     window.turnstile.reset();
@@ -853,7 +859,7 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
       const submittedData = { ...formData };
 
       // Reset form data
-      setFormData({ url: "", xProfile: "", projectName: "", description: "", category: "" });
+      setFormData({ url: "", xProfile: "", contactEmail: "", projectName: "", description: "", category: "" });
       setTurnstileToken(null);
       // Reset the widget
       if (window.turnstile) {
@@ -1249,6 +1255,25 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
             />
             <div class="text-sm text-gray-500 mt-2">
               We need your X username so we know the creator of the startup.
+            </div>
+          </div>
+
+          <div class="mb-6">
+            <label class="block text-black font-bold mb-2" for="contactEmail">
+              Email Address
+            </label>
+            <input
+              type="email"
+              id="contactEmail"
+              name="contactEmail"
+              value=${formData.contactEmail}
+              onInput=${handleChange}
+              class="w-full px-3 py-2 border-2 border-black focus:outline-none focus:ring-2 focus:ring-blue-400"
+              placeholder="you@example.com"
+              required
+            />
+            <div class="text-sm text-gray-500 mt-2">
+              We'll notify you when your listing goes live.
             </div>
           </div>
 

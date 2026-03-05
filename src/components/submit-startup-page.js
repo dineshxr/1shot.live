@@ -9,6 +9,7 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
   const [formData, setFormData] = useState({
     url: "",
     xProfile: "",
+    contactEmail: "",
     projectName: "",
     description: "",
     slug: "",
@@ -381,11 +382,12 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
       }
 
       const authUser = window.auth.getCurrentUser();
+      const contactEmail = formData.contactEmail || authUser?.email || '';
       let authorInfo = {
         name: formData.xProfile.replace('@', ''),
         profile_url: `https://x.com/${formData.xProfile.replace('@', '')}`,
         avatar: `https://unavatar.io/twitter/${formData.xProfile.replace('@', '')}`,
-        email: authUser?.email
+        email: contactEmail
       };
 
       const { data, error } = await supabase

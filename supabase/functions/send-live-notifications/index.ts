@@ -106,9 +106,10 @@ serve(async (req) => {
       )
     }
 
-    // Process each listing
+    // Process each listing with rate limiting delay between emails
     const results = []
-    for (const listing of listings) {
+    for (let i = 0; i < listings.length; i++) {
+      const listing = listings[i]
       try {
         const { error: markLiveError } = await supabase
           .from('startups')
@@ -122,14 +123,18 @@ serve(async (req) => {
         // Send email notification
         const emailSent = await sendLiveNotification(listing)
 
-        // Update notification status
-        await supabase
-          .from('startups')
-          .update({
-            notification_sent: true,
-            notification_sent_at: new Date().toISOString()
-          })
-          .eq('id', listing.id)
+        // Only mark notification as sent if email was actually delivered
+        if (emailSent) {
+          await supabase
+            .from('startups')
+            .update({
+              notification_sent: true,
+              notification_sent_at: new Date().toISOString()
+            })
+            .eq('id', listing.id)
+        } else {
+          console.log(`Email not sent for ${listing.title} (no email or send failed) - leaving notification_sent = false`)
+        }
 
         results.push({
           id: listing.id,
@@ -150,6 +155,11 @@ serve(async (req) => {
           error: error.message,
           success: false
         })
+      }
+
+      // Rate limit: wait 1.5 seconds between emails to avoid hitting Resend limits
+      if (i < listings.length - 1) {
+        await new Promise(resolve => setTimeout(resolve, 1500))
       }
     }
 
@@ -190,8 +200,13 @@ async function sendLiveNotification(listing: any): Promise<boolean> {
       return false
     }
 
+    if (!listing.author_email) {
+      console.log(`No email found for listing: ${listing.title} - cannot send notification`)
+      return false
+    }
+
     const startupUrl = `https://submithunt.com/startup/${listing.slug || listing.id}`;
-    const isPremiumOrFeatured = listing.plan === 'premium' || listing.plan === 'featured';
+    const isPaid = listing.plan === 'premium' || listing.plan === 'featured' || listing.plan === 'pro' || listing.plan === 'lite';
     const shareText = encodeURIComponent(`I just launched ${listing.title} on @SubmitHunt! Check it out and give it an upvote 🚀`);
 
     const emailData = {
@@ -243,27 +258,27 @@ async function sendLiveNotification(listing: any): Promise<boolean> {
         <a href="https://twitter.com/intent/tweet?text=${shareText}&url=${encodeURIComponent(startupUrl)}" style="display: inline-block; margin-top: 15px; background-color: #000; color: #fff; padding: 10px 20px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 14px;">Share on X →</a>
       </div>
       
-      ${!isPremiumOrFeatured ? `
-      <!-- Upgrade CTA -->
-      <div style="background: linear-gradient(135deg, #f97316 0%, #ea580c 100%); border-radius: 8px; padding: 25px; margin: 25px 0; text-align: center;">
-        <h3 style="margin: 0 0 10px 0; color: #fff; font-size: 20px;">🔥 Want More Visibility?</h3>
-        <p style="margin: 0 0 15px 0; color: #fff; font-size: 14px; line-height: 1.5; opacity: 0.9;">
-          Upgrade to Premium for just $5 and get:
+      ${!isPaid ? `
+      <!-- How to Get a Backlink -->
+      <div style="background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); border-radius: 8px; padding: 25px; margin: 25px 0; text-align: center;">
+        <h3 style="margin: 0 0 10px 0; color: #fff; font-size: 20px;">� Want a Guaranteed Backlink?</h3>
+        <p style="margin: 0 0 15px 0; color: #fff; font-size: 14px; line-height: 1.6; opacity: 0.95;">
+          Free listings can earn a backlink by finishing in the <strong>Top 3</strong> on launch day. Or guarantee one instantly by upgrading:
         </p>
         <ul style="text-align: left; color: #fff; font-size: 14px; margin: 0 0 20px 0; padding-left: 20px;">
-          <li style="margin-bottom: 8px;">✅ <strong>Guaranteed high authority backlink</strong></li>
-          <li style="margin-bottom: 8px;">✅ 14 days on homepage (vs 7 days)</li>
-          <li style="margin-bottom: 8px;">✅ Featured in our newsletter</li>
-          <li style="margin-bottom: 8px;">✅ Skip the queue next time</li>
+          <li style="margin-bottom: 8px;">✅ <strong>Guaranteed high-authority backlink</strong></li>
+          <li style="margin-bottom: 8px;">✅ X &amp; LinkedIn promotion</li>
+          <li style="margin-bottom: 8px;">✅ Newsletter feature (2K+ subscribers)</li>
+          <li style="margin-bottom: 8px;">✅ Verified badge on your listing</li>
         </ul>
-        <a href="https://submithunt.com/submit" style="display: inline-block; background-color: #fff; color: #ea580c; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: bold;">Upgrade to Premium →</a>
+        <a href="https://submithunt.com/pricing" style="display: inline-block; background-color: #fff; color: #2563eb; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: bold;">View Pricing Plans →</a>
       </div>
       ` : `
-      <!-- Premium Thank You -->
+      <!-- Paid Plan Thank You -->
       <div style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); border-radius: 8px; padding: 25px; margin: 25px 0; text-align: center;">
-        <h3 style="margin: 0 0 10px 0; color: #fff; font-size: 20px;">🎉 Thank You for Going Premium!</h3>
+        <h3 style="margin: 0 0 10px 0; color: #fff; font-size: 20px;">🎉 Thank You for Your Support!</h3>
         <p style="margin: 0; color: #fff; font-size: 14px; line-height: 1.5; opacity: 0.9;">
-          Your listing is featured with priority placement. You'll receive your guaranteed backlink within 24 hours!
+          Your listing has priority placement and you'll receive your guaranteed backlink within 24 hours!
         </p>
       </div>
       `}
@@ -309,17 +324,18 @@ Share your listing with your audience and ask them to upvote! The more votes you
 
 Share on X: https://twitter.com/intent/tweet?text=${shareText}&url=${encodeURIComponent(startupUrl)}
 
-${!isPremiumOrFeatured ? `
-🔥 WANT MORE VISIBILITY?
-Upgrade to Premium for just $5 and get:
-- Guaranteed high authority backlink
-- 14 days on homepage (vs 7 days)
-- Featured in our newsletter
-- Skip the queue next time
+${!isPaid ? `
+� WANT A GUARANTEED BACKLINK?
+Free listings can earn a backlink by finishing in the Top 3 on launch day.
+Or guarantee one instantly by upgrading:
+- Guaranteed high-authority backlink
+- X & LinkedIn promotion
+- Newsletter feature (2K+ subscribers)
+- Verified badge on your listing
 
-Upgrade now: https://submithunt.com/submit
+View plans: https://submithunt.com/pricing
 ` : `
-🎉 Thank you for going Premium! Your listing is featured with priority placement.
+🎉 Thank you for your support! Your listing has priority placement and you'll receive your guaranteed backlink within 24 hours.
 `}
 
 💡 Quick Tips:
