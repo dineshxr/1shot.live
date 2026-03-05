@@ -69,10 +69,11 @@ serve(async (req) => {
     }
 
     // Check if it's a paid startup
-    if (startup.plan !== 'premium' && startup.plan !== 'featured') {
+    const paidPlans = ['premium', 'featured', 'pro', 'lite']
+    if (!paidPlans.includes(startup.plan)) {
       console.log(`Startup ${startup.title} is not a paid plan (plan: ${startup.plan})`)
       return new Response(
-        JSON.stringify({ error: 'Only premium/featured startups can be published immediately' }),
+        JSON.stringify({ error: 'Only paid startups can be published immediately' }),
         { 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
           status: 400 
@@ -156,7 +157,7 @@ async function sendLiveNotification(listing: any): Promise<boolean> {
     }
 
     const startupUrl = `https://submithunt.com/startup/${listing.slug || listing.id}`;
-    const isPremiumOrFeatured = listing.plan === 'premium' || listing.plan === 'featured';
+    const isPaidPlan = ['premium', 'featured', 'pro', 'lite'].includes(listing.plan);
     const shareText = encodeURIComponent(`I just launched ${listing.title} on @SubmitHunt! Check it out and give it an upvote 🚀`);
 
     const emailData = {
@@ -208,7 +209,7 @@ async function sendLiveNotification(listing: any): Promise<boolean> {
         <a href="https://twitter.com/intent/tweet?text=${shareText}&url=${encodeURIComponent(startupUrl)}" style="display: inline-block; margin-top: 15px; background-color: #000; color: #fff; padding: 10px 20px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 14px;">Share on X →</a>
       </div>
       
-      ${!isPremiumOrFeatured ? `
+      ${!isPaidPlan ? `
       <!-- Upgrade CTA -->
       <div style="background: linear-gradient(135deg, #f97316 0%, #ea580c 100%); border-radius: 8px; padding: 25px; margin: 25px 0; text-align: center;">
         <h3 style="margin: 0 0 10px 0; color: #fff; font-size: 20px;">🔥 Want More Visibility?</h3>
@@ -274,7 +275,7 @@ Share your listing with your audience and ask them to upvote! The more votes you
 
 Share on X: https://twitter.com/intent/tweet?text=${shareText}&url=${encodeURIComponent(startupUrl)}
 
-${!isPremiumOrFeatured ? `
+${!isPaidPlan ? `
 🔥 WANT MORE VISIBILITY?
 Upgrade to Premium for just $5 and get:
 - Guaranteed high authority backlink

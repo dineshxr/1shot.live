@@ -643,33 +643,20 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
             }
           }
 
-          // Get launch date - for free plan, require explicit selection
+          // Get launch date
+          // For paid plans: use today's date (PST) so it launches immediately on payment
+          // For free plan: require explicit date selection from the calendar
           let launchDate = formData.launchDate;
           if (!launchDate) {
             if (formData.plan === 'free') {
               throw new Error('Please select a launch date for your free submission.');
             }
             
-            // For paid plans, get next available date
-            const { data: nextDate, error: dateError } = await supabase.rpc('get_next_launch_date');
-            if (dateError) {
-              console.error('Error getting next launch date:', dateError);
-              // Fallback to next weekday for paid plans only
-              const pst = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Los_Angeles' }));
-              let nextDay = new Date(pst);
-              nextDay.setDate(pst.getDate() + 1);
-
-              // Find next weekday (Monday-Friday)
-              while (nextDay.getDay() === 0 || nextDay.getDay() === 6) {
-                nextDay.setDate(nextDay.getDate() + 1);
-              }
-
-              launchDate = nextDay.getFullYear() + '-' +
-                String(nextDay.getMonth() + 1).padStart(2, '0') + '-' +
-                String(nextDay.getDate()).padStart(2, '0');
-            } else {
-              launchDate = nextDate;
-            }
+            // Paid plans launch on today's date (PST)
+            const pstNow = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Los_Angeles' }));
+            launchDate = pstNow.getFullYear() + '-' +
+              String(pstNow.getMonth() + 1).padStart(2, '0') + '-' +
+              String(pstNow.getDate()).padStart(2, '0');
           }
 
           // Calculate initial upvotes based on submission position and plan

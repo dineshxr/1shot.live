@@ -400,11 +400,19 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
           screenshot_url: screenshotUrl,
           plan: formData.plan,
           launch_date: formData.launchDate || await (async () => {
+            // For paid plans, use today's PST date so it launches on payment date
+            if (formData.plan && formData.plan !== 'free') {
+              const pstNow = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Los_Angeles' }));
+              return pstNow.getFullYear() + '-' +
+                String(pstNow.getMonth() + 1).padStart(2, '0') + '-' +
+                String(pstNow.getDate()).padStart(2, '0');
+            }
+            // For free plan, get next available scheduled date
             const { data: nextDate, error: dateError } = await supabase.rpc('get_next_launch_date');
             if (dateError) {
-              const pdt = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/New_York' }));
-              let nextDay = new Date(pdt);
-              nextDay.setDate(pdt.getDate() + 1);
+              const pst = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Los_Angeles' }));
+              let nextDay = new Date(pst);
+              nextDay.setDate(pst.getDate() + 1);
               while (nextDay.getDay() === 0 || nextDay.getDay() === 6) {
                 nextDay.setDate(nextDay.getDate() + 1);
               }

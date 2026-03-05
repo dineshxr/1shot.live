@@ -215,6 +215,50 @@ async function handleCheckoutComplete(session: Stripe.Checkout.Session) {
     } catch (publishError) {
       console.error("Error calling publish-paid-startup function:", publishError);
     }
+  } else if ((product === "pro" || product === "lite") && startup_id) {
+    // Pro/Lite launch - set is_live to true and update plan
+    // Use payment date for launch_date so it launches immediately
+    const { error } = await supabase
+      .from("startups")
+      .update({
+        is_live: true,
+        plan: product,
+        launch_date: paymentDate,
+        notification_sent: false,
+        notification_sent_at: null,
+        updated_at: paymentTimestamp
+      })
+      .eq("id", startup_id);
+
+    if (error) {
+      console.error(`Error updating startup for ${product}:`, error);
+    } else {
+      console.log(`Startup upgraded to ${product} and set live:`, startup_id, "launch_date:", paymentDate);
+    }
+
+    // Call the publish-paid-startup function to send immediate notification
+    try {
+      const publishResponse = await fetch(
+        `${supabaseUrl}/functions/v1/publish-paid-startup`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${supabaseServiceKey}`
+          },
+          body: JSON.stringify({ startupId: startup_id, paymentDate })
+        }
+      );
+
+      if (publishResponse.ok) {
+        const result = await publishResponse.json();
+        console.log(`${product} startup published immediately:`, result);
+      } else {
+        console.error(`Failed to publish ${product} startup immediately:`, await publishResponse.text());
+      }
+    } catch (publishError) {
+      console.error("Error calling publish-paid-startup function:", publishError);
+    }
   } else if (product === "featured") {
     // Featured spot without startup_id - just log for manual handling
     console.log("Featured spot purchased without startup_id, customer:", session.customer_email);
