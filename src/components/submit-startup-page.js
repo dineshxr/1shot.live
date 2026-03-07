@@ -400,7 +400,7 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
           category: formData.category,
           author: authorInfo,
           screenshot_url: screenshotUrl,
-          plan: formData.plan,
+          plan: 'free',
           launch_date: formData.launchDate || await (async () => {
             // For paid plans, use today's PST date so it launches on payment date
             if (formData.plan && formData.plan !== 'free') {
@@ -441,7 +441,7 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
               category: formData.category,
               author: authorInfo,
               screenshot_url: screenshotUrl,
-              plan: formData.plan,
+              plan: 'free',
               launch_date: formData.launchDate
             }])
             .select()
