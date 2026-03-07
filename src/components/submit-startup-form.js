@@ -675,16 +675,12 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
               .eq('is_live', true);
 
             const position = (existingCount || 0) + 1;
-            const plan = formData.plan || 'free';
-            
+
             // Upvote rules: First gets 3, second gets 2, third gets 1
-            // Premium/featured gets +1 upvote bonus
+            // Note: Premium/featured bonus upvotes are applied later when payment is confirmed via Stripe webhook
             let baseUpvotes = 0;
             if (position <= 3) {
               baseUpvotes = 4 - position; // 3, 2, 1
-              if (plan === 'premium' || plan === 'featured') {
-                baseUpvotes += 1; // Bonus for premium/featured
-              }
             }
             
             return baseUpvotes;
@@ -706,7 +702,7 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
                 logo_url: logoUrl,
                 images: screenshotUrls,
                 screenshot_url: screenshotUrls[0] || null,
-                plan: formData.plan,
+                plan: 'free',
                 launch_date: launchDate,
                 upvote_count: initialUpvotes
               }
@@ -741,7 +737,7 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
                     logo_url: logoUrl,
                     images: screenshotUrls,
                     screenshot_url: screenshotUrls[0] || null,
-                    plan: formData.plan,
+                    plan: 'free',
                     launch_date: launchDate,
                     upvote_count: initialUpvotes
                   }])
