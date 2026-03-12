@@ -7,6 +7,9 @@ const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") as string, {
   httpClient: Stripe.createFetchHttpClient(),
 });
 
+// Required for webhook signature verification in Deno runtime
+const cryptoProvider = Stripe.createSubtleCryptoProvider();
+
 const supabaseUrl = Deno.env.get("SUPABASE_URL") as string;
 const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") as string;
 const webhookSecret = Deno.env.get("STRIPE_WEBHOOK_SECRET") as string;
@@ -31,7 +34,13 @@ serve(async (req) => {
     }
   } else {
     try {
-      event = stripe.webhooks.constructEvent(body, signature!, webhookSecret);
+      event = await stripe.webhooks.constructEventAsync(
+        body,
+        signature!,
+        webhookSecret,
+        undefined,
+        cryptoProvider
+      );
     } catch (err) {
       console.error("Webhook signature verification failed:", err.message);
       return new Response(JSON.stringify({ error: "Invalid signature" }), { status: 400 });
