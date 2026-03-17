@@ -638,15 +638,18 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
           }
 
           // Get authenticated user info if available
-          // Use form email, or fall back to auth session email
+          // ALWAYS use the authenticated user's email from session for notifications
           const authUser = (window.auth && window.auth.isAuthenticated()) ? window.auth.getCurrentUser() : null;
-          const contactEmail = formData.contactEmail || authUser?.email || '';
+          
+          if (!authUser || !authUser.email) {
+            throw new Error('You must be logged in to submit a startup. Please log in and try again.');
+          }
           
           let authorInfo = {
-            name: authUser?.email?.split('@')[0] || formData.xProfile.replace('@', ''),
+            name: authUser.email.split('@')[0] || formData.xProfile.replace('@', ''),
             profile_url: `https://x.com/${formData.xProfile.replace('@', '')}`,
             avatar: `https://unavatar.io/twitter/${formData.xProfile.replace('@', '')}`,
-            email: contactEmail
+            email: authUser.email  // Always use the logged-in user's email
           };
 
           // Get launch date
