@@ -60,23 +60,13 @@ serve(async (req) => {
           return false
         }
         
-        // Parse the launch_date as PST date to get correct day of week
-        // launch_date is in YYYY-MM-DD format, we need to check if it's a weekday in PST
+        // Parse the launch_date to check if it's a weekday
+        // launch_date is in YYYY-MM-DD format
         const [year, month, day] = s.launch_date.split('-').map(Number)
-        // Create date in PST timezone - month is 0-indexed
-        const date = new Date(year, month - 1, day)
-        // Get PST weekday string and convert to numeric (0=Sunday, 1=Monday, ..., 6=Saturday)
-        const pstWeekdayString = date.toLocaleDateString('en-US', { 
-          timeZone: 'America/Los_Angeles', 
-          weekday: 'long' 
-        })
-        
-        // Convert weekday string to numeric
-        const weekdayMap: { [key: string]: number } = {
-          'Sunday': 0, 'Monday': 1, 'Tuesday': 2, 'Wednesday': 3, 
-          'Thursday': 4, 'Friday': 5, 'Saturday': 6
-        }
-        const dow = weekdayMap[pstWeekdayString] || 0
+        // Create date using UTC to avoid timezone shifting the day of week
+        // (using local midnight on a UTC server would shift back a day when converted to PST)
+        const date = new Date(Date.UTC(year, month - 1, day))
+        const dow = date.getUTCDay() // 0=Sunday, 1=Monday, ..., 6=Saturday
         
         // Monday=1, Tuesday=2, ..., Friday=5 are weekdays
         const isWeekday = dow >= 1 && dow <= 5
@@ -92,21 +82,7 @@ serve(async (req) => {
 
     console.log(`Found ${listings?.length || 0} listings to go live`)
 
-    if (!listings || listings.length === 0) {
-      return new Response(
-        JSON.stringify({ 
-          message: 'No listings to go live today',
-          success: true,
-          count: 0
-        }),
-        { 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: 200 
-        }
-      )
-    }
-
-    // Process each listing with rate limiting delay between emails
+    // Process each new listing: mark live + send email
     const results = []
     for (let i = 0; i < listings.length; i++) {
       const listing = listings[i]
@@ -163,15 +139,82 @@ serve(async (req) => {
       }
     }
 
+    // Retry missed notifications: startups that went live but email was never sent
+    const { data: missedStartups, error: missedError } = await supabase
+      .from('startups')
+      .select('id, title, slug, description, plan, author, launch_date')
+      .eq('is_live', true)
+      .eq('notification_sent', false)
+      .not('author->>email', 'is', null)
+      .order('launch_date', { ascending: true })
+      .limit(20)
+
+    if (missedError) {
+      console.error('Error fetching missed notifications:', missedError)
+    }
+
+    const missedResults = []
+    if (missedStartups && missedStartups.length > 0) {
+      console.log(`Found ${missedStartups.length} startups with missed notifications, retrying...`)
+
+      for (let i = 0; i < missedStartups.length; i++) {
+        const startup = missedStartups[i]
+        try {
+          const listing = {
+            ...startup,
+            author_email: startup.author?.email,
+            author_name: startup.author?.name,
+          }
+
+          const emailSent = await sendLiveNotification(listing)
+
+          if (emailSent) {
+            await supabase
+              .from('startups')
+              .update({
+                notification_sent: true,
+                notification_sent_at: new Date().toISOString()
+              })
+              .eq('id', startup.id)
+          }
+
+          missedResults.push({
+            id: startup.id,
+            title: startup.title,
+            email: listing.author_email,
+            emailSent,
+            retry: true,
+            success: true
+          })
+
+          console.log(`Retried notification for: ${startup.title} - emailSent=${emailSent}`)
+        } catch (error) {
+          console.error(`Error retrying notification for ${startup.id}:`, error)
+          missedResults.push({
+            id: startup.id,
+            title: startup.title,
+            error: error.message,
+            retry: true,
+            success: false
+          })
+        }
+
+        if (i < missedStartups.length - 1) {
+          await new Promise(resolve => setTimeout(resolve, 1500))
+        }
+      }
+    }
+
     return new Response(
-      JSON.stringify({ 
-        message: `Processed ${results.length} listings`,
+      JSON.stringify({
+        message: `Processed ${results.length} new listings, retried ${missedResults.length} missed notifications`,
         success: true,
-        results
+        results,
+        missedResults
       }),
-      { 
+      {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 200 
+        status: 200
       }
     )
 
