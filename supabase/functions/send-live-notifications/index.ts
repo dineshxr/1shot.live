@@ -60,23 +60,13 @@ serve(async (req) => {
           return false
         }
         
-        // Parse the launch_date as PST date to get correct day of week
-        // launch_date is in YYYY-MM-DD format, we need to check if it's a weekday in PST
+        // Parse the launch_date to check if it's a weekday
+        // launch_date is in YYYY-MM-DD format
         const [year, month, day] = s.launch_date.split('-').map(Number)
-        // Create date in PST timezone - month is 0-indexed
-        const date = new Date(year, month - 1, day)
-        // Get PST weekday string and convert to numeric (0=Sunday, 1=Monday, ..., 6=Saturday)
-        const pstWeekdayString = date.toLocaleDateString('en-US', { 
-          timeZone: 'America/Los_Angeles', 
-          weekday: 'long' 
-        })
-        
-        // Convert weekday string to numeric
-        const weekdayMap: { [key: string]: number } = {
-          'Sunday': 0, 'Monday': 1, 'Tuesday': 2, 'Wednesday': 3, 
-          'Thursday': 4, 'Friday': 5, 'Saturday': 6
-        }
-        const dow = weekdayMap[pstWeekdayString] || 0
+        // Create date using UTC to avoid timezone shifting the day of week
+        // (using local midnight on a UTC server would shift back a day when converted to PST)
+        const date = new Date(Date.UTC(year, month - 1, day))
+        const dow = date.getUTCDay() // 0=Sunday, 1=Monday, ..., 6=Saturday
         
         // Monday=1, Tuesday=2, ..., Friday=5 are weekdays
         const isWeekday = dow >= 1 && dow <= 5
