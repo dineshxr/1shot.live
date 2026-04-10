@@ -14,7 +14,7 @@ serve(async (req) => {
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-    const openrouterApiKey = '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'
+    const openrouterApiKey = Deno.env.get('OPENROUTER_API_KEY')
     const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
     const { startup_id } = await req.json()
