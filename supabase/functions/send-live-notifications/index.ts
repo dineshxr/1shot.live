@@ -112,6 +112,11 @@ serve(async (req) => {
           console.log(`Email not sent for ${listing.title} (no email or send failed) - leaving notification_sent = false`)
         }
 
+        // Generate blog post for ALL startups (fire-and-forget - don't block on this)
+        generateBlogPost(listing.id).catch(error => {
+          console.error(`Blog post generation failed for ${listing.title} (non-blocking):`, error)
+        })
+
         results.push({
           id: listing.id,
           title: listing.title,
@@ -232,6 +237,33 @@ serve(async (req) => {
     )
   }
 })
+
+async function generateBlogPost(startupId: string): Promise<void> {
+  try {
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+    
+    const response = await fetch(`${supabaseUrl}/functions/v1/generate-blog-post`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${supabaseServiceKey}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ startup_id: startupId })
+    })
+
+    if (!response.ok) {
+      const error = await response.text()
+      throw new Error(`Blog generation failed: ${error}`)
+    }
+
+    const result = await response.json()
+    console.log('Blog post generated:', result)
+  } catch (error) {
+    console.error('Error generating blog post:', error)
+    throw error
+  }
+}
 
 async function sendLiveNotification(listing: any): Promise<boolean> {
   try {

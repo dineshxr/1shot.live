@@ -6,33 +6,63 @@
   <!-- Main Pages -->
   <url>
     <loc>https://submithunt.com/</loc>
-    <lastmod>2026-01-26</lastmod>
+    <lastmod>2026-04-10</lastmod>
     <changefreq>daily</changefreq>
     <priority>1.0</priority>
   </url>
   
   <url>
-    <loc>https://submithunt.com/submit</loc>
-    <lastmod>2026-01-26</lastmod>
+    <loc>https://submithunt.com/submit.html</loc>
+    <lastmod>2026-04-10</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
   </url>
   
   <url>
-    <loc>https://submithunt.com/pricing</loc>
-    <lastmod>2026-01-26</lastmod>
+    <loc>https://submithunt.com/pricing.html</loc>
+    <lastmod>2026-04-10</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   
   <url>
-    <loc>https://submithunt.com/featured</loc>
-    <lastmod>2026-01-26</lastmod>
+    <loc>https://submithunt.com/featured.html</loc>
+    <lastmod>2026-04-10</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   
+  <!-- Blog Pages -->
+  <url>
+    <loc>https://submithunt.com/blog</loc>
+    <lastmod>2026-04-10</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  
+  <url>
+    <loc>https://submithunt.com/blog/why-startups-need-directory-presence-2026</loc>
+    <lastmod>2026-04-10</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  
+  <url>
+    <loc>https://submithunt.com/blog/drive-traffic-new-startup-strategies</loc>
+    <lastmod>2026-04-10</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  
+  <url>
+    <loc>https://submithunt.com/blog/build-quality-backlinks-startup-website</loc>
+    <lastmod>2026-04-10</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  
   <!-- Note: Dashboard is noindexed so excluded from sitemap -->
   <!-- Note: Success/payment pages are noindexed so excluded from sitemap -->
+  <!-- Note: Individual startup pages are dynamically generated and should be added via dynamic sitemap -->
   
 </urlset>

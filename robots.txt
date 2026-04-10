@@ -12,9 +12,11 @@ Crawl-delay: 5
 
 # Main indexed pages
 Allow: /
-Allow: /submit
-Allow: /pricing
-Allow: /featured
+Allow: /submit.html
+Allow: /pricing.html
+Allow: /featured.html
+Allow: /blog
+Allow: /blog/*
 Allow: /startup/*
 
 # Private/utility pages (noindex but also disallow crawling to save budget)
