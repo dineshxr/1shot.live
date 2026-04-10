@@ -5,6 +5,8 @@ import { Sidebar } from "./sidebar.js";
 import { SubmitStartupForm } from "./submit-startup-form.js";
 import { StartupDetailPage } from "./startup-detail-page.js";
 import { LoginModal } from "./login-modal.js";
+import { BlogPage } from "./blog-page.js";
+import { BlogPostPage } from "./blog-post-page.js";
 import { auth } from "../lib/auth.js";
 
 /* global useState, useEffect, html */
@@ -93,8 +95,10 @@ export const App = () => {
     };
   }, []);
   
-  // Check if the current route is a startup detail page
+  // Check route types
   const isStartupDetailPage = currentRoute.startsWith('/startup/');
+  const isBlogPostPage = currentRoute.startsWith('/blog/') && currentRoute.length > 6;
+  const isBlogPage = currentRoute === '/blog' || currentRoute === '/blog/';
   
   // Debug logging
   console.log('App: Current route:', currentRoute);
@@ -119,6 +123,22 @@ export const App = () => {
           <div class="bg-yellow-50 min-h-screen">
             <${Header} user=${user} />
             <${StartupDetailPage} />
+            <${Footer} />
+          </div>
+        `
+        : isBlogPostPage
+        ? html`
+          <div class="bg-white min-h-screen">
+            <${Header} user=${user} />
+            <${BlogPostPage} />
+            <${Footer} />
+          </div>
+        `
+        : isBlogPage
+        ? html`
+          <div class="bg-white min-h-screen">
+            <${Header} user=${user} />
+            <${BlogPage} />
             <${Footer} />
           </div>
         `
