@@ -31,7 +31,14 @@
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
-  
+
+  <url>
+    <loc>https://submithunt.com/blog</loc>
+    <lastmod>2026-04-10</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.8</priority>
+  </url>
+
   <!-- Note: Dashboard is noindexed so excluded from sitemap -->
   <!-- Note: Success/payment pages are noindexed so excluded from sitemap -->
   

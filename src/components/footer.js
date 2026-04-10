@@ -9,7 +9,8 @@ export const Footer = () => {
               A directory for Startups and AI projects
             </p>
           </div>
-          <div class="flex space-x-4">
+          <div class="flex space-x-6 items-center">
+            <a href="/blog" class="text-black font-bold hover:underline">Blog</a>
             <a
               href="https://x.com/submithunt"
               target="_blank"

@@ -16,6 +16,8 @@ Allow: /submit
 Allow: /pricing
 Allow: /featured
 Allow: /startup/*
+Allow: /blog
+Allow: /blog/*
 
 # Private/utility pages (noindex but also disallow crawling to save budget)
 Disallow: /dashboard

@@ -265,6 +265,33 @@ async function handleCheckoutComplete(session: Stripe.Checkout.Session) {
   } else if (!startup_id) {
     console.log("Payment completed without startup_id, product:", product, "customer:", session.customer_email);
   }
+
+  // Auto-generate SEO blog post for paid startups
+  if (startup_id && product && ["premium", "featured", "pro", "lite"].includes(product)) {
+    try {
+      const blogResponse = await fetch(
+        `${supabaseUrl}/functions/v1/generate-blog-post`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${supabaseServiceKey}`,
+          },
+          body: JSON.stringify({ startupId: startup_id, product, paymentDate }),
+        }
+      );
+
+      if (blogResponse.ok) {
+        const blogResult = await blogResponse.json();
+        console.log("Blog post generated for startup:", startup_id, blogResult);
+      } else {
+        console.error("Blog post generation failed:", await blogResponse.text());
+      }
+    } catch (blogError) {
+      // Don't throw - payment succeeded regardless of blog generation
+      console.error("Error generating blog post:", blogError);
+    }
+  }
 }
 
 async function handleSubscriptionCancelled(subscription: Stripe.Subscription) {

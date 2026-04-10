@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <!-- Primary Meta Tags -->
+    <title>Blog | SubmitHunt - Startup Launches, Tips & Industry Insights</title>
+    <meta name="title" content="Blog | SubmitHunt - Startup Launches, Tips & Industry Insights" />
+    <meta name="description" content="Read about the latest startup launches on SubmitHunt, startup tips, SEO strategies for founders, and insights from the indie hacker community. A Product Hunt alternative blog." />
+    <meta name="keywords" content="startup blog, startup launches, indie hacker blog, Product Hunt alternative, startup tips, SEO for startups, startup marketing, SubmitHunt blog, tech startups, SaaS blog" />
+    <meta name="author" content="SubmitHunt" />
+    <meta name="robots" content="index, follow" />
+    <meta name="language" content="English" />
+
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="blog" />
+    <meta property="og:url" content="https://submithunt.com/blog" />
+    <meta property="og:title" content="Blog | SubmitHunt - Startup Launches & Insights" />
+    <meta property="og:description" content="Read about the latest startup launches on SubmitHunt, startup tips, and insights from the indie hacker community." />
+    <meta property="og:image" content="https://submithunt.com/og-image.png" />
+    <meta property="og:site_name" content="SubmitHunt" />
+
+    <!-- Twitter / X -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:url" content="https://submithunt.com/blog" />
+    <meta name="twitter:title" content="Blog | SubmitHunt - Startup Launches & Insights" />
+    <meta name="twitter:description" content="Read about the latest startup launches, startup tips, and insights from the indie hacker community." />
+    <meta name="twitter:image" content="https://submithunt.com/og-image.png" />
+    <meta name="twitter:creator" content="@submithunt" />
+
+    <!-- Canonical URL -->
+    <link rel="canonical" href="https://submithunt.com/blog" />
+
+    <!-- Structured Data / JSON-LD -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "Blog",
+      "name": "SubmitHunt Blog",
+      "description": "Startup launches, tips, and insights from the SubmitHunt community",
+      "url": "https://submithunt.com/blog",
+      "publisher": {
+        "@type": "Organization",
+        "name": "SubmitHunt",
+        "url": "https://submithunt.com",
+        "logo": "https://submithunt.com/logo.png"
+      }
+    }
+    </script>
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/x-icon" href="/src/favicon_io/favicon.ico" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/src/favicon_io/favicon-32x32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/src/favicon_io/favicon-16x16.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+
+    <!-- Stylesheets -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+    <link rel="stylesheet" href="/src/style.css" />
+
+    <!-- Preact CDN -->
+    <script src="https://unpkg.com/preact@10.13.1/dist/preact.min.js"></script>
+    <script src="https://unpkg.com/preact@10.13.1/hooks/dist/hooks.umd.js"></script>
+    <script src="https://unpkg.com/htm@3.1.1/dist/htm.js"></script>
+  </head>
+  <body class="bg-gray-50 min-h-screen">
+    <div id="blog-root"></div>
+    <script type="importmap">
+      {
+        "imports": {
+          "preact": "https://unpkg.com/preact@10.13.1/dist/preact.module.js",
+          "preact/hooks": "https://unpkg.com/preact@10.13.1/hooks/dist/hooks.module.js",
+          "htm": "https://unpkg.com/htm@3.1.1/dist/htm.module.js",
+          "@supabase/supabase-js": "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.38.4/+esm"
+        }
+      }
+    </script>
+    <script type="module" src="/src/blog.js"></script>
+  </body>
+</html>

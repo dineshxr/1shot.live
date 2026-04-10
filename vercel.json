@@ -16,6 +16,14 @@
       "destination": "/index.html"
     },
     {
+      "source": "/blog",
+      "destination": "/blog.html"
+    },
+    {
+      "source": "/blog/:path*",
+      "destination": "/blog.html"
+    },
+    {
       "source": "/featured",
       "destination": "/featured.html"
     },
