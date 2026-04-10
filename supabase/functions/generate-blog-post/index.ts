@@ -46,7 +46,7 @@ serve(async (req) => {
     // Fetch startup details
     const { data: startup, error: startupError } = await supabase
       .from('startups')
-      .select('id, title, description, tagline, url, category, slug')
+      .select('id, title, description, tagline, url, category, slug, plan')
       .eq('id', startup_id)
       .single()
 
@@ -89,6 +89,7 @@ serve(async (req) => {
         excerpt: blogContent.excerpt,
         meta_description: blogContent.metaDescription,
         keywords: blogContent.keywords,
+        category: startup.category || null,
         generated_by: generatedBy
       })
       .select()
@@ -126,34 +127,44 @@ serve(async (req) => {
 })
 
 async function generateWithOpenRouter(startup: any, apiKey: string, isPaid: boolean) {
-  const featuredBadge = isPaid ? ' [FEATURED]' : ''
-  const prompt = `Write an SEO-optimized blog post (600-900 words) reviewing "${startup.title}"${featuredBadge}.
+  const category = startup.category || 'tech'
+  const description = startup.tagline || startup.description || ''
+  const startupUrl = `https://submithunt.com/startup/${startup.slug || startup.id}`
 
-Startup Details:
-- Title: ${startup.title}
-- Description: ${startup.description || startup.tagline || 'No description provided'}
-- Category: ${startup.category || 'General'}
-- URL: ${startup.url}
-- Plan: ${isPaid ? 'Premium/Featured' : 'Free'}
+  const prompt = `You are an expert conversion copywriter and SEO strategist. Write a compelling, high-ranking blog post about "${startup.title}" — a ${category} startup.
 
-Requirements:
-1. Write in a professional, engaging tone
-2. Include SEO keywords naturally
-3. Structure with clear headings (H2, H3)
-4. Mention that this startup is ${isPaid ? 'featured' : 'listed'} on SubmitHunt
-${isPaid ? '5. Add a "Featured Startup" badge/section highlighting this is a premium listing' : '5. Focus on the innovative aspects of this startup'}
-6. Include a call-to-action to visit the startup
-7. Link to SubmitHunt homepage (https://submithunt.com) and the startup's detail page
-8. Focus on benefits and use cases
-9. Make it informative and valuable to readers
+Startup context:
+- Name: ${startup.title}
+- What it does: ${description || 'A new ' + category + ' tool'}
+- Category: ${category}
+- Website: ${startup.url}
+- SubmitHunt listing: ${startupUrl}
+${isPaid ? '- Status: Featured/Premium listing on SubmitHunt' : ''}
 
-Format the response as JSON with these fields:
+Copywriting rules you MUST follow:
+1. Open with a hook — a sharp question or bold statement that calls out the reader's specific pain point in the ${category} space. No generic intros.
+2. Benefits over features — every feature mentioned must be followed by the outcome it creates for the user.
+3. Be specific, never vague — avoid words like "innovative", "streamline", "optimize". Describe real results.
+4. Use active voice throughout. No passive constructions.
+5. Write like a sharp product journalist, not a press release.
+6. One idea per section — build a logical argument from pain → solution → proof → action.
+7. Include a strong, specific CTA at the end that tells the reader exactly what to do and why now.
+
+SEO rules:
+- Naturally include long-tail keywords for "${startup.title}", "${category} tools", "best ${category} software"
+- Use H2 and H3 headings that a reader would actually search for
+- Link to ${startup.url} (as the primary CTA) and https://submithunt.com (as context for discovery)
+- Target 700-900 words
+
+${isPaid ? 'Since this is a featured listing, open with a brief "Editor\'s Pick" callout before the main content.' : ''}
+
+Respond ONLY with valid JSON — no markdown fences, no extra text:
 {
-  "title": "SEO-friendly blog post title",
-  "content": "Full HTML content with proper headings and paragraphs",
-  "excerpt": "150-character summary",
-  "metaDescription": "160-character meta description",
-  "keywords": ["keyword1", "keyword2", "keyword3", "keyword4", "keyword5"]
+  "title": "Punchy, SEO-rich headline (max 65 chars)",
+  "content": "Full HTML article with <h2>, <h3>, <p>, <ul>, <li>, <strong> tags. No inline styles. Min 700 words.",
+  "excerpt": "One punchy sentence (max 160 chars) that sells the article",
+  "metaDescription": "SEO meta description (max 160 chars) with primary keyword near the front",
+  "keywords": ["5 to 7 specific long-tail keywords as an array"]
 }`
 
   const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
@@ -169,15 +180,15 @@ Format the response as JSON with these fields:
       messages: [
         {
           role: 'system',
-          content: 'You are an expert SEO content writer specializing in startup and product reviews. Write engaging, informative content that ranks well in search engines.'
+          content: 'You are an expert conversion copywriter and SEO content strategist. You write product-focused blog posts that rank on Google and convert readers into users. Your writing is direct, specific, and benefit-driven. You never use filler phrases, passive voice, or vague superlatives.'
         },
         {
           role: 'user',
           content: prompt
         }
       ],
-      temperature: 0.7,
-      max_tokens: 2000
+      temperature: 0.65,
+      max_tokens: 2500
     })
   })
 
@@ -199,104 +210,51 @@ Format the response as JSON with these fields:
 }
 
 function generateWithTemplate(startup: any, isPaid: boolean) {
-  const title = `${startup.title} Review: ${startup.tagline || 'A Comprehensive Look at This Innovative Tool'}`
+  const category = startup.category || 'tech'
+  const description = startup.tagline || startup.description || `a ${category} tool for modern teams`
   const startupUrl = `https://submithunt.com/startup/${startup.slug || startup.id}`
-  const featuredBadge = isPaid ? '<span style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: white; padding: 4px 12px; border-radius: 4px; font-size: 12px; font-weight: bold; text-transform: uppercase; margin-left: 10px;">Featured</span>' : ''
-  
+
+  const title = `${startup.title} Review: Is This the Best ${category.charAt(0).toUpperCase() + category.slice(1)} Tool in 2025?`
+
   const content = `
-<article class="blog-post">
-  ${isPaid ? `
-  <div style="background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); border-left: 4px solid #f59e0b; padding: 20px; margin-bottom: 30px; border-radius: 8px;">
-    <p style="margin: 0; color: #92400e; font-weight: bold; font-size: 16px;">
-      ⭐ Featured Startup - This is a premium listing on SubmitHunt
-    </p>
-  </div>
-  ` : ''}
-  
-  <h2>Introduction to ${startup.title}${featuredBadge}</h2>
-  <p>
-    ${startup.title} is an innovative ${startup.category || 'tool'} that's making waves in the startup community. 
-    ${isPaid ? 'As a featured startup' : 'Recently listed'} on <a href="https://submithunt.com">SubmitHunt</a>, this platform has caught the attention 
-    of founders and early adopters looking for cutting-edge solutions.
-  </p>
-  
-  <p>
-    ${startup.description || startup.tagline || `${startup.title} offers a unique approach to solving common challenges in the ${startup.category || 'tech'} space.`}
-  </p>
+<article>
+  ${isPaid ? `<div style="background:#fef9c3;border-left:4px solid #f59e0b;padding:16px 20px;margin-bottom:28px;border-radius:6px;"><strong>⭐ Editor's Pick</strong> — ${startup.title} is a featured startup on SubmitHunt.</div>` : ''}
 
-  <h2>Key Features and Benefits</h2>
-  <p>
-    What sets ${startup.title} apart is its focus on delivering real value to users. The platform combines 
-    intuitive design with powerful functionality, making it accessible to both beginners and experienced users.
-  </p>
+  <h2>The Problem Every ${category.charAt(0).toUpperCase() + category.slice(1)} Team Faces</h2>
+  <p>Most ${category} tools make big promises and deliver mediocre results. They're built for demos, not real work. <strong>${startup.title}</strong> was built to fix that.</p>
 
-  <h3>Why Choose ${startup.title}?</h3>
+  <h2>What Is ${startup.title}?</h2>
+  <p>${description}. ${isPaid ? 'As a featured listing on' : 'Now live on'} <a href="https://submithunt.com">SubmitHunt</a>, it's gaining traction fast among founders and builders in the ${category} space.</p>
+
+  <h2>What You Actually Get</h2>
   <ul>
-    <li><strong>User-Friendly Interface:</strong> Easy to navigate and get started quickly</li>
-    <li><strong>Innovative Approach:</strong> Fresh perspective on solving industry challenges</li>
-    <li><strong>Active Development:</strong> Regular updates and improvements based on user feedback</li>
-    <li><strong>Community Support:</strong> Growing community of users and advocates</li>
+    <li><strong>Speed:</strong> Get up and running without a lengthy setup process — your team ships faster from day one.</li>
+    <li><strong>Focus:</strong> Built around the core job-to-be-done in ${category}, not bloated with features you'll never use.</li>
+    <li><strong>Results:</strong> Early users report measurable improvements in their ${category} workflows within the first week.</li>
   </ul>
 
-  <h2>Use Cases and Applications</h2>
-  <p>
-    ${startup.title} is particularly useful for professionals and teams looking to streamline their workflow 
-    and improve productivity. Whether you're a solo entrepreneur or part of a larger organization, this tool 
-    can help you achieve your goals more efficiently.
-  </p>
+  <h2>Who Is ${startup.title} For?</h2>
+  <p>If you're a founder, indie developer, or small team working in the ${category} space and tired of paying for tools that don't move the needle — ${startup.title} is worth a serious look.</p>
 
-  <h3>Who Should Use ${startup.title}?</h3>
-  <p>
-    This platform is ideal for:
-  </p>
-  <ul>
-    <li>Startups and small businesses looking to optimize operations</li>
-    <li>Freelancers seeking to improve their productivity</li>
-    <li>Teams wanting to collaborate more effectively</li>
-    <li>Anyone interested in innovative ${startup.category || 'tech'} solutions</li>
-  </ul>
+  <h2>How to Get Started</h2>
+  <p>Visit <a href="${startup.url}" target="_blank" rel="noopener">${startup.title}'s website</a> and sign up. It takes minutes. You can also browse their <a href="${startupUrl}">SubmitHunt listing</a> to see community upvotes and feedback.</p>
 
-  <h2>Getting Started with ${startup.title}</h2>
-  <p>
-    Ready to explore what ${startup.title} has to offer? Visit their 
-    <a href="${startup.url}" target="_blank" rel="noopener">official website</a> to learn more and get started. 
-    You can also check out their <a href="${startupUrl}">detailed listing on SubmitHunt</a> to see what other 
-    users are saying and stay updated on the latest developments.
-  </p>
+  <h2>The Bottom Line</h2>
+  <p>${startup.title} is a focused, no-nonsense ${category} tool that solves a real problem. Discover more launches like this on <a href="https://submithunt.com">SubmitHunt</a> — where the best new startups go live every week.</p>
+</article>`
 
-  <h2>Final Thoughts</h2>
-  <p>
-    ${startup.title} represents the kind of innovation we love to see in the startup ecosystem. By focusing on 
-    user needs and delivering practical solutions, it's building a strong foundation for long-term success.
-  </p>
+  const excerpt = `${startup.title} is a ${category} tool that ${description.toLowerCase().replace(/\.$/, '')}. Here's what makes it worth your attention.`
 
-  <p>
-    Discover more innovative startups like ${startup.title} on 
-    <a href="https://submithunt.com">SubmitHunt</a>, where founders launch and get discovered every day.
-  </p>
-
-  <div class="cta-box" style="background: #f8f9fa; padding: 20px; border-left: 4px solid #60a5fa; margin: 30px 0;">
-    <h3 style="margin-top: 0;">Try ${startup.title} Today</h3>
-    <p>
-      Experience the benefits firsthand by visiting <a href="${startup.url}" target="_blank" rel="noopener">${startup.title}</a> 
-      and exploring all the features this innovative platform has to offer.
-    </p>
-  </div>
-</article>
-  `
-
-  const excerpt = `Discover ${startup.title}, an innovative ${startup.category || 'tool'} featured on SubmitHunt. Learn about its key features, benefits, and how it can help you achieve your goals.`
-
-  const metaDescription = `${startup.title} review: Explore this innovative ${startup.category || 'tool'} featured on SubmitHunt. Learn about features, benefits, and use cases in this comprehensive guide.`
+  const metaDescription = `${startup.title} review: ${description} — discovered on SubmitHunt. See what it does, who it's for, and how to get started.`
 
   const keywords = [
     startup.title.toLowerCase(),
     `${startup.title.toLowerCase()} review`,
-    startup.category?.toLowerCase() || 'startup tool',
+    `best ${category} tools`,
+    `${category} software`,
     'submithunt',
-    'innovative tools',
-    'startup launch',
-    'productivity tools'
+    'startup tools 2025',
+    `${category} startup`
   ].filter(Boolean).slice(0, 7)
 
   return {

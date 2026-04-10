@@ -11,7 +11,7 @@ export const BlogPage = () => {
     const supabase = supabaseClient();
     supabase
       .from('blog_posts')
-      .select('id, title, slug, excerpt, published_at, view_count, generated_by')
+      .select('id, title, slug, excerpt, published_at, view_count, category')
       .eq('is_published', true)
       .order('published_at', { ascending: false })
       .then(({ data, error: err }) => {
@@ -76,8 +76,8 @@ export const BlogPage = () => {
                 <div class="p-6">
                   <div class="flex items-center gap-2 mb-3">
                     <span class="text-sm text-gray-500">${formatDate(post.published_at)}</span>
-                    ${post.generated_by === 'openrouter' && html`
-                      <span class="text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded border border-blue-300 font-bold">AI</span>
+                    ${post.category && html`
+                      <span class="text-xs bg-pink-100 text-pink-800 px-2 py-0.5 rounded border border-pink-300 font-bold capitalize">${post.category}</span>
                     `}
                   </div>
                   <h2 class="text-xl font-bold text-gray-900 mb-3 line-clamp-2">${post.title}</h2>

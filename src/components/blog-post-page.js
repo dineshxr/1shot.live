@@ -83,9 +83,9 @@ export const BlogPostPage = () => {
             <span>${formatDate(post.published_at)}</span>
             <span>•</span>
             <span>${post.view_count || 0} views</span>
-            ${post.generated_by === 'openrouter' && html`
+            ${post.category && html`
               <span>•</span>
-              <span class="bg-blue-100 text-blue-800 px-2 py-0.5 rounded border border-blue-300 font-bold text-xs">AI-Generated</span>
+              <span class="bg-pink-100 text-pink-800 px-2 py-0.5 rounded border border-pink-300 font-bold text-xs capitalize">${post.category}</span>
             `}
           </div>
 
