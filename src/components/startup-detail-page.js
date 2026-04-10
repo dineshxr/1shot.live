@@ -8,6 +8,7 @@ export const StartupDetailPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [blogPost, setBlogPost] = useState(null);
 
   useEffect(() => {
     const fetchStartupDetails = async () => {
@@ -39,6 +40,17 @@ export const StartupDetailPage = () => {
         if (!startup) throw new Error('Startup not found');
         
         setStartup(startup);
+
+        // Fetch blog post for this startup
+        const { data: blogData } = await supabase
+          .from('blog_posts')
+          .select('title, slug, excerpt')
+          .eq('startup_id', startup.id)
+          .eq('is_published', true)
+          .limit(1)
+          .maybeSingle();
+        if (blogData) setBlogPost(blogData);
+
       } catch (err) {
         console.error('Error fetching startup details:', err);
         setError(err.message || 'Failed to load startup details');
@@ -284,6 +296,25 @@ export const StartupDetailPage = () => {
                 />
                 <span class="text-lg font-bold">${startup.author.name || `@${startup.author || 'user'}`}</span>
               </a>
+            </div>
+          `}
+
+          ${blogPost && html`
+            <div class="border-t-2 border-black pt-4 mt-6">
+              <div class="bg-yellow-50 border-2 border-black rounded p-4 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
+                <div class="flex items-center mb-2">
+                  <i class="fas fa-rss text-orange-500 mr-2"></i>
+                  <span class="text-xs font-bold uppercase tracking-wide text-gray-500">From the Blog</span>
+                </div>
+                <h3 class="text-lg font-bold mb-2">${blogPost.title}</h3>
+                <p class="text-gray-700 text-sm mb-3">${blogPost.excerpt}</p>
+                <a
+                  href=${`/blog/${blogPost.slug}`}
+                  class="inline-flex items-center px-4 py-2 bg-black text-white border-2 border-black rounded font-bold text-sm hover:bg-gray-800 transition-colors"
+                >
+                  Read Full Review <i class="fas fa-arrow-right ml-2"></i>
+                </a>
+              </div>
             </div>
           `}
           
