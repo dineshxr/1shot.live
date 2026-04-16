@@ -99,12 +99,21 @@ serve(async (req) => {
 
     console.log(`Successfully published startup: ${startup.title}`)
 
-    // Send live notification
+    // Generate blog post FIRST (blocking) so we can include the link in the email
+    const blogSlug = await generateBlogPost(startupId)
+    const blogUrl = blogSlug ? `https://submithunt.com/blog/${blogSlug}` : null
+    if (blogSlug) {
+      console.log(`Blog post ready for ${startup.title}: ${blogUrl}`)
+    } else {
+      console.log(`Blog post generation failed for ${startup.title}`)
+    }
+
+    // Send live notification with blog URL
     const emailSent = await sendLiveNotification({
       ...startup,
       author_email: startup.author?.email,
       author_name: startup.author?.name,
-    })
+    }, blogUrl)
 
     // Update notification status
     await supabase
@@ -115,11 +124,6 @@ serve(async (req) => {
       })
       .eq('id', startupId)
 
-    // Generate blog post (fire-and-forget - don't block on this)
-    generateBlogPost(startupId).catch(error => {
-      console.error('Blog post generation failed (non-blocking):', error)
-    })
-
     return new Response(
       JSON.stringify({ 
         message: 'Startup published successfully',
@@ -128,6 +132,7 @@ serve(async (req) => {
           is_live: true,
           launch_date: launchDate
         },
+        blogUrl,
         emailSent
       }),
       { 
@@ -151,7 +156,7 @@ serve(async (req) => {
   }
 })
 
-async function generateBlogPost(startupId: string): Promise<void> {
+async function generateBlogPost(startupId: string): Promise<string | null> {
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
@@ -167,18 +172,21 @@ async function generateBlogPost(startupId: string): Promise<void> {
 
     if (!response.ok) {
       const error = await response.text()
-      throw new Error(`Blog generation failed: ${error}`)
+      console.error(`Blog generation failed: ${error}`)
+      return null
     }
 
     const result = await response.json()
-    console.log('Blog post generated:', result)
+    const slug = result.blog_slug || result.blog_post?.slug || null
+    console.log(`Blog post result for ${startupId}: slug=${slug}, duplicate=${result.duplicate}`)
+    return slug
   } catch (error) {
     console.error('Error generating blog post:', error)
-    throw error
+    return null
   }
 }
 
-async function sendLiveNotification(listing: any): Promise<boolean> {
+async function sendLiveNotification(listing: any, blogUrl: string | null = null): Promise<boolean> {
   try {
     // Use Resend API for sending emails
     const resendApiKey = Deno.env.get('RESEND_API_KEY')
@@ -301,6 +309,15 @@ async function sendLiveNotification(listing: any): Promise<boolean> {
       </div>
       `}
       
+      ${blogUrl ? `
+      <!-- Blog Post Link -->
+      <div style="background-color: #f0fdf4; border: 1px solid #86efac; border-radius: 8px; padding: 20px; margin: 20px 0;">
+        <h3 style="margin: 0 0 8px 0; color: #166534; font-size: 16px;">Your dedicated blog post is live</h3>
+        <p style="margin: 0 0 12px 0; color: #15803d; font-size: 14px; line-height: 1.5;">We've published an SEO-optimized blog post about ${listing.title} to drive extra organic traffic to your listing.</p>
+        <a href="${blogUrl}" style="display: inline-block; background-color: #16a34a; color: #fff; padding: 10px 20px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 14px;">Read your blog post &rarr;</a>
+      </div>
+      ` : ''}
+      
       <!-- Launch Day Checklist -->
       <div style="margin-top: 28px; padding-top: 20px; border-top: 1px solid #e9ecef;">
         <h4 style="margin: 0 0 15px 0; color: #333; font-size: 16px;">Your launch day checklist:</h4>
@@ -354,7 +371,11 @@ One-time payment. No subscription.
 Your listing has priority placement and extended homepage visibility. Your dofollow backlink (37+ DR) will be live within 24 hours.
 `}
 
-LAUNCH DAY CHECKLIST:
+${blogUrl ? `YOUR BLOG POST IS LIVE
+We've published an SEO-optimized blog post to help drive traffic to your listing:
+${blogUrl}
+
+` : ''}LAUNCH DAY CHECKLIST:
 - Share on X and tag @SubmitHunt (we'll repost)
 - Post in relevant communities (Reddit, Indie Hackers, LinkedIn)
 - Ask 5 friends to upvote in the first hour

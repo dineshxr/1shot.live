@@ -96,8 +96,15 @@ serve(async (req) => {
           throw markLiveError
         }
 
-        // Send email notification
-        const emailSent = await sendLiveNotification(listing)
+        // Compute blog URL deterministically (no API call needed - same formula as generate-blog-post)
+        const blogUrl = `https://submithunt.com/blog/${listing.slug || slugify(listing.title)}-review`
+        console.log(`Blog URL for ${listing.title}: ${blogUrl}`)
+
+        // Trigger blog generation non-blocking (HTTP call completes independently in its own edge function context)
+        triggerBlogGeneration(listing.id)
+
+        // Send email notification with blog URL
+        const emailSent = await sendLiveNotification(listing, blogUrl)
 
         // Only mark notification as sent if email was actually delivered
         if (emailSent) {
@@ -112,16 +119,12 @@ serve(async (req) => {
           console.log(`Email not sent for ${listing.title} (no email or send failed) - leaving notification_sent = false`)
         }
 
-        // Generate blog post for ALL startups (fire-and-forget - don't block on this)
-        generateBlogPost(listing.id).catch(error => {
-          console.error(`Blog post generation failed for ${listing.title} (non-blocking):`, error)
-        })
-
         results.push({
           id: listing.id,
           title: listing.title,
           email: listing.author_email,
           emailSent,
+          blogUrl,
           success: true
         })
 
@@ -145,14 +148,14 @@ serve(async (req) => {
     }
 
     // Retry missed notifications: startups that went live but email was never sent
+    // Note: author->>email filter removed - JS operator not supported in .not() filter; JS null-check handles it
     const { data: missedStartups, error: missedError } = await supabase
       .from('startups')
       .select('id, title, slug, description, plan, author, launch_date')
       .eq('is_live', true)
       .eq('notification_sent', false)
-      .not('author->>email', 'is', null)
       .order('launch_date', { ascending: true })
-      .limit(20)
+      .limit(30)
 
     if (missedError) {
       console.error('Error fetching missed notifications:', missedError)
@@ -171,7 +174,11 @@ serve(async (req) => {
             author_name: startup.author?.name,
           }
 
-          const emailSent = await sendLiveNotification(listing)
+          // Compute blog URL deterministically + trigger generation non-blocking
+          const blogUrl = `https://submithunt.com/blog/${startup.slug || slugify(startup.title)}-review`
+          triggerBlogGeneration(startup.id)
+
+          const emailSent = await sendLiveNotification(listing, blogUrl)
 
           if (emailSent) {
             await supabase
@@ -188,6 +195,7 @@ serve(async (req) => {
             title: startup.title,
             email: listing.author_email,
             emailSent,
+            blogUrl,
             retry: true,
             success: true
           })
@@ -238,34 +246,29 @@ serve(async (req) => {
   }
 })
 
-async function generateBlogPost(startupId: string): Promise<void> {
-  try {
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-    
-    const response = await fetch(`${supabaseUrl}/functions/v1/generate-blog-post`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${supabaseServiceKey}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ startup_id: startupId })
-    })
-
-    if (!response.ok) {
-      const error = await response.text()
-      throw new Error(`Blog generation failed: ${error}`)
-    }
-
-    const result = await response.json()
-    console.log('Blog post generated:', result)
-  } catch (error) {
-    console.error('Error generating blog post:', error)
-    throw error
-  }
+function triggerBlogGeneration(startupId: string): void {
+  const supabaseUrl = Deno.env.get('SUPABASE_URL')!
+  const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+  fetch(`${supabaseUrl}/functions/v1/generate-blog-post`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${supabaseServiceKey}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ startup_id: startupId })
+  }).then(r => r.json()).then(r => console.log(`Blog triggered for ${startupId}: slug=${r.blog_slug}, duplicate=${r.duplicate}`)).catch(e => console.error(`Blog trigger error for ${startupId}:`, e))
 }
 
-async function sendLiveNotification(listing: any): Promise<boolean> {
+function slugify(text: string): string {
+  return text
+    .toLowerCase()
+    .replace(/[^\w\s-]/g, '')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+    .trim()
+}
+
+async function sendLiveNotification(listing: any, blogUrl: string | null = null): Promise<boolean> {
   try {
     // Use Resend API for sending emails
     const resendApiKey = Deno.env.get('RESEND_API_KEY')
@@ -393,6 +396,15 @@ async function sendLiveNotification(listing: any): Promise<boolean> {
       </div>
       `}
       
+      ${blogUrl ? `
+      <!-- Blog Post Link -->
+      <div style="background-color: #f0fdf4; border: 1px solid #86efac; border-radius: 8px; padding: 20px; margin: 20px 0;">
+        <h3 style="margin: 0 0 8px 0; color: #166534; font-size: 16px;">Your dedicated blog post is live</h3>
+        <p style="margin: 0 0 12px 0; color: #15803d; font-size: 14px; line-height: 1.5;">We've published an SEO-optimized blog post about ${listing.title} to drive extra organic traffic to your listing.</p>
+        <a href="${blogUrl}" style="display: inline-block; background-color: #16a34a; color: #fff; padding: 10px 20px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 14px;">Read your blog post →</a>
+      </div>
+      ` : ''}
+      
       <!-- Launch Day Checklist -->
       <div style="margin-top: 28px; padding-top: 20px; border-top: 1px solid #e9ecef;">
         <h4 style="margin: 0 0 15px 0; color: #333; font-size: 16px;">Your launch day checklist:</h4>
@@ -446,7 +458,11 @@ One-time payment. No subscription.
 Your listing has priority placement and extended homepage visibility. Your dofollow backlink (37+ DR) will be live within 24 hours.
 `}
 
-LAUNCH DAY CHECKLIST:
+${blogUrl ? `YOUR BLOG POST IS LIVE
+We've published an SEO-optimized blog post to help drive traffic to your listing:
+${blogUrl}
+
+` : ''}LAUNCH DAY CHECKLIST:
 - Share on X and tag @SubmitHunt (we'll repost)
 - Post in relevant communities (Reddit, Indie Hackers, LinkedIn)
 - Ask 5 friends to upvote in the first hour

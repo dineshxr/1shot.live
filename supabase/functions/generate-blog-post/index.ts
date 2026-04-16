@@ -26,17 +26,18 @@ serve(async (req) => {
     // Check if blog post already exists for this startup
     const { data: existingPost } = await supabase
       .from('blog_posts')
-      .select('id')
+      .select('id, slug')
       .eq('startup_id', startup_id)
       .single()
 
     if (existingPost) {
-      console.log(`Blog post already exists for startup ${startup_id}`)
+      console.log(`Blog post already exists for startup ${startup_id}: ${existingPost.slug}`)
       return new Response(
         JSON.stringify({ 
           success: true, 
           message: 'Blog post already exists',
           blog_post_id: existingPost.id,
+          blog_slug: existingPost.slug,
           duplicate: true
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -106,6 +107,7 @@ serve(async (req) => {
         success: true,
         message: 'Blog post generated successfully',
         blog_post: blogPost,
+        blog_slug: blogSlug,
         generated_by: generatedBy
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
