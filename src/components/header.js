@@ -7,10 +7,10 @@ export const Header = ({ user }) => {
       <div class="container max-w-6xl mx-auto px-4 py-6 md:py-8">
         <div class="flex flex-col md:flex-row justify-between items-center">
           <div>
-            <div class="flex items-center">
+            <a href="/" class="flex items-center hover:opacity-90 transition-opacity">
               <img src="/src/sh-logo.png" alt="SubmitHunt Logo" class="w-12 h-12 mr-3" />
               <h1 class="text-3xl md:text-4xl font-bold">Submit Hunt</h1>
-            </div>
+            </a>
             <p class="mt-2 text-black font-medium">
               Discover Startups and AI projects
             </p>
@@ -34,6 +34,12 @@ export const Header = ({ user }) => {
                     @${user.user_metadata?.user_name || user.email?.split('@')[0] || 'User'}
                   </span>
                 </div>
+                <a
+                  href="/"
+                  class="neo-button inline-flex items-center px-3 py-2 bg-white border-2 border-black rounded shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:bg-gray-100 font-bold text-sm"
+                >
+                  <i class="fas fa-home mr-2"></i> Home
+                </a>
                 <a
                   href="/blog"
                   class="neo-button inline-flex items-center px-3 py-2 bg-white border-2 border-black rounded shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:bg-gray-100 font-bold text-sm"
@@ -66,6 +72,12 @@ export const Header = ({ user }) => {
                 </button>
               </div>
             ` : html`
+              <a
+                href="/"
+                class="neo-button inline-flex items-center px-3 py-2 bg-white border-2 border-black rounded shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:bg-gray-100 font-bold text-sm"
+              >
+                <i class="fas fa-home mr-2"></i> Home
+              </a>
               <a
                 href="/blog"
                 class="neo-button inline-flex items-center px-3 py-2 bg-white border-2 border-black rounded shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:bg-gray-100 font-bold text-sm"
