@@ -131,49 +131,61 @@ describe('startup filtering logic', () => {
 });
 
 // ── Retry logic simulation ───────────────────────────────────────
-// Simulates the scenario where a startup went live but email failed,
-// and verifies the retry query would pick it up.
+// Simulates the scenario where a startup went live today but email failed,
+// and verifies the retry query picks it up (only today's launches, not backlog).
 
-describe('missed notification retry logic', () => {
-  // Simulate database state
+describe('missed notification retry logic (today only)', () => {
+  const today = '2026-04-22';
+  const yesterday = '2026-04-21';
+
   const dbStartups = [
-    { id: '1', title: 'A', is_live: true,  notification_sent: true,  author: { email: 'a@test.com' } },
-    { id: '2', title: 'B', is_live: true,  notification_sent: false, author: { email: 'b@test.com' } }, // missed!
-    { id: '3', title: 'C', is_live: false, notification_sent: false, author: { email: 'c@test.com' } },
-    { id: '4', title: 'D', is_live: true,  notification_sent: false, author: { email: null } },         // no email
-    { id: '5', title: 'E', is_live: true,  notification_sent: false, author: {} },                       // no email
-    { id: '6', title: 'F', is_live: true,  notification_sent: false, author: { email: 'f@test.com' } }, // missed!
+    { id: '1', title: 'A', is_live: true,  notification_sent: true,  launch_date: today,     author: { email: 'a@test.com' } },
+    { id: '2', title: 'B', is_live: true,  notification_sent: false, launch_date: today,     author: { email: 'b@test.com' } }, // today, missed → retry
+    { id: '3', title: 'C', is_live: false, notification_sent: false, launch_date: today,     author: { email: 'c@test.com' } },
+    { id: '4', title: 'D', is_live: true,  notification_sent: false, launch_date: today,     author: { email: null } },
+    { id: '5', title: 'E', is_live: true,  notification_sent: false, launch_date: today,     author: {} },
+    { id: '6', title: 'F', is_live: true,  notification_sent: false, launch_date: today,     author: { email: 'f@test.com' } }, // today, missed → retry
+    { id: '7', title: 'G', is_live: true,  notification_sent: false, launch_date: yesterday, author: { email: 'g@test.com' } }, // old backlog → skip
+    { id: '8', title: 'H', is_live: true,  notification_sent: false, launch_date: '2026-03-01', author: { email: 'h@test.com' } }, // old backlog → skip
   ];
 
-  // Simulate the retry query: is_live=true, notification_sent=false, author.email is not null
-  function getMissedNotifications(startups) {
+  // Simulate the retry query: is_live=true, notification_sent=false,
+  // launch_date >= today, author.email is not null
+  function getMissedNotifications(startups, todayPst) {
     return startups.filter(s =>
       s.is_live === true &&
       s.notification_sent === false &&
+      s.launch_date >= todayPst &&
       s.author?.email != null && s.author?.email !== ''
     );
   }
 
-  it('finds startups that are live but missed email notification', () => {
-    const missed = getMissedNotifications(dbStartups);
+  it('finds only today\'s startups that missed email notification', () => {
+    const missed = getMissedNotifications(dbStartups, today);
     assert.equal(missed.length, 2);
     assert.equal(missed[0].id, '2');
     assert.equal(missed[1].id, '6');
   });
 
+  it('excludes old backlog startups even if notification was missed', () => {
+    const missed = getMissedNotifications(dbStartups, today);
+    assert.ok(!missed.find(s => s.id === '7'), 'should not retry yesterday\'s missed startup');
+    assert.ok(!missed.find(s => s.id === '8'), 'should not retry old backlog startup');
+  });
+
   it('excludes startups that already received notification', () => {
-    const missed = getMissedNotifications(dbStartups);
-    assert.ok(!missed.find(s => s.id === '1'), 'should not include already-notified startup');
+    const missed = getMissedNotifications(dbStartups, today);
+    assert.ok(!missed.find(s => s.id === '1'));
   });
 
   it('excludes startups that are not yet live', () => {
-    const missed = getMissedNotifications(dbStartups);
-    assert.ok(!missed.find(s => s.id === '3'), 'should not include non-live startup');
+    const missed = getMissedNotifications(dbStartups, today);
+    assert.ok(!missed.find(s => s.id === '3'));
   });
 
   it('excludes startups with no author email', () => {
-    const missed = getMissedNotifications(dbStartups);
-    assert.ok(!missed.find(s => s.id === '4'), 'should not include startup with null email');
-    assert.ok(!missed.find(s => s.id === '5'), 'should not include startup with missing email');
+    const missed = getMissedNotifications(dbStartups, today);
+    assert.ok(!missed.find(s => s.id === '4'));
+    assert.ok(!missed.find(s => s.id === '5'));
   });
 });

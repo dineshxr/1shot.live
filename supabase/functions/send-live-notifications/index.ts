@@ -139,12 +139,13 @@ serve(async (req) => {
       }
     }
 
-    // Retry missed notifications: startups that went live but email was never sent
+    // Retry missed notifications only for today's launches (not old backlog)
     const { data: missedStartups, error: missedError } = await supabase
       .from('startups')
       .select('id, title, slug, description, plan, author, launch_date')
       .eq('is_live', true)
       .eq('notification_sent', false)
+      .gte('launch_date', todayPst)
       .not('author->>email', 'is', null)
       .order('launch_date', { ascending: true })
       .limit(20)
