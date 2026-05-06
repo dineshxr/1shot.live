@@ -13,8 +13,8 @@ const corsHeaders = {
 
 // Price IDs from Stripe Dashboard - you need to create these products in Stripe
 const PRICE_IDS = {
-  premium: Deno.env.get("STRIPE_PREMIUM_PRICE_ID") || "price_REPLACE_WITH_PREMIUM_PRICE_ID",
-  featured: Deno.env.get("STRIPE_FEATURED_PRICE_ID") || "price_REPLACE_WITH_FEATURED_PRICE_ID",
+  premium: Deno.env.get("STRIPE_PREMIUM_PRICE_ID") || "price_1TU70f9t8rFDtfIcz0FiD0Q9", // $20 one-time
+  featured: Deno.env.get("STRIPE_FEATURED_PRICE_ID") || "price_1TU70f9t8rFDtfIcyc4xl4b9", // $50/week
 };
 
 serve(async (req) => {

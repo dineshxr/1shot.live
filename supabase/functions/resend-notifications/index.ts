@@ -221,7 +221,7 @@ async function sendNotificationEmail(startup: any, resendApiKey: string): Promis
       <!-- Upsell for Free Users -->
       <div style="background: #1a1a1a; border-radius: 8px; padding: 28px; margin: 25px 0;">
         <p style="margin: 0 0 6px 0; color: #f59e0b; font-size: 12px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px;">For ${startup.title}</p>
-        <h3 style="margin: 0 0 12px 0; color: #fff; font-size: 22px; line-height: 1.3;">Get a guaranteed dofollow backlink for $5</h3>
+        <h3 style="margin: 0 0 12px 0; color: #fff; font-size: 22px; line-height: 1.3;">Get a guaranteed dofollow backlink for $20</h3>
         <p style="margin: 0 0 20px 0; color: #ccc; font-size: 14px; line-height: 1.6;">
           Most founders pay $50-200 for a single backlink from a DR 37+ site. With a Premium upgrade, you get one automatically &mdash; plus your listing stays on the homepage for 14 days instead of 7.
         </p>
@@ -262,7 +262,7 @@ async function sendNotificationEmail(startup: any, resendApiKey: string): Promis
         </table>
         
         <div style="text-align: center;">
-          <a href="https://submithunt.com/pricing" style="display: inline-block; background-color: #f59e0b; color: #000; padding: 14px 32px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 15px;">Upgrade to Premium &mdash; $5</a>
+          <a href="https://submithunt.com/pricing" style="display: inline-block; background-color: #f59e0b; color: #000; padding: 14px 32px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 15px;">Upgrade to Premium &mdash; $20</a>
         </div>
         <p style="margin: 12px 0 0 0; color: #888; font-size: 12px; text-align: center;">One-time payment. No subscription.</p>
       </div>

@@ -391,7 +391,7 @@ const FeaturedPage = () => {
               
               <div class="flex flex-col md:flex-row items-center justify-between gap-8 mb-8">
                 <div class="text-center md:text-left">
-                  <div class="text-4xl font-bold text-blue-600">$5</div>
+                  <div class="text-4xl font-bold text-blue-600">$50</div>
                   <div class="text-gray-500">/week</div>
                 </div>
                 

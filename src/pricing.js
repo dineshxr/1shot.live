@@ -127,7 +127,7 @@ const PricingPage = () => {
               <div class="mb-6">
                 <h3 class="text-xl font-bold text-gray-900 mb-2">Premium Launch</h3>
                 <div class="flex items-baseline">
-                  <span class="text-4xl font-bold text-gray-900">$5</span>
+                  <span class="text-4xl font-bold text-gray-900">$20</span>
                   <span class="text-gray-500 ml-1">/launch</span>
                 </div>
               </div>
@@ -182,7 +182,7 @@ const PricingPage = () => {
               <div class="mb-6">
                 <h3 class="text-xl font-bold text-gray-900 mb-2">Featured Spot</h3>
                 <div class="flex items-baseline gap-1 mb-2">
-                  <span class="text-4xl font-bold text-gray-900">$20</span>
+                  <span class="text-4xl font-bold text-gray-900">$50</span>
                   <span class="text-gray-500">/week</span>
                 </div>
                 <div class="text-sm text-gray-500">Premium placement in feed</div>

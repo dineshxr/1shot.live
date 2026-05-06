@@ -523,7 +523,7 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
                 <div class="animate-spin rounded-full h-5 w-5 border-b-2 border-black"></div>
                 <div>
                   <p class="font-bold mb-1">Redirecting to payment...</p>
-                  <p class="text-sm">You'll be redirected to Stripe to complete your $5 payment.</p>
+                  <p class="text-sm">You'll be redirected to Stripe to complete your $20 payment.</p>
                 </div>
               </div>
             </div>
@@ -805,7 +805,7 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
                   <div class="p-5 flex-1 flex flex-col">
                     <div class="mb-1 text-gray-500 text-sm">Premium Launch</div>
                     <div class="flex items-baseline mb-4">
-                      <span class="text-4xl font-bold text-gray-900">$5</span>
+                      <span class="text-4xl font-bold text-gray-900">$20</span>
                       <span class="text-gray-500 ml-1 text-sm">/launch</span>
                     </div>
                     <div class="text-xs text-gray-500 mb-4">one-time payment</div>
@@ -888,7 +888,7 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
                   <div class="p-5 flex-1 flex flex-col">
                     <div class="mb-1 text-gray-500 text-sm">Premium Placement</div>
                     <div class="flex items-baseline mb-4">
-                      <span class="text-4xl font-bold text-gray-900">$20</span>
+                      <span class="text-4xl font-bold text-gray-900">$50</span>
                       <span class="text-gray-500 ml-1 text-sm">/week</span>
                     </div>
                     <div class="text-xs text-gray-500 mb-4">recurring subscription</div>

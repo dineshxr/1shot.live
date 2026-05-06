@@ -191,7 +191,7 @@ async function sendLiveNotification(listing: any): Promise<boolean> {
       <div style="background: linear-gradient(135deg, #f97316 0%, #ea580c 100%); border-radius: 8px; padding: 25px; margin: 25px 0; text-align: center;">
         <h3 style="margin: 0 0 10px 0; color: #fff; font-size: 20px;">🔥 Want More Visibility?</h3>
         <p style="margin: 0 0 15px 0; color: #fff; font-size: 14px; line-height: 1.5; opacity: 0.9;">
-          Upgrade to Premium for just $5 and get:
+          Upgrade to Premium for just $20 and get:
         </p>
         <ul style="text-align: left; color: #fff; font-size: 14px; margin: 0 0 20px 0; padding-left: 20px;">
           <li style="margin-bottom: 8px;">✅ <strong>Guaranteed high authority backlink</strong></li>
@@ -254,7 +254,7 @@ Share on X: https://twitter.com/intent/tweet?text=${shareText}&url=${encodeURICo
 
 ${!isPremiumOrFeatured ? `
 🔥 WANT MORE VISIBILITY?
-Upgrade to Premium for just $5 and get:
+Upgrade to Premium for just $20 and get:
 - Guaranteed high authority backlink
 - 14 days on homepage (vs 7 days)
 - Featured in our newsletter

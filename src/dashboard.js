@@ -315,11 +315,11 @@ class Dashboard {
                     <div class="flex space-x-2">
                         <button onclick="dashboard.showUpgradeModal('${listing.id}', '${listing.title.replace(/'/g, "\\'")}', 'premium')" 
                                 class="flex-1 px-3 py-2 bg-orange-400 border-2 border-black brutalist-shadow hover:bg-orange-500 font-bold text-xs">
-                            <i class="fas fa-star mr-1"></i>Premium $5
+                            <i class="fas fa-star mr-1"></i>Premium $20
                         </button>
                         <button onclick="dashboard.showUpgradeModal('${listing.id}', '${listing.title.replace(/'/g, "\\'")}', 'featured')" 
                                 class="flex-1 px-3 py-2 bg-purple-500 text-white border-2 border-purple-700 brutalist-shadow hover:bg-purple-600 font-bold text-xs">
-                            <i class="fas fa-crown mr-1"></i>Featured $25/wk
+                            <i class="fas fa-crown mr-1"></i>Featured $50/wk
                         </button>
                     </div>
                 </div>
@@ -347,7 +347,7 @@ class Dashboard {
                     
                     ${isPremium ? `
                     <div class="mb-6">
-                        <div class="text-3xl font-bold text-orange-500 mb-2">$5 <span class="text-sm text-gray-500 font-normal">one-time</span></div>
+                        <div class="text-3xl font-bold text-orange-500 mb-2">$20 <span class="text-sm text-gray-500 font-normal">one-time</span></div>
                         <ul class="space-y-2 text-sm">
                             <li class="flex items-center"><i class="fas fa-check text-green-500 mr-2"></i><strong>Guaranteed high authority backlink</strong></li>
                             <li class="flex items-center"><i class="fas fa-check text-green-500 mr-2"></i>14 days on homepage (vs 7 days)</li>
@@ -357,7 +357,7 @@ class Dashboard {
                     </div>
                     ` : `
                     <div class="mb-6">
-                        <div class="text-3xl font-bold text-purple-500 mb-2">$25 <span class="text-sm text-gray-500 font-normal">/week</span></div>
+                        <div class="text-3xl font-bold text-purple-500 mb-2">$50 <span class="text-sm text-gray-500 font-normal">/week</span></div>
                         <ul class="space-y-2 text-sm">
                             <li class="flex items-center"><i class="fas fa-check text-green-500 mr-2"></i><strong>Guaranteed high authority backlink</strong></li>
                             <li class="flex items-center"><i class="fas fa-check text-green-500 mr-2"></i>Featured placement at top of feed</li>

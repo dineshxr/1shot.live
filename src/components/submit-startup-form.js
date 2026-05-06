@@ -1380,7 +1380,7 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
                     </div>
                     <div class="flex justify-between items-center mb-2">
                       <h4 class="text-lg font-bold">Featured</h4>
-                      <span class="text-lg font-bold">$5</span>
+                      <span class="text-lg font-bold">$20</span>
                     </div>
                     <ul class="list-disc pl-5 space-y-1 mb-3">
                       <li>Live on homepage for 14 days</li>
@@ -1465,7 +1465,7 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
             }}
                       class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 font-bold"
                     >
-                      Upgrade to Featured ($5)
+                      Upgrade to Featured ($20)
                     </button>
                   </div>
                 ` : html`
