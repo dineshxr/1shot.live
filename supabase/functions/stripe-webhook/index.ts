@@ -134,11 +134,13 @@ async function handleCheckoutComplete(session: Stripe.Checkout.Session) {
     // Premium launch/upgrade - set is_live to true and plan to premium
     // Use payment date for launch_date so it launches immediately
     // Reset notification_sent so they get a new "you're live" email
+    // Flip payment_status to 'paid' so live-publishing crons pick it up
     const { error } = await supabase
       .from("startups")
       .update({
         is_live: true,
         plan: "premium",
+        payment_status: "paid",
         launch_date: paymentDate, // Use payment date for immediate launch
         notification_sent: false,
         notification_sent_at: null,
@@ -187,6 +189,7 @@ async function handleCheckoutComplete(session: Stripe.Checkout.Session) {
       .update({
         plan: "featured",
         is_live: true,
+        payment_status: "paid",
         featured_until: featuredUntil.toISOString(),
         launch_date: paymentDate, // Use payment date for immediate launch
         notification_sent: false,
@@ -232,6 +235,7 @@ async function handleCheckoutComplete(session: Stripe.Checkout.Session) {
       .update({
         is_live: true,
         plan: product,
+        payment_status: "paid",
         launch_date: paymentDate,
         notification_sent: false,
         notification_sent_at: null,

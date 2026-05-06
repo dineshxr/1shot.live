@@ -416,6 +416,11 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
         return nextDate;
       })();
 
+      // Paid plans are inserted as 'pending' so live-publishing crons skip
+      // them until the Stripe webhook flips payment_status to 'paid'.
+      const isPaid = formData.plan === 'premium' || formData.plan === 'featured';
+      const paymentStatus = isPaid ? 'pending' : 'paid';
+
       let { data, error } = await supabase
         .from('startups')
         .insert([{
@@ -427,6 +432,7 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
           author: authorInfo,
           screenshot_url: screenshotUrl,
           plan: formData.plan,
+          payment_status: paymentStatus,
           launch_date: resolvedLaunchDate
         }])
         .select('id, title, url, description, slug, author, screenshot_url, plan, launch_date')
@@ -446,6 +452,7 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
               author: authorInfo,
               screenshot_url: screenshotUrl,
               plan: formData.plan,
+              payment_status: paymentStatus,
               launch_date: resolvedLaunchDate
             }])
             .select('id, title, url, description, slug, author, screenshot_url, plan, launch_date')
@@ -462,21 +469,29 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
         }
       }
 
+      window.trackEvent('form_submit_success', { plan: formData.plan });
+
+      if (isPaid && data?.id) {
+        // Don't show the Congratulations screen yet — the startup isn't
+        // actually live until payment completes. Hand off to Stripe directly.
+        const checkoutResult = await createCheckoutSession(formData.plan, {
+          startupId: data.id,
+          startupTitle: formData.projectName,
+          userEmail: user?.email
+        });
+        // createCheckoutSession sets window.location.href on success, so we
+        // only get here if it failed. Keep the form mounted with an error so
+        // the user can retry instead of being stranded on a congrats page.
+        if (!checkoutResult || checkoutResult.success === false) {
+          throw new Error(checkoutResult?.error || 'Could not start payment. Please try again.');
+        }
+        return;
+      }
+
+      // Free-plan path: the row is live-eligible immediately, so show success.
       setSuccess(true);
       setShowSuccessPage(true);
-      window.trackEvent('form_submit_success', { plan: formData.plan });
       window.dispatchEvent(new Event("refresh-startups"));
-
-      // For paid plans, redirect to Stripe checkout
-      if ((formData.plan === 'premium' || formData.plan === 'featured') && data?.id) {
-        setTimeout(() => {
-          createCheckoutSession(formData.plan, {
-            startupId: data.id,
-            startupTitle: formData.projectName,
-            userEmail: user?.email
-          });
-        }, 2000); // Show success briefly then redirect to payment
-      }
 
     } catch (err) {
       setError(err.message);
@@ -996,7 +1011,7 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
                     class="px-6 py-3 bg-purple-500 text-white border-2 border-purple-600 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:bg-purple-600 font-bold rounded-lg disabled:opacity-50"
                     disabled=${loading}
                   >
-                    ${loading ? html`<i class="fas fa-spinner fa-spin mr-2"></i>Submitting...` : html`Continue to Payment <i class="fas fa-arrow-right ml-2"></i>`}
+                    ${loading ? html`<i class="fas fa-spinner fa-spin mr-2"></i>Redirecting to Stripe...` : html`Continue to Payment <i class="fas fa-arrow-right ml-2"></i>`}
                   </button>
                 ` : ''}
 
@@ -1006,7 +1021,7 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
                     class="px-6 py-3 bg-orange-500 text-white border-2 border-orange-600 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:bg-orange-600 font-bold rounded-lg disabled:opacity-50"
                     disabled=${loading}
                   >
-                    ${loading ? html`<i class="fas fa-spinner fa-spin mr-2"></i>Submitting...` : html`Continue to Payment <i class="fas fa-arrow-right ml-2"></i>`}
+                    ${loading ? html`<i class="fas fa-spinner fa-spin mr-2"></i>Redirecting to Stripe...` : html`Continue to Payment <i class="fas fa-arrow-right ml-2"></i>`}
                   </button>
                 ` : ''}
               </div>

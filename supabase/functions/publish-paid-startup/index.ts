@@ -38,7 +38,7 @@ serve(async (req) => {
     // Get the startup details
     const { data: startup, error: startupError } = await supabase
       .from('startups')
-      .select('id, title, slug, description, plan, author, launch_date, is_live')
+      .select('id, title, slug, description, plan, author, launch_date, is_live, payment_status')
       .eq('id', startupId)
       .single()
 
@@ -46,9 +46,9 @@ serve(async (req) => {
       console.error('Startup not found:', startupError)
       return new Response(
         JSON.stringify({ error: 'Startup not found' }),
-        { 
+        {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: 404 
+          status: 404
         }
       )
     }
@@ -57,13 +57,13 @@ serve(async (req) => {
     if (startup.is_live) {
       console.log(`Startup ${startup.title} is already live`)
       return new Response(
-        JSON.stringify({ 
+        JSON.stringify({
           message: 'Startup is already live',
           startup: startup
         }),
-        { 
+        {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: 200 
+          status: 200
         }
       )
     }
@@ -74,9 +74,23 @@ serve(async (req) => {
       console.log(`Startup ${startup.title} is not a paid plan (plan: ${startup.plan})`)
       return new Response(
         JSON.stringify({ error: 'Only paid startups can be published immediately' }),
-        { 
+        {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: 400 
+          status: 400
+        }
+      )
+    }
+
+    // Defense in depth: never publish a paid-plan row whose payment hasn't
+    // been confirmed by the Stripe webhook, even if this function is invoked
+    // outside its normal call site.
+    if (startup.payment_status !== 'paid') {
+      console.log(`Refusing to publish ${startup.title} — payment_status=${startup.payment_status}`)
+      return new Response(
+        JSON.stringify({ error: 'Payment not confirmed for this startup' }),
+        {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 402 // Payment Required
         }
       )
     }

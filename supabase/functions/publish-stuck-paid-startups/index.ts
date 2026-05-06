@@ -20,12 +20,16 @@ serve(async (req) => {
 
     console.log("Finding stuck paid startups...")
 
-    // Find all paid startups that are not live yet
+    // Find paid startups that have actually paid but are not live yet.
+    // CRITICAL: filter on payment_status='paid' so unpaid pending rows
+    // (inserted at form-submit time, awaiting Stripe webhook) are never
+    // promoted to live by this function.
     const { data: stuckStartups, error: findError } = await supabase
       .from('startups')
-      .select('id, title, slug, description, plan, author, launch_date, is_live, created_at')
+      .select('id, title, slug, description, plan, author, launch_date, is_live, created_at, payment_status')
       .eq('is_live', false)
       .eq('archived', false)
+      .eq('payment_status', 'paid')
       .in('plan', ['premium', 'featured'])
       .order('created_at', { ascending: true })
 

@@ -29,7 +29,7 @@ serve(async (req) => {
     console.log(`Current PST time: ${pstTime.toISOString()}, Hour: ${currentHour}, Date: ${todayPst}`)
     const { data: startupsToGoLive, error: startupsError } = await supabase
       .from('startups')
-      .select('id, title, slug, description, plan, author, launch_date')
+      .select('id, title, slug, description, plan, author, launch_date, payment_status')
       .eq('is_live', false)
       .eq('archived', false)
       .or(`launch_date.lte.${todayPst},plan.in.(premium,featured)`)
@@ -43,12 +43,17 @@ serve(async (req) => {
 
     const listings = (startupsToGoLive || [])
       .filter((s: any) => {
-        // Paid startups (premium/featured) should go live immediately regardless of launch_date or time
+        // Paid startups (premium/featured) should go live immediately regardless
+        // of launch_date or time — but ONLY if payment has been confirmed.
         if (s.plan === 'premium' || s.plan === 'featured') {
+          if (s.payment_status !== 'paid') {
+            console.log(`Skipping unpaid ${s.plan} startup ${s.title} (payment_status=${s.payment_status})`)
+            return false
+          }
           console.log(`Processing paid startup: ${s.title} (${s.plan})`)
           return true
         }
-        
+
         // For free startups, check if it's past 8 AM PST
         if (currentHour < 8) {
           console.log(`Skipping free startup ${s.title} - too early (${currentHour} PST < 8 AM PST)`)
@@ -164,13 +169,15 @@ serve(async (req) => {
       }
     }
 
-    // Retry missed notifications: startups that went live but email was never sent
-    // Note: author->>email filter removed - JS operator not supported in .not() filter; JS null-check handles it
+    // Retry missed notifications: startups that went live but email was never sent.
+    // Filter on payment_status so unpaid paid-plan rows that somehow reached
+    // is_live=true (legacy data, manual edits) don't trigger launch emails.
     const { data: missedStartups, error: missedError } = await supabase
       .from('startups')
-      .select('id, title, slug, description, plan, author, launch_date')
+      .select('id, title, slug, description, plan, author, launch_date, payment_status')
       .eq('is_live', true)
       .eq('notification_sent', false)
+      .or('plan.eq.free,payment_status.eq.paid')
       .order('launch_date', { ascending: true })
       .limit(30)
 

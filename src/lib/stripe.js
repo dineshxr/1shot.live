@@ -51,12 +51,16 @@ export async function createCheckoutSession(product, options = {}) {
     }
 
     const { url } = await response.json();
-    
-    // Redirect to Stripe Checkout
-    if (url) {
-      window.location.href = url;
+
+    if (!url) {
+      throw new Error('Stripe did not return a checkout URL');
     }
-    
+
+    // Redirect to Stripe Checkout. After this assignment the browser navigates
+    // and JS execution effectively ends; the return below is only reached if
+    // navigation is somehow blocked.
+    window.location.href = url;
+
     return { success: true };
   } catch (error) {
     console.error('Stripe checkout error:', error);
