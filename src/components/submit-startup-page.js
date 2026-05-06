@@ -188,7 +188,9 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
       } else {
         setUserHasPreviousSubmissions(data && data.length > 0);
         if (data && data.length > 0) {
-          setFormData(prev => ({ ...prev, plan: 'premium' }));
+          // Only force-upgrade to premium when the user is still on the free
+          // plan (e.g. they didn't arrive via /submit?plan=premium|featured).
+          setFormData(prev => prev.plan === 'free' ? { ...prev, plan: 'premium' } : prev);
         }
       }
     } catch (err) {
@@ -390,7 +392,31 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
         email: contactEmail
       };
 
-      const { data, error } = await supabase
+      const resolvedLaunchDate = formData.launchDate || await (async () => {
+        // For paid plans, use today's PST date so it launches on payment date
+        if (formData.plan && formData.plan !== 'free') {
+          const pstNow = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Los_Angeles' }));
+          return pstNow.getFullYear() + '-' +
+            String(pstNow.getMonth() + 1).padStart(2, '0') + '-' +
+            String(pstNow.getDate()).padStart(2, '0');
+        }
+        // For free plan, get next available scheduled date
+        const { data: nextDate, error: dateError } = await supabase.rpc('get_next_launch_date');
+        if (dateError) {
+          const pst = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Los_Angeles' }));
+          let nextDay = new Date(pst);
+          nextDay.setDate(pst.getDate() + 1);
+          while (nextDay.getDay() === 0 || nextDay.getDay() === 6) {
+            nextDay.setDate(nextDay.getDate() + 1);
+          }
+          return nextDay.getFullYear() + '-' +
+            String(nextDay.getMonth() + 1).padStart(2, '0') + '-' +
+            String(nextDay.getDate()).padStart(2, '0');
+        }
+        return nextDate;
+      })();
+
+      let { data, error } = await supabase
         .from('startups')
         .insert([{
           title: formData.projectName,
@@ -400,30 +426,8 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
           category: formData.category,
           author: authorInfo,
           screenshot_url: screenshotUrl,
-          plan: 'free',
-          launch_date: formData.launchDate || await (async () => {
-            // For paid plans, use today's PST date so it launches on payment date
-            if (formData.plan && formData.plan !== 'free') {
-              const pstNow = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Los_Angeles' }));
-              return pstNow.getFullYear() + '-' +
-                String(pstNow.getMonth() + 1).padStart(2, '0') + '-' +
-                String(pstNow.getDate()).padStart(2, '0');
-            }
-            // For free plan, get next available scheduled date
-            const { data: nextDate, error: dateError } = await supabase.rpc('get_next_launch_date');
-            if (dateError) {
-              const pst = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Los_Angeles' }));
-              let nextDay = new Date(pst);
-              nextDay.setDate(pst.getDate() + 1);
-              while (nextDay.getDay() === 0 || nextDay.getDay() === 6) {
-                nextDay.setDate(nextDay.getDate() + 1);
-              }
-              return nextDay.getFullYear() + '-' +
-                String(nextDay.getMonth() + 1).padStart(2, '0') + '-' +
-                String(nextDay.getDate()).padStart(2, '0');
-            }
-            return nextDate;
-          })()
+          plan: formData.plan,
+          launch_date: resolvedLaunchDate
         }])
         .select('id, title, url, description, slug, author, screenshot_url, plan, launch_date')
         .single();
@@ -441,15 +445,16 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
               category: formData.category,
               author: authorInfo,
               screenshot_url: screenshotUrl,
-              plan: 'free',
-              launch_date: formData.launchDate
+              plan: formData.plan,
+              launch_date: resolvedLaunchDate
             }])
-            .select()
+            .select('id, title, url, description, slug, author, screenshot_url, plan, launch_date')
             .single();
 
           if (retryError) {
             throw new Error('Unable to generate a unique slug. Please try again.');
           }
+          data = retryData;
         } else if (error.code === '23505' && error.message?.includes('startups_url_key')) {
           throw new Error('This URL has already been submitted.');
         } else {
@@ -462,10 +467,10 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
       window.trackEvent('form_submit_success', { plan: formData.plan });
       window.dispatchEvent(new Event("refresh-startups"));
 
-      // If premium plan, redirect to Stripe checkout
-      if (formData.plan === 'premium' && data?.id) {
+      // For paid plans, redirect to Stripe checkout
+      if ((formData.plan === 'premium' || formData.plan === 'featured') && data?.id) {
         setTimeout(() => {
-          createCheckoutSession('premium', {
+          createCheckoutSession(formData.plan, {
             startupId: data.id,
             startupTitle: formData.projectName,
             userEmail: user?.email
@@ -512,18 +517,18 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
           
           <div class="mb-6 p-4 bg-green-100 border-2 border-green-500 rounded text-center">
             <p class="text-green-700 font-bold text-xl mb-2">Congratulations!</p>
-            ${formData.plan === 'premium' ? '' : html`
+            ${formData.plan === 'free' ? html`
               <p class="text-green-700">Your startup will be featured on the Home Page shortly.</p>
-            `}
+            ` : ''}
           </div>
-          
-          ${formData.plan === 'premium' ? html`
+
+          ${formData.plan === 'premium' || formData.plan === 'featured' ? html`
             <div class="mb-4 bg-yellow-300 p-3 border border-black rounded">
               <div class="flex items-center gap-3">
                 <div class="animate-spin rounded-full h-5 w-5 border-b-2 border-black"></div>
                 <div>
                   <p class="font-bold mb-1">Redirecting to payment...</p>
-                  <p class="text-sm">You'll be redirected to Stripe to complete your $20 payment.</p>
+                  <p class="text-sm">You'll be redirected to Stripe to complete your ${formData.plan === 'featured' ? '$50/week subscription' : '$20 payment'}.</p>
                 </div>
               </div>
             </div>
@@ -739,7 +744,7 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
                 </div>
               ` : ''}
               
-              ${userHasPreviousSubmissions ? html`
+              ${userHasPreviousSubmissions && formData.plan === 'free' ? html`
                 <div class="p-4 bg-yellow-50 border-2 border-yellow-300 rounded-lg">
                   <p class="text-yellow-700 text-sm">
                     You have already submitted a startup for free. Please choose the Premium plan for additional submissions.
@@ -878,13 +883,13 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
                 </div>
                 
                 <!-- Featured Spot -->
-                <div 
-                  class="bg-white rounded-xl overflow-hidden transition-all flex flex-col border-2 border-purple-300 hover:shadow-lg"
+                <div
+                  class="bg-white rounded-xl overflow-hidden transition-all flex flex-col ${formData.plan === 'featured' ? 'ring-4 ring-purple-500 shadow-xl' : 'border-2 border-purple-300 hover:shadow-lg'}"
                 >
                   <div class="bg-purple-500 px-5 py-3 border-b-4 border-purple-600">
                     <span class="text-white text-xs font-bold uppercase tracking-wide">FEATURED SPOT</span>
                   </div>
-                  
+
                   <div class="p-5 flex-1 flex flex-col">
                     <div class="mb-1 text-gray-500 text-sm">Premium Placement</div>
                     <div class="flex items-baseline mb-4">
@@ -892,13 +897,13 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
                       <span class="text-gray-500 ml-1 text-sm">/week</span>
                     </div>
                     <div class="text-xs text-gray-500 mb-4">recurring subscription</div>
-                    
+
                     <button
                       type="button"
-                      class="w-full py-3 px-4 bg-purple-500 text-white rounded-lg font-bold text-sm mb-6 flex items-center justify-center gap-2 hover:bg-purple-600 transition-all"
-                      onClick=${() => createCheckoutSession('featured', { userEmail: user?.email })}
+                      class="w-full py-3 px-4 rounded-lg font-bold text-sm mb-6 flex items-center justify-center gap-2 transition-all ${formData.plan === 'featured' ? 'bg-purple-600 text-white' : 'bg-purple-500 text-white hover:bg-purple-600'}"
+                      onClick=${() => selectPlan('featured')}
                     >
-                      Get Featured <i class="fas fa-arrow-right"></i>
+                      ${formData.plan === 'featured' ? html`<i class="fas fa-check"></i> Selected` : html`Choose Featured <i class="fas fa-arrow-right"></i>`}
                     </button>
                     
                     <div class="space-y-3 flex-1">
@@ -985,6 +990,16 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
                   </button>
                 ` : ''}
                 
+                ${formData.plan === 'featured' ? html`
+                  <button
+                    type="submit"
+                    class="px-6 py-3 bg-purple-500 text-white border-2 border-purple-600 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:bg-purple-600 font-bold rounded-lg disabled:opacity-50"
+                    disabled=${loading}
+                  >
+                    ${loading ? html`<i class="fas fa-spinner fa-spin mr-2"></i>Submitting...` : html`Continue to Payment <i class="fas fa-arrow-right ml-2"></i>`}
+                  </button>
+                ` : ''}
+
                 ${formData.plan === 'premium' ? html`
                   <button
                     type="submit"
