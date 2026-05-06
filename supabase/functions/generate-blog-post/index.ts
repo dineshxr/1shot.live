@@ -133,7 +133,7 @@ async function generateWithOpenRouter(startup: any, apiKey: string, isPaid: bool
   const description = startup.tagline || startup.description || ''
   const startupUrl = `https://submithunt.com/startup/${startup.slug || startup.id}`
 
-  const prompt = `You are an expert conversion copywriter and SEO strategist. Write a compelling, high-ranking blog post about "${startup.title}" — a ${category} startup.
+  const prompt = `Write a 700–900 word blog post about "${startup.title}" — a ${category} startup. The post must do two jobs at once: rank on Google for "${startup.title}" and ${category}-tool searches, and funnel readers to ${startup.url}.
 
 Startup context:
 - Name: ${startup.title}
@@ -143,30 +143,48 @@ Startup context:
 - SubmitHunt listing: ${startupUrl}
 ${isPaid ? '- Status: Featured/Premium listing on SubmitHunt' : ''}
 
-Copywriting rules you MUST follow:
-1. Open with a hook — a sharp question or bold statement that calls out the reader's specific pain point in the ${category} space. No generic intros.
-2. Benefits over features — every feature mentioned must be followed by the outcome it creates for the user.
-3. Be specific, never vague — avoid words like "innovative", "streamline", "optimize". Describe real results.
-4. Use active voice throughout. No passive constructions.
-5. Write like a sharp product journalist, not a press release.
-6. One idea per section — build a logical argument from pain → solution → proof → action.
-7. Include a strong, specific CTA at the end that tells the reader exactly what to do and why now.
+WRITING STYLE — non-negotiable:
+1. Clarity over cleverness. Short sentences. Plain words. "Use" not "utilize." "Help" not "facilitate."
+2. Benefits, not features. Every feature must be followed by the concrete outcome it creates for the reader.
+3. Specific, not vague. BANNED words: innovative, streamline, optimize, seamless, leverage, robust, cutting-edge, revolutionary, game-changing, world-class, next-gen, unlock, empower, supercharge.
+4. Active voice. No passive constructions. ("We ship reports" not "Reports are shipped".)
+5. Confident, not qualified. Drop hedge words: very, really, almost, basically, just.
+6. Customer language. Mirror how a ${category} buyer would actually describe their problem out loud.
+7. No exclamation points anywhere. No emojis in the article body.
+8. Show, don't tell. If you'd write "fast," replace with the time saved. If you'd write "easy," describe the steps it removes.
+9. Honest. Do not fabricate stats, testimonials, user counts, funding numbers, or company history. If you don't know it, don't claim it.
 
-SEO rules:
-- Naturally include long-tail keywords for "${startup.title}", "${category} tools", "best ${category} software"
-- Use H2 and H3 headings that a reader would actually search for
-- Link to ${startup.url} (as the primary CTA) and https://submithunt.com (as context for discovery)
-- Target 700-900 words
+HEADLINE — pick the formula that fits, then write a single headline (max 65 characters):
+- "{Outcome} without {pain point}"
+- "The ${category} ${startup.title.includes(' ') ? 'tool' : 'app'} for {specific audience}"
+- "Stop {painful action}. Start {outcome}."
+- "${startup.title} review: {specific claim a reader can verify}"
+- A sharp question that names the reader's pain in the ${category} space.
+Avoid: "Best [X] in 2025", "Ultimate Guide to…", "Top 10…", clickbait.
 
-${isPaid ? 'Since this is a featured listing, open with a brief "Editor\'s Pick" callout before the main content.' : ''}
+STRUCTURE — one idea per section, logical flow from pain to action:
+${isPaid ? '- Open with a one-line "Editor\'s Pick" callout (italic <p><em>…</em></p>), then the hook below.\n' : ''}- Hook (1 short paragraph): a rhetorical question OR a sharp pain-point statement a ${category} reader would nod at. No "In today's world…" intros.
+- <h2> The problem this solves: 1–2 paragraphs naming the specific pain in ${category} workflows. Use concrete examples a buyer would recognize.
+- <h2> What ${startup.title} does: factual description in 1–2 paragraphs. Lead with the outcome it produces, then the mechanism. Link the brand name to ${startup.url} on first mention.
+- <h2> What you get out of it: 3–5 bullet points, each starting with a <strong>concrete benefit</strong> and ending with the user-side outcome. Pattern: "<strong>{Outcome}.</strong> {How it works in one sentence.}"
+- <h2> Who it's for (and who it isn't): 1 short paragraph for each. Name the role/team. Saying who it isn't for builds trust.
+- <h2> Getting started: 2–4 sentences on the first action. Link ${startup.url} again here as the primary CTA. Mention the SubmitHunt listing (${startupUrl}) once for community context.
+- <h2> Bottom line: 1 paragraph that recaps the single most useful thing about ${startup.title} and tells the reader exactly what to do next.
 
-Respond ONLY with valid JSON — no markdown fences, no extra text:
+CTA RULES — every link to ${startup.url} should use action-led anchor text. GOOD: "Try ${startup.title}", "See ${startup.title} in action", "Get started with ${startup.title}". BAD: "click here", "learn more", "visit website", "sign up".
+
+SEO RULES:
+- Use ${startup.title} naturally in the H1, the first paragraph, one H2, and the closing paragraph. Do not keyword-stuff.
+- Long-tail terms to weave in once each, only where they fit naturally: "${startup.title} review", "best ${category} tools", "${category} software for founders".
+- Headings should match what a buyer would type into Google — not internal jargon.
+
+OUTPUT — respond with valid JSON only. No markdown fences, no commentary outside the JSON.
 {
-  "title": "Punchy, SEO-rich headline (max 65 chars)",
-  "content": "Full HTML article with <h2>, <h3>, <p>, <ul>, <li>, <strong> tags. No inline styles. Min 700 words.",
-  "excerpt": "One punchy sentence (max 160 chars) that sells the article",
-  "metaDescription": "SEO meta description (max 160 chars) with primary keyword near the front",
-  "keywords": ["5 to 7 specific long-tail keywords as an array"]
+  "title": "Single headline, max 65 chars, no exclamation point",
+  "content": "Full HTML article. Allowed tags only: <h2>, <h3>, <p>, <ul>, <li>, <strong>, <em>, <a>. No inline styles. No <h1> (the page renders that). 700–900 words.",
+  "excerpt": "One sentence, max 160 chars, that sells the article without using any banned word above",
+  "metaDescription": "SEO meta description, max 160 chars, primary keyword in the first 60 chars",
+  "keywords": ["5–7 specific long-tail keywords, lowercase, no duplicates"]
 }`
 
   const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
@@ -182,14 +200,14 @@ Respond ONLY with valid JSON — no markdown fences, no extra text:
       messages: [
         {
           role: 'system',
-          content: 'You are an expert conversion copywriter and SEO content strategist. You write product-focused blog posts that rank on Google and convert readers into users. Your writing is direct, specific, and benefit-driven. You never use filler phrases, passive voice, or vague superlatives.'
+          content: 'You are a senior conversion copywriter who writes product-focused blog posts that rank on Google AND convert readers into trial users. You follow these rules without exception: clarity over cleverness, benefits over features, specific over vague, active over passive, confident over qualified, honest over sensational. You never invent statistics, testimonials, or facts about a product. You never use the words "innovative", "streamline", "optimize", "seamless", "leverage", "robust", "revolutionary", "game-changing", or "unlock". You never use exclamation points.'
         },
         {
           role: 'user',
           content: prompt
         }
       ],
-      temperature: 0.65,
+      temperature: 0.55,
       max_tokens: 2500
     })
   })

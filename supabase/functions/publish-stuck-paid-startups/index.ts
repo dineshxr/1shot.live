@@ -58,7 +58,7 @@ serve(async (req) => {
         // Update startup to live immediately
         const { error: updateError } = await supabase
           .from('startups')
-          .update({ 
+          .update({
             is_live: true,
             launch_date: new Date().toISOString().split('T')[0], // Set launch date to today
             notification_sent: false, // Reset so notification gets sent
@@ -72,12 +72,20 @@ serve(async (req) => {
 
         console.log(`Successfully published stuck startup: ${startup.title}`)
 
+        // Compute blog URL deterministically and wait briefly for blog generation
+        // so the recipient lands on real content when they click through.
+        const blogUrl = `https://submithunt.com/blog/${startup.slug || slugify(startup.title)}-review`
+        await Promise.race([
+          generateBlogPostAwaitable(startup.id),
+          new Promise(resolve => setTimeout(resolve, 25000))
+        ])
+
         // Send live notification
         const emailSent = await sendLiveNotification({
           ...startup,
           author_email: startup.author?.email,
           author_name: startup.author?.name,
-        })
+        }, blogUrl)
 
         // Update notification status
         await supabase
@@ -139,7 +147,35 @@ serve(async (req) => {
   }
 })
 
-async function sendLiveNotification(listing: any): Promise<boolean> {
+function slugify(text: string): string {
+  return text
+    .toLowerCase()
+    .replace(/[^\w\s-]/g, '')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+    .trim()
+}
+
+async function generateBlogPostAwaitable(startupId: string): Promise<void> {
+  const supabaseUrl = Deno.env.get('SUPABASE_URL')!
+  const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+  try {
+    const r = await fetch(`${supabaseUrl}/functions/v1/generate-blog-post`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${supabaseServiceKey}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ startup_id: startupId })
+    })
+    const body = await r.json()
+    console.log(`Blog generated for ${startupId}: slug=${body.blog_slug}, duplicate=${body.duplicate}`)
+  } catch (e) {
+    console.error(`Blog generation error for ${startupId}:`, e)
+  }
+}
+
+async function sendLiveNotification(listing: any, blogUrl: string | null = null): Promise<boolean> {
   try {
     // Use Resend API for sending emails
     const resendApiKey = Deno.env.get('RESEND_API_KEY')
@@ -226,7 +262,16 @@ async function sendLiveNotification(listing: any): Promise<boolean> {
         </p>
       </div>
       `}
-      
+
+      ${blogUrl ? `
+      <!-- Blog Post Link -->
+      <div style="background-color: #f0fdf4; border: 1px solid #86efac; border-radius: 8px; padding: 20px; margin: 20px 0;">
+        <h3 style="margin: 0 0 8px 0; color: #166534; font-size: 16px;">Your dedicated blog post is live</h3>
+        <p style="margin: 0 0 12px 0; color: #15803d; font-size: 14px; line-height: 1.5;">We've published an SEO-optimized blog post about ${listing.title} to drive extra organic traffic to your listing.</p>
+        <a href="${blogUrl}" style="display: inline-block; background-color: #16a34a; color: #fff; padding: 10px 20px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 14px;">Read your blog post →</a>
+      </div>
+      ` : ''}
+
       <!-- Tips -->
       <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e9ecef;">
         <h4 style="margin: 0 0 15px 0; color: #333; font-size: 16px;">💡 Quick Tips to Maximize Your Launch:</h4>
@@ -281,7 +326,11 @@ Upgrade now: https://submithunt.com/submit
 🎉 Thank you for going Premium! Your listing is featured with priority placement.
 `}
 
-💡 Quick Tips:
+${blogUrl ? `YOUR BLOG POST IS LIVE
+We've published an SEO-optimized blog post to help drive traffic to your listing:
+${blogUrl}
+
+` : ''}💡 Quick Tips:
 1. Share on social media and tag @SubmitHunt
 2. Ask your community to upvote
 3. Engage with comments on your listing

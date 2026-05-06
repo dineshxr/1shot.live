@@ -82,6 +82,15 @@ serve(async (req) => {
 
     console.log(`Found ${listings?.length || 0} listings to go live`)
 
+    // Kick off blog generation for ALL of today's launches in parallel up front,
+    // before we touch the missed-notifications backlog. This way today's posts
+    // get OpenRouter capacity first and are likely ready by the time each email
+    // is sent below.
+    const blogGenPromises = new Map<string, Promise<void>>()
+    for (const listing of listings) {
+      blogGenPromises.set(listing.id, triggerBlogGenerationAwaitable(listing.id))
+    }
+
     // Process each new listing: mark live + send email
     const results = []
     for (let i = 0; i < listings.length; i++) {
@@ -100,8 +109,16 @@ serve(async (req) => {
         const blogUrl = `https://submithunt.com/blog/${listing.slug || slugify(listing.title)}-review`
         console.log(`Blog URL for ${listing.title}: ${blogUrl}`)
 
-        // Trigger blog generation non-blocking (HTTP call completes independently in its own edge function context)
-        triggerBlogGeneration(listing.id)
+        // Wait up to 25s for the blog post to actually exist before sending the
+        // email. The URL works either way (placeholder) but we want the recipient
+        // to land on real content if at all possible.
+        const genPromise = blogGenPromises.get(listing.id)
+        if (genPromise) {
+          await Promise.race([
+            genPromise,
+            new Promise(resolve => setTimeout(resolve, 25000))
+          ])
+        }
 
         // Send email notification with blog URL
         const emailSent = await sendLiveNotification(listing, blogUrl)
@@ -257,6 +274,25 @@ function triggerBlogGeneration(startupId: string): void {
     },
     body: JSON.stringify({ startup_id: startupId })
   }).then(r => r.json()).then(r => console.log(`Blog triggered for ${startupId}: slug=${r.blog_slug}, duplicate=${r.duplicate}`)).catch(e => console.error(`Blog trigger error for ${startupId}:`, e))
+}
+
+async function triggerBlogGenerationAwaitable(startupId: string): Promise<void> {
+  const supabaseUrl = Deno.env.get('SUPABASE_URL')!
+  const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+  try {
+    const r = await fetch(`${supabaseUrl}/functions/v1/generate-blog-post`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${supabaseServiceKey}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ startup_id: startupId })
+    })
+    const body = await r.json()
+    console.log(`Blog generated for ${startupId}: slug=${body.blog_slug}, duplicate=${body.duplicate}`)
+  } catch (e) {
+    console.error(`Blog generation error for ${startupId}:`, e)
+  }
 }
 
 function slugify(text: string): string {
