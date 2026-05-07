@@ -313,6 +313,15 @@ inspector_port = 8083
 [functions.submit-game]
 verify_jwt = false
 
+# Public, anonymous browsers initiate Stripe Checkout from the submit form.
+[functions.create-checkout]
+verify_jwt = false
+
+# Stripe POSTs webhooks without a Supabase JWT. Signature verification
+# inside the function is the security boundary.
+[functions.stripe-webhook]
+verify_jwt = false
+
 [analytics]
 enabled = true
 port = 54327
