@@ -11,10 +11,12 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-// Price IDs from Stripe Dashboard - you need to create these products in Stripe
+// Price IDs from Stripe Dashboard. Env vars take precedence; fallbacks must
+// always be the CURRENT active Price IDs. When pricing changes, archive old
+// prices in Stripe AFTER updating both the env vars and these fallbacks.
 const PRICE_IDS = {
-  premium: Deno.env.get("STRIPE_PREMIUM_PRICE_ID") || "price_1TU70f9t8rFDtfIcz0FiD0Q9", // $20 one-time
-  featured: Deno.env.get("STRIPE_FEATURED_PRICE_ID") || "price_1TU70f9t8rFDtfIcyc4xl4b9", // $50/week
+  premium: Deno.env.get("STRIPE_PREMIUM_PRICE_ID") || "price_1TUWnH9t8rFDtfIcbVupUviU", // $20 one-time
+  featured: Deno.env.get("STRIPE_FEATURED_PRICE_ID") || "price_1TUWne9t8rFDtfIcF1rGaIJZ", // $50/week
 };
 
 serve(async (req) => {
