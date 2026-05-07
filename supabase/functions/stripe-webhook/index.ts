@@ -17,34 +17,40 @@ const webhookSecret = Deno.env.get("STRIPE_WEBHOOK_SECRET") as string;
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
 serve(async (req) => {
+  // Webhook signature verification is mandatory. The previous fallback that
+  // parsed unsigned bodies when STRIPE_WEBHOOK_SECRET was missing meant any
+  // public POST could mark a startup paid+live. Fail closed instead.
+  if (!webhookSecret) {
+    console.error("STRIPE_WEBHOOK_SECRET is not configured — refusing to process webhook");
+    return new Response(
+      JSON.stringify({ error: "Webhook not configured" }),
+      { status: 500 }
+    );
+  }
+
   const signature = req.headers.get("stripe-signature");
+  if (!signature) {
+    console.error("Missing stripe-signature header");
+    return new Response(
+      JSON.stringify({ error: "Missing signature" }),
+      { status: 400 }
+    );
+  }
+
   const body = await req.text();
 
   let event: Stripe.Event;
-
-  // If webhook secret is not configured, skip signature verification (for testing)
-  // In production, ALWAYS configure STRIPE_WEBHOOK_SECRET
-  if (!webhookSecret) {
-    console.warn("STRIPE_WEBHOOK_SECRET not configured - skipping signature verification");
-    try {
-      event = JSON.parse(body) as Stripe.Event;
-    } catch (err) {
-      console.error("Failed to parse webhook body:", err.message);
-      return new Response(JSON.stringify({ error: "Invalid JSON" }), { status: 400 });
-    }
-  } else {
-    try {
-      event = await stripe.webhooks.constructEventAsync(
-        body,
-        signature!,
-        webhookSecret,
-        undefined,
-        cryptoProvider
-      );
-    } catch (err) {
-      console.error("Webhook signature verification failed:", err.message);
-      return new Response(JSON.stringify({ error: "Invalid signature" }), { status: 400 });
-    }
+  try {
+    event = await stripe.webhooks.constructEventAsync(
+      body,
+      signature,
+      webhookSecret,
+      undefined,
+      cryptoProvider
+    );
+  } catch (err) {
+    console.error("Webhook signature verification failed:", err.message);
+    return new Response(JSON.stringify({ error: "Invalid signature" }), { status: 400 });
   }
 
   console.log("Received event:", event.type);

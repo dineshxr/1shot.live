@@ -14,9 +14,10 @@ const corsHeaders = {
 // Price IDs from Stripe Dashboard. Env vars take precedence; fallbacks must
 // always be the CURRENT active Price IDs. When pricing changes, archive old
 // prices in Stripe AFTER updating both the env vars and these fallbacks.
+// Both products are now one-time payments (mode: "payment" below).
 const PRICE_IDS = {
   premium: Deno.env.get("STRIPE_PREMIUM_PRICE_ID") || "price_1TUWnH9t8rFDtfIcbVupUviU", // $20 one-time
-  featured: Deno.env.get("STRIPE_FEATURED_PRICE_ID") || "price_1TUWne9t8rFDtfIcF1rGaIJZ", // $50/week
+  featured: Deno.env.get("STRIPE_FEATURED_PRICE_ID") || "price_1TUWne9t8rFDtfIcF1rGaIJZ", // $50 one-time
 };
 
 serve(async (req) => {
@@ -36,9 +37,11 @@ serve(async (req) => {
     }
 
     const priceId = PRICE_IDS[product as keyof typeof PRICE_IDS];
-    
-    // Determine if this is a subscription (featured) or one-time (premium)
-    const mode = product === "featured" ? "subscription" : "payment";
+
+    // All products are one-time payments. The webhook flips the startup
+    // payment_status to 'paid' on checkout.session.completed so cron
+    // publishers can promote it to is_live=true.
+    const mode = "payment" as const;
 
     const sessionParams: Stripe.Checkout.SessionCreateParams = {
       payment_method_types: ["card"],

@@ -183,9 +183,9 @@ const PricingPage = () => {
                 <h3 class="text-xl font-bold text-gray-900 mb-2">Featured Spot</h3>
                 <div class="flex items-baseline gap-1 mb-2">
                   <span class="text-4xl font-bold text-gray-900">$50</span>
-                  <span class="text-gray-500">/week</span>
+                  <span class="text-gray-500">one-time</span>
                 </div>
-                <div class="text-sm text-gray-500">Premium placement in feed</div>
+                <div class="text-sm text-gray-500">Premium placement for 7 days</div>
               </div>
               
               <div class="space-y-3 mb-8 text-sm">
@@ -212,9 +212,9 @@ const PricingPage = () => {
                 
                 <div class="flex items-start gap-3">
                   <span class="text-purple-500 mt-0.5">
-                    <i class="fas fa-redo"></i>
+                    <i class="fas fa-bolt"></i>
                   </span>
-                  <span class="text-gray-700">Renews weekly, cancel anytime</span>
+                  <span class="text-gray-700">One-time payment, no subscription</span>
                 </div>
               </div>
               

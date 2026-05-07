@@ -543,7 +543,7 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
                 <div class="animate-spin rounded-full h-5 w-5 border-b-2 border-black"></div>
                 <div>
                   <p class="font-bold mb-1">Redirecting to payment...</p>
-                  <p class="text-sm">You'll be redirected to Stripe to complete your ${formData.plan === 'featured' ? '$50/week subscription' : '$20 payment'}.</p>
+                  <p class="text-sm">You'll be redirected to Stripe to complete your ${formData.plan === 'featured' ? '$50 payment' : '$20 payment'}.</p>
                 </div>
               </div>
             </div>
@@ -909,9 +909,9 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
                     <div class="mb-1 text-gray-500 text-sm">Premium Placement</div>
                     <div class="flex items-baseline mb-4">
                       <span class="text-4xl font-bold text-gray-900">$50</span>
-                      <span class="text-gray-500 ml-1 text-sm">/week</span>
+                      <span class="text-gray-500 ml-1 text-sm">one-time</span>
                     </div>
-                    <div class="text-xs text-gray-500 mb-4">recurring subscription</div>
+                    <div class="text-xs text-gray-500 mb-4">7 days featured, no subscription</div>
 
                     <button
                       type="button"
@@ -936,7 +936,7 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
                       </div>
                       <div class="flex items-start gap-2">
                         <span class="text-green-500 mt-0.5"><i class="fas fa-check-circle"></i></span>
-                        <span class="text-gray-700 text-sm">Cancel anytime</span>
+                        <span class="text-gray-700 text-sm">One-time payment, no subscription</span>
                       </div>
                     </div>
                   </div>
