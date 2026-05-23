@@ -355,7 +355,10 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
     setLoading(true);
     setError(null);
 
-    window.trackEvent('form_submit');
+    window.trackEvent('form_submit', { plan: formData.plan });
+    // Checkpoint logs so a stuck spinner can be diagnosed from DevTools
+    // without redeploying. Each successful step prints its own line.
+    console.info('[submit] handleSubmit start', { plan: formData.plan });
 
     try {
       if (!formData.url) throw new Error("Please enter a valid URL");
@@ -368,21 +371,55 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
 
       const supabase = supabaseClient();
 
+      // Screenshot capture is best-effort and goes through the Microlink free
+      // tier, which is rate-limited and frequently slow. A hung screenshot
+      // call here used to strand users on a stuck spinner with no console
+      // error and no Stripe handoff. Bound it with a 6s timeout so we always
+      // move on to the insert + Stripe redirect even if Microlink is down.
       let screenshotUrl = null;
+      const SCREENSHOT_TIMEOUT_MS = 6000;
       try {
-        const capturedScreenshotUrl = await captureScreenshot(formData.url, {
-          width: 1280,
-          height: 800,
-          waitUntil: 'networkidle2'
+        console.info('[submit] capturing screenshot (max 6s)');
+        const screenshotPromise = (async () => {
+          const capturedScreenshotUrl = await captureScreenshot(formData.url, {
+            width: 1280,
+            height: 800,
+            waitUntil: 'networkidle2'
+          });
+          if (capturedScreenshotUrl) {
+            return await uploadScreenshot(supabase, capturedScreenshotUrl, formData.slug);
+          }
+          return null;
+        })();
+
+        let timeoutHandle;
+        const timeoutPromise = new Promise((_, reject) => {
+          timeoutHandle = setTimeout(
+            () => reject(new Error('screenshot_timeout')),
+            SCREENSHOT_TIMEOUT_MS
+          );
         });
 
-        if (capturedScreenshotUrl) {
-          screenshotUrl = await uploadScreenshot(supabase, capturedScreenshotUrl, formData.slug);
+        try {
+          screenshotUrl = await Promise.race([screenshotPromise, timeoutPromise]);
+        } finally {
+          clearTimeout(timeoutHandle);
+        }
+
+        if (screenshotUrl) {
+          console.info('[submit] screenshot ready');
         }
       } catch (screenshotError) {
-        console.error('Error capturing/uploading screenshot:', screenshotError);
+        if (screenshotError && screenshotError.message === 'screenshot_timeout') {
+          console.warn('[submit] screenshot skipped (timeout 6s) — Microlink slow/down');
+          window.trackEvent('screenshot_timeout', { url: formData.url });
+        } else {
+          console.warn('[submit] screenshot skipped (error)', screenshotError);
+          window.trackEvent('screenshot_failed', { error: String(screenshotError?.message || screenshotError).slice(0, 200) });
+        }
       }
 
+      console.info('[submit] inserting startup row');
       const authUser = window.auth.getCurrentUser();
       const contactEmail = formData.contactEmail || authUser?.email || '';
       let authorInfo = {
@@ -469,9 +506,11 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
         }
       }
 
+      console.info('[submit] insert ok', { startup_id: data?.id, plan: formData.plan });
       window.trackEvent('form_submit_success', { plan: formData.plan });
 
       if (isPaid && data?.id) {
+        console.info('[submit] calling create-checkout for', formData.plan);
         window.trackEvent('paid_checkout_started', { plan: formData.plan, startup_id: data.id });
         // Don't show the Congratulations screen yet — the startup isn't
         // actually live until payment completes. Hand off to Stripe directly.
