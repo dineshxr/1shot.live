@@ -104,6 +104,7 @@ export async function createCheckoutSession(product, options = {}) {
     return { success: false, error: 'Stripe did not return a checkout URL.' };
   }
 
+  console.info('[stripe] checkout session created, redirecting to', url);
   trackStripeEvent('stripe_checkout_redirecting', { product });
 
   // Redirect to Stripe Checkout. After this assignment the browser navigates
