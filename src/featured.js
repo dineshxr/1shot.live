@@ -16,7 +16,6 @@ import htm from "https://unpkg.com/htm@3.1.1/dist/htm.module.js";
 // Import components
 import { Footer } from "./components/footer.js";
 import { OnlineVisitors } from "./components/online-visitors.js";
-import { SubmitStartupForm } from "./components/submit-startup-form.js";
 import { LoginModal } from "./components/login-modal.js";
 import { auth } from "./lib/auth.js";
 
@@ -165,7 +164,6 @@ const LaunchCountdown = () => {
 
 // Featured Page Component
 const FeaturedPage = () => {
-  const [showSubmitForm, setShowSubmitForm] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [user, setUser] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
@@ -190,27 +188,28 @@ const FeaturedPage = () => {
     return unsubscribe;
   }, []);
 
-  const handleContactClick = () => {
-    // Track when users click to contact for featured placement
-    trackEvent("FEATURED_CONTACT_CLICK");
-
-    // Open submission form with featured plan
-    handleSubmitClick();
-  };
-
-  // Handle submit button click with authentication check
-  const handleSubmitClick = () => {
+  // Route users to /submit?plan=featured — the canonical paid flow with
+  // Stripe Checkout. The legacy SubmitStartupForm modal hardcoded plan='free'
+  // on insert and never invoked Stripe, so any "featured" intent that came
+  // through it became a free submission.
+  const goToFeaturedSubmit = () => {
     if (auth.isAuthenticated()) {
-      setShowSubmitForm(true);
+      window.location.href = '/submit?plan=featured';
     } else {
       setShowLoginModal(true);
     }
   };
 
-  // Handle successful login
+  const handleContactClick = () => {
+    trackEvent("FEATURED_CONTACT_CLICK");
+    goToFeaturedSubmit();
+  };
+
+  const handleSubmitClick = goToFeaturedSubmit;
+
   const handleLoginSuccess = () => {
     setShowLoginModal(false);
-    setShowSubmitForm(true);
+    window.location.href = '/submit?plan=featured';
   };
 
   return html`
@@ -245,9 +244,6 @@ const FeaturedPage = () => {
         </div>
       </header>
 
-      <!-- Submit Startup Form Modal -->
-      <${SubmitStartupForm} isOpen=${showSubmitForm} onClose=${() => setShowSubmitForm(false)} />
-      
       <!-- Login Modal -->
       <${LoginModal} 
         isOpen=${showLoginModal} 
