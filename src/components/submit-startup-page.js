@@ -430,12 +430,20 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
       };
 
       const resolvedLaunchDate = formData.launchDate || await (async () => {
-        // For paid plans, use today's PST date so it launches on payment date
+        // For paid plans, use today's PST date so it launches on payment date.
+        // The startups table has a CHECK constraint requiring launch_date to
+        // be a weekday (Mon-Fri), so if today is a weekend bump forward to
+        // the next Monday — otherwise the insert returns HTTP 400 and the
+        // user never reaches Stripe checkout.
         if (formData.plan && formData.plan !== 'free') {
           const pstNow = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Los_Angeles' }));
-          return pstNow.getFullYear() + '-' +
-            String(pstNow.getMonth() + 1).padStart(2, '0') + '-' +
-            String(pstNow.getDate()).padStart(2, '0');
+          let launchDay = new Date(pstNow);
+          while (launchDay.getDay() === 0 || launchDay.getDay() === 6) {
+            launchDay.setDate(launchDay.getDate() + 1);
+          }
+          return launchDay.getFullYear() + '-' +
+            String(launchDay.getMonth() + 1).padStart(2, '0') + '-' +
+            String(launchDay.getDate()).padStart(2, '0');
         }
         // For free plan, get next available scheduled date
         const { data: nextDate, error: dateError } = await supabase.rpc('get_next_launch_date');
