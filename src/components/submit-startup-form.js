@@ -1368,11 +1368,16 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
                     </div>
                   `}
                   
-                  <!-- Featured Option -->
-                  <div 
+                  <!-- Featured Option — hands off to /submit?plan=premium
+                       because this legacy modal can't drive Stripe Checkout
+                       itself (the insert below hardcodes the free path). -->
+                  <div
                     class="border-4 ${formData.plan === 'premium' ? 'border-blue-500' : 'border-black'} p-4 rounded-lg cursor-pointer hover:bg-gray-50 transition-all relative"
                     onClick=${() => {
-          window.open('/featured.html', '_blank');
+          if (typeof window.trackEvent === 'function') {
+            window.trackEvent('legacy_modal_premium_redirect');
+          }
+          window.location.href = '/submit?plan=premium';
         }}
                   >
                     <div class="absolute -top-2 -right-2 bg-yellow-400 text-black text-xs font-bold px-2 py-1 rounded border border-black">

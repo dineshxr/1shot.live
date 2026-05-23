@@ -472,6 +472,7 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
       window.trackEvent('form_submit_success', { plan: formData.plan });
 
       if (isPaid && data?.id) {
+        window.trackEvent('paid_checkout_started', { plan: formData.plan, startup_id: data.id });
         // Don't show the Congratulations screen yet — the startup isn't
         // actually live until payment completes. Hand off to Stripe directly.
         const checkoutResult = await createCheckoutSession(formData.plan, {
@@ -483,6 +484,11 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
         // only get here if it failed. Keep the form mounted with an error so
         // the user can retry instead of being stranded on a congrats page.
         if (!checkoutResult || checkoutResult.success === false) {
+          window.trackEvent('paid_checkout_blocked', {
+            plan: formData.plan,
+            startup_id: data.id,
+            error: String(checkoutResult?.error || 'unknown').slice(0, 200),
+          });
           throw new Error(checkoutResult?.error || 'Could not start payment. Please try again.');
         }
         return;
