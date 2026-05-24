@@ -77,42 +77,41 @@
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
     
     <!-- Stylesheets -->
-    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="/vendor/tailwind.css" />
     <link
       rel="stylesheet"
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
     />
     <link rel="stylesheet" href="/src/style.css" />
     
-    <!-- Poopup Analytics -->
-    <script>
-      (function(){
-        const isLocalDev = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
-        if (!isLocalDev) {
-          const s = document.createElement('script');
-          s.defer = true;
-          s.setAttribute('data-domain', 'submithunt.com');
-          s.src = 'https://poopup.co/js/script.js';
-          document.head.appendChild(s);
-        }
-      })();
-    </script>
-    
-    <!-- Preact CDN -->
-    <script src="https://unpkg.com/preact@10.13.1/dist/preact.min.js"></script>
-    <script src="https://unpkg.com/preact@10.13.1/hooks/dist/hooks.umd.js"></script>
-    <script src="https://unpkg.com/htm@3.1.1/dist/htm.js"></script>
-    
-    <!-- Vercel Analytics -->
+    <!-- Preact / htm (self-hosted) -->
+    <script src="/vendor/preact.min.js"></script>
+    <script src="/vendor/preact-hooks.umd.js"></script>
+    <script src="/vendor/htm.js"></script>
+
+    <!-- Analytics: wrapped so adblocker / network failures never break boot -->
     <script>
       window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };
-      const isLocalDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-      if (!isLocalDev) {
-        const script = document.createElement('script');
-        script.defer = true;
-        script.src = '/_vercel/insights/script.js';
-        document.head.appendChild(script);
-      }
+      (function(){
+        try {
+          var isLocalDev = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+          if (isLocalDev) {
+            window.va = function(c, p){ try { console.log('Vercel Analytics (dev mock):', c, p || ''); } catch(e){} };
+            return;
+          }
+          var p = document.createElement('script');
+          p.defer = true;
+          p.setAttribute('data-domain', 'submithunt.com');
+          p.src = 'https://poopup.co/js/script.js';
+          p.onerror = function(){};
+          document.head.appendChild(p);
+          var v = document.createElement('script');
+          v.defer = true;
+          v.src = '/_vercel/insights/script.js';
+          v.onerror = function(){};
+          document.head.appendChild(v);
+        } catch (e) {}
+      })();
     </script>
   </head>
   <body>
@@ -120,11 +119,11 @@
     <script type="importmap">
       {
         "imports": {
-          "preact": "https://unpkg.com/preact@10.13.1/dist/preact.module.js",
-          "preact/hooks": "https://unpkg.com/preact@10.13.1/hooks/dist/hooks.module.js",
-          "htm": "https://unpkg.com/htm@3.1.1/dist/htm.module.js",
-          "htm/preact": "https://unpkg.com/htm@3.1.1/preact/index.module.js",
-          "@supabase/supabase-js": "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.38.4/+esm"
+          "preact": "/vendor/preact.module.js",
+          "preact/hooks": "/vendor/preact-hooks.module.js",
+          "htm": "/vendor/htm.module.js",
+          "htm/preact": "/vendor/htm-preact.module.js",
+          "@supabase/supabase-js": "/vendor/supabase.esm.js"
         }
       }
     </script>

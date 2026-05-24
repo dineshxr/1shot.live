@@ -45,60 +45,44 @@
     <link rel="icon" type="image/png" sizes="16x16" href="/src/favicon_io/favicon-16x16.png" />
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
     
-    <!-- Stylesheets -->
-    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Stylesheets — self-hosted to survive adblockers -->
+    <link rel="stylesheet" href="/vendor/tailwind.css" />
     <link
       rel="stylesheet"
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
     />
     <link rel="stylesheet" href="/src/style.css" />
-    
-    <!-- Poopup Analytics (load only in production to avoid CORS in local dev) -->
+
+    <!-- Preact / htm (self-hosted UMD for legacy globals; ESM import map below) -->
+    <script src="/vendor/preact.min.js"></script>
+    <script src="/vendor/preact-hooks.umd.js"></script>
+    <script src="/vendor/htm.js"></script>
+
+    <!-- Analytics: wrapped so adblocker / network failures never break boot -->
     <script>
-      (function(){
-        const isLocalDev = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
-        if (!isLocalDev) {
-          const s = document.createElement('script');
-          s.defer = true;
-          s.setAttribute('data-domain', 'submithunt.com');
-          s.src = 'https://poopup.co/js/script.js';
-          document.head.appendChild(s);
-        } else {
-          console.log('Poopup Analytics disabled in local development');
-        }
-      })();
-    </script>
-    
-    
-    <!-- Preact CDN -->
-    <script src="https://unpkg.com/preact@10.13.1/dist/preact.min.js"></script>
-    <script src="https://unpkg.com/preact@10.13.1/hooks/dist/hooks.umd.js"></script>
-    <script src="https://unpkg.com/htm@3.1.1/dist/htm.js"></script>
-    
-    <!-- Supabase is loaded via ESM import map below; remove UMD to avoid multiple clients in same context -->
-    
-    <!-- Vercel Analytics - Hybrid Implementation for both local dev and production -->
-    <script>
-      // Initialize Vercel Analytics placeholder function
       window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };
-      
-      // Detect if we're in a local development environment
-      const isLocalDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-      
-      // Only load the script in production or use a mock in development
-      if (!isLocalDev) {
-        // In production, load the official Vercel Analytics script
-        const script = document.createElement('script');
-        script.defer = true;
-        script.src = '/_vercel/insights/script.js';
-        document.head.appendChild(script);
-      } else {
-        // In development, use a mock implementation
-        console.log('Vercel Analytics: Using development mock');
-        window.va = function(command, params) {
-          console.log(`Vercel Analytics (dev mock): ${command}`, params || '');
-        };
-      }
+      (function(){
+        try {
+          var isLocalDev = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+          if (isLocalDev) {
+            window.va = function(c, p){ try { console.log('Vercel Analytics (dev mock):', c, p || ''); } catch(e){} };
+            return;
+          }
+          // Poopup analytics
+          var p = document.createElement('script');
+          p.defer = true;
+          p.setAttribute('data-domain', 'submithunt.com');
+          p.src = 'https://poopup.co/js/script.js';
+          p.onerror = function(){ /* silently ignore — likely blocked */ };
+          document.head.appendChild(p);
+          // Vercel insights
+          var v = document.createElement('script');
+          v.defer = true;
+          v.src = '/_vercel/insights/script.js';
+          v.onerror = function(){ /* silently ignore */ };
+          document.head.appendChild(v);
+        } catch (e) { /* never let analytics break the page */ }
+      })();
     </script>
     
     <!-- Structured Data / JSON-LD for WebSite -->
@@ -200,11 +184,11 @@
     <script type="importmap">
       {
         "imports": {
-          "preact": "https://unpkg.com/preact@10.13.1/dist/preact.module.js",
-          "preact/hooks": "https://unpkg.com/preact@10.13.1/hooks/dist/hooks.module.js",
-          "htm": "https://unpkg.com/htm@3.1.1/dist/htm.module.js",
-          "htm/preact": "https://unpkg.com/htm@3.1.1/preact/index.module.js",
-          "@supabase/supabase-js": "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.38.4/+esm"
+          "preact": "/vendor/preact.module.js",
+          "preact/hooks": "/vendor/preact-hooks.module.js",
+          "htm": "/vendor/htm.module.js",
+          "htm/preact": "/vendor/htm-preact.module.js",
+          "@supabase/supabase-js": "/vendor/supabase.esm.js"
         }
       }
     </script>

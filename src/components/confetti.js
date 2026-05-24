@@ -1,7 +1,7 @@
 // Minimal confetti effect for Preact (no dependency)
 // Usage: <Confetti show={show} />
 
-import { useEffect, useRef } from "https://unpkg.com/preact@10.13.1/hooks/dist/hooks.module.js";
+import { useEffect, useRef } from "/vendor/preact-hooks.module.js";
 
 export function Confetti({ show }) {
   const canvasRef = useRef(null);

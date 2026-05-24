@@ -1,4 +1,4 @@
-import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.38.4/+esm';
+import { createClient } from '@supabase/supabase-js';
 
 /**
  * Get or create a singleton Supabase client instance

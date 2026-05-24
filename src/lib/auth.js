@@ -1,4 +1,4 @@
-import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.38.4/+esm';
+import { createClient } from '@supabase/supabase-js';
 import { validateEmail } from './email-validation.js';
 
 // Supabase client for auth operations - singleton pattern to prevent multiple instances

@@ -5,281 +5,252 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard - SubmitHunt</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="/vendor/tailwind.css" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="/src/style.css" />
     <link rel="icon" type="image/x-icon" href="/src/favicon_io/favicon.ico" />
     <link rel="icon" type="image/png" sizes="32x32" href="/src/favicon_io/favicon-32x32.png" />
     <link rel="icon" type="image/png" sizes="16x16" href="/src/favicon_io/favicon-16x16.png" />
 
-    <!-- Meta tags for SEO -->
     <meta name="description"
-        content="Manage your startup listings on SubmitHunt - the best Product Hunt alternative. Track performance and edit your submissions.">
+        content="Manage your startup listings on SubmitHunt — track performance and edit your submissions.">
     <meta name="keywords" content="startup dashboard, manage listings, product hunt alternative, startup management">
     <meta name="robots" content="noindex, nofollow">
     <meta name="author" content="SubmitHunt">
 
-    <!-- Canonical URL -->
     <link rel="canonical" href="https://submithunt.com/dashboard">
 
-    <!-- Open Graph tags -->
     <meta property="og:type" content="website">
     <meta property="og:title" content="Dashboard - SubmitHunt">
-    <meta property="og:description"
-        content="Manage your startup listings on SubmitHunt - the best Product Hunt alternative">
+    <meta property="og:description" content="Manage your startup listings on SubmitHunt">
     <meta property="og:image" content="https://submithunt.com/og-image.png">
     <meta property="og:url" content="https://submithunt.com/dashboard">
     <meta property="og:site_name" content="SubmitHunt">
 
-    <!-- Twitter / X -->
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:url" content="https://submithunt.com/dashboard">
     <meta name="twitter:title" content="Dashboard - SubmitHunt">
     <meta name="twitter:description" content="Manage your startup listings on SubmitHunt">
     <meta name="twitter:image" content="https://submithunt.com/og-image.png">
-
-    <style>
-        .brutalist-shadow {
-            box-shadow: 4px 4px 0px 0px rgba(0, 0, 0, 1);
-        }
-
-        .brutalist-shadow-lg {
-            box-shadow: 8px 8px 0px 0px rgba(0, 0, 0, 1);
-        }
-
-        .loading-spinner {
-            border: 3px solid #f3f3f3;
-            border-top: 3px solid #3498db;
-            border-radius: 50%;
-            width: 30px;
-            height: 30px;
-            animation: spin 1s linear infinite;
-            margin: 0 auto;
-        }
-
-        @keyframes spin {
-            0% {
-                transform: rotate(0deg);
-            }
-
-            100% {
-                transform: rotate(360deg);
-            }
-        }
-
-        .startup-card {
-            transition: transform 0.2s ease;
-        }
-
-        .startup-card:hover {
-            transform: translateY(-2px);
-        }
-    </style>
 </head>
 
-<body class="bg-yellow-300 min-h-screen">
-    <!-- Navigation -->
-    <nav class="bg-white border-b-4 border-black p-4">
-        <div class="container mx-auto flex justify-between items-center">
-            <div class="flex items-center space-x-4">
-                <a href="/" class="text-2xl font-bold text-black hover:text-gray-700">
-                    <i class="fas fa-rocket mr-2"></i>SubmitHunt
+<body class="min-h-screen" style="background-color: var(--sh-bg);">
+    <!-- Header -->
+    <header class="sticky top-0 z-40 bg-white/85 backdrop-blur border-b border-gray-200">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex h-16 items-center justify-between gap-4">
+                <a href="/" class="flex items-center gap-2">
+                    <img src="/src/sh-logo.png" alt="SubmitHunt" class="w-8 h-8 rounded-md" />
+                    <span class="text-base font-semibold tracking-tight text-gray-900">SubmitHunt</span>
                 </a>
-                <span class="text-gray-600">Dashboard</span>
-            </div>
-            <div class="flex items-center space-x-4">
-                <span id="user-email" class="text-gray-700"></span>
-                <button id="logout-btn"
-                    class="px-4 py-2 bg-red-400 border-2 border-black brutalist-shadow hover:bg-red-500 font-bold">
-                    <i class="fas fa-sign-out-alt mr-2"></i>Logout
-                </button>
+                <nav class="hidden md:flex items-center gap-1 text-sm">
+                    <a href="/" class="px-3 py-1.5 rounded-lg text-gray-700 hover:bg-gray-100">Discover</a>
+                    <a href="/blog" class="px-3 py-1.5 rounded-lg text-gray-700 hover:bg-gray-100">Blog</a>
+                    <a href="/pricing" class="px-3 py-1.5 rounded-lg text-gray-700 hover:bg-gray-100">Pricing</a>
+                    <a href="/dashboard" class="px-3 py-1.5 rounded-lg text-gray-900 bg-gray-100">Dashboard</a>
+                </nav>
+                <div class="flex items-center gap-2">
+                    <span id="user-email" class="hidden sm:inline text-sm text-gray-500"></span>
+                    <a href="/submit" class="sh-btn-primary">
+                        <i class="fas fa-plus text-xs"></i><span>Submit</span>
+                    </a>
+                    <button id="logout-btn"
+                        class="text-xs text-gray-500 hover:text-gray-900 transition-colors ml-1">
+                        Sign out
+                    </button>
+                </div>
             </div>
         </div>
-    </nav>
+    </header>
 
     <!-- Main Content -->
-    <div class="container mx-auto p-6">
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
         <!-- Auth Check Loading -->
-        <div id="auth-loading" class="text-center py-12">
-            <div class="loading-spinner"></div>
-            <p class="mt-4 text-gray-700">Checking authentication...</p>
+        <div id="auth-loading" class="text-center py-16">
+            <div class="inline-block animate-spin rounded-full h-10 w-10 border-2 border-gray-300 border-t-gray-900"></div>
+            <p class="mt-4 text-sm text-gray-500">Checking authentication…</p>
         </div>
 
         <!-- Not Authenticated -->
-        <div id="not-authenticated" class="hidden text-center py-12">
-            <div class="bg-white border-4 border-black brutalist-shadow-lg p-8 max-w-md mx-auto">
-                <i class="fas fa-lock text-6xl text-gray-400 mb-4"></i>
-                <h2 class="text-2xl font-bold mb-4">Access Denied</h2>
-                <p class="text-gray-700 mb-6">You need to be logged in to access your dashboard.</p>
-                <a href="/"
-                    class="px-6 py-3 bg-blue-400 border-2 border-black brutalist-shadow hover:bg-blue-500 font-bold inline-block">
-                    <i class="fas fa-home mr-2"></i>Go to Homepage
+        <div id="not-authenticated" class="hidden py-16">
+            <div class="bg-white border border-gray-200 rounded-2xl shadow-sm p-8 sm:p-10 max-w-md mx-auto text-center">
+                <div class="inline-flex items-center justify-center w-14 h-14 rounded-full bg-gray-50 border border-gray-200 text-gray-400 mb-4">
+                    <i class="fas fa-lock text-xl"></i>
+                </div>
+                <h2 class="text-xl font-semibold tracking-tight text-gray-900 mb-2">Access denied</h2>
+                <p class="text-gray-500 mb-6 text-sm">You need to be signed in to access your dashboard.</p>
+                <a href="/" class="sh-btn-primary justify-center">
+                    <i class="fas fa-home text-xs"></i> Go to homepage
                 </a>
             </div>
         </div>
 
         <!-- Dashboard Content -->
         <div id="dashboard-content" class="hidden">
-            <!-- Header -->
-            <div class="bg-white border-4 border-black brutalist-shadow-lg p-6 mb-6">
-                <h1 class="text-3xl font-bold mb-2">
-                    <i class="fas fa-tachometer-alt mr-3"></i>Your Dashboard
-                </h1>
-                <p class="text-gray-700">Manage your startup listings and track their performance</p>
+            <!-- Page Header -->
+            <div class="mb-8">
+                <h1 class="text-3xl sm:text-4xl font-semibold tracking-tight text-gray-900 mb-2">Dashboard</h1>
+                <p class="text-gray-500">Manage your startup listings and track their performance.</p>
             </div>
 
             <!-- Stats Cards -->
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-                <div class="bg-white border-4 border-black brutalist-shadow p-6">
-                    <div class="flex items-center">
-                        <i class="fas fa-rocket text-3xl text-blue-500 mr-4"></i>
+            <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-10">
+                <div class="bg-white border border-gray-200 rounded-2xl shadow-sm p-5">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-xl bg-orange-50 border border-orange-200 flex items-center justify-center text-orange-600">
+                            <i class="fas fa-rocket text-sm"></i>
+                        </div>
                         <div>
-                            <p class="text-gray-600">Total Listings</p>
-                            <p id="total-listings" class="text-2xl font-bold">-</p>
+                            <p class="text-xs text-gray-500">Total listings</p>
+                            <p id="total-listings" class="text-xl font-semibold text-gray-900 tabular-nums">—</p>
                         </div>
                     </div>
                 </div>
-                <div class="bg-white border-4 border-black brutalist-shadow p-6">
-                    <div class="flex items-center">
-                        <i class="fas fa-star text-3xl text-yellow-500 mr-4"></i>
+                <div class="bg-white border border-gray-200 rounded-2xl shadow-sm p-5">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-xl bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-600">
+                            <i class="fas fa-star text-sm"></i>
+                        </div>
                         <div>
-                            <p class="text-gray-600">Featured</p>
-                            <p id="featured-listings" class="text-2xl font-bold">-</p>
+                            <p class="text-xs text-gray-500">Featured</p>
+                            <p id="featured-listings" class="text-xl font-semibold text-gray-900 tabular-nums">—</p>
                         </div>
                     </div>
                 </div>
-                <div class="bg-white border-4 border-black brutalist-shadow p-6">
-                    <div class="flex items-center">
-                        <i class="fas fa-calendar text-3xl text-green-500 mr-4"></i>
+                <div class="bg-white border border-gray-200 rounded-2xl shadow-sm p-5">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-600">
+                            <i class="fas fa-calendar text-sm"></i>
+                        </div>
                         <div>
-                            <p class="text-gray-600">This Month</p>
-                            <p id="monthly-listings" class="text-2xl font-bold">-</p>
+                            <p class="text-xs text-gray-500">This month</p>
+                            <p id="monthly-listings" class="text-xl font-semibold text-gray-900 tabular-nums">—</p>
                         </div>
                     </div>
                 </div>
-                <div class="bg-white border-4 border-black brutalist-shadow p-6">
-                    <div class="flex items-center">
-                        <i class="fas fa-heart text-3xl text-red-500 mr-4"></i>
+                <div class="bg-white border border-gray-200 rounded-2xl shadow-sm p-5">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-xl bg-rose-50 border border-rose-200 flex items-center justify-center text-rose-600">
+                            <i class="fas fa-heart text-sm"></i>
+                        </div>
                         <div>
-                            <p class="text-gray-600">Upvoted</p>
-                            <p id="upvoted-count" class="text-2xl font-bold">-</p>
+                            <p class="text-xs text-gray-500">Upvoted</p>
+                            <p id="upvoted-count" class="text-xl font-semibold text-gray-900 tabular-nums">—</p>
                         </div>
                     </div>
                 </div>
             </div>
 
             <!-- Listings Section -->
-            <div class="bg-white border-4 border-black brutalist-shadow-lg p-6">
-                <div class="flex justify-between items-center mb-6">
-                    <h2 class="text-2xl font-bold">
-                        <i class="fas fa-list mr-2"></i>Your Listings
-                    </h2>
-                    <a href="/"
-                        class="px-4 py-2 bg-green-400 border-2 border-black brutalist-shadow hover:bg-green-500 font-bold">
-                        <i class="fas fa-plus mr-2"></i>Add New Listing
+            <section class="bg-white border border-gray-200 rounded-2xl shadow-sm p-6 sm:p-8 mb-8">
+                <div class="flex items-center justify-between mb-6">
+                    <div>
+                        <h2 class="text-lg sm:text-xl font-semibold tracking-tight text-gray-900">Your listings</h2>
+                        <p class="text-sm text-gray-500 mt-0.5">Edit details, upgrade plans, or visit live pages.</p>
+                    </div>
+                    <a href="/submit" class="sh-btn-accent text-sm">
+                        <i class="fas fa-plus text-xs"></i> New listing
                     </a>
                 </div>
 
                 <!-- Loading State -->
-                <div id="listings-loading" class="text-center py-8">
-                    <div class="loading-spinner"></div>
-                    <p class="mt-4 text-gray-700">Loading your listings...</p>
+                <div id="listings-loading" class="text-center py-12">
+                    <div class="inline-block animate-spin rounded-full h-8 w-8 border-2 border-gray-300 border-t-gray-900"></div>
+                    <p class="mt-4 text-sm text-gray-500">Loading your listings…</p>
                 </div>
 
                 <!-- No Listings -->
                 <div id="no-listings" class="hidden text-center py-12">
-                    <i class="fas fa-inbox text-6xl text-gray-400 mb-4"></i>
-                    <h3 class="text-xl font-bold mb-2">No Listings Yet</h3>
-                    <p class="text-gray-700 mb-6">You haven't submitted any startups yet. Get started by adding your
-                        first listing!</p>
-                    <a href="/"
-                        class="px-6 py-3 bg-blue-400 border-2 border-black brutalist-shadow hover:bg-blue-500 font-bold inline-block">
-                        <i class="fas fa-rocket mr-2"></i>Submit Your First Startup
+                    <div class="inline-flex items-center justify-center w-14 h-14 rounded-full bg-gray-50 border border-gray-200 text-gray-400 mb-4">
+                        <i class="fas fa-inbox text-xl"></i>
+                    </div>
+                    <h3 class="text-base font-semibold text-gray-900 mb-1.5">No listings yet</h3>
+                    <p class="text-sm text-gray-500 mb-6 max-w-sm mx-auto">You haven't submitted any startups yet. Get started by adding your first listing.</p>
+                    <a href="/submit" class="sh-btn-primary justify-center">
+                        <i class="fas fa-rocket text-xs"></i> Submit your first startup
                     </a>
                 </div>
 
                 <!-- Listings Grid -->
-                <div id="listings-grid" class="hidden grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div id="listings-grid" class="hidden grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
                     <!-- Listings will be populated here -->
                 </div>
-            </div>
+            </section>
 
             <!-- Upvoted Startups Section -->
-            <div class="bg-white border-4 border-black brutalist-shadow-lg p-6 mt-8">
-                <div class="flex justify-between items-center mb-6">
-                    <h2 class="text-2xl font-bold">
-                        <i class="fas fa-heart mr-2 text-red-500"></i>Your Upvoted Startups
-                    </h2>
-                    <span class="text-sm text-gray-600">You can upvote once per day</span>
+            <section class="bg-white border border-gray-200 rounded-2xl shadow-sm p-6 sm:p-8">
+                <div class="flex items-center justify-between mb-6">
+                    <div>
+                        <h2 class="text-lg sm:text-xl font-semibold tracking-tight text-gray-900 flex items-center gap-2">
+                            <i class="fas fa-heart text-rose-500 text-sm"></i>
+                            Your upvoted startups
+                        </h2>
+                        <p class="text-sm text-gray-500 mt-0.5">You can upvote once per day.</p>
+                    </div>
                 </div>
 
-                <!-- Upvoted Startups Grid -->
-                <div id="upvoted-startups-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div id="upvoted-startups-grid" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
                     <!-- Upvoted startups will be populated here -->
                 </div>
-            </div>
+            </section>
         </div>
-    </div>
+    </main>
 
     <!-- Edit Modal -->
-    <div id="edit-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-        <div
-            class="bg-white border-4 border-black brutalist-shadow-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-            <div class="flex justify-between items-center mb-6">
-                <h3 class="text-2xl font-bold">
-                    <i class="fas fa-edit mr-2"></i>Edit Listing
-                </h3>
-                <button id="close-modal" class="text-gray-500 hover:text-gray-700">
-                    <i class="fas fa-times text-xl"></i>
+    <div id="edit-modal" class="hidden fixed inset-0 bg-gray-900/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <div class="bg-white border border-gray-200 rounded-2xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center px-6 py-5 border-b border-gray-200">
+                <h3 class="text-lg font-semibold text-gray-900">Edit listing</h3>
+                <button id="close-modal"
+                    class="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-gray-900 hover:bg-gray-100 transition-colors">
+                    <i class="fas fa-times"></i>
                 </button>
             </div>
 
-            <form id="edit-form">
+            <form id="edit-form" class="px-6 py-6 space-y-5">
                 <input type="hidden" id="edit-id">
 
-                <div class="mb-4">
-                    <label class="block text-sm font-bold mb-2" for="edit-title">
-                        Product Name *
+                <div>
+                    <label class="block text-sm font-medium text-gray-900 mb-1.5" for="edit-title">
+                        Product name <span class="text-orange-600">*</span>
                     </label>
                     <input type="text" id="edit-title" name="title" required
-                        class="w-full px-3 py-2 border-2 border-black focus:outline-none focus:border-blue-500">
+                        class="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm placeholder:text-gray-400 focus:outline-none focus:border-gray-400 focus:ring-1 focus:ring-gray-300">
                 </div>
 
-                <div class="mb-4">
-                    <label class="block text-sm font-bold mb-2" for="edit-url">
-                        Website URL *
+                <div>
+                    <label class="block text-sm font-medium text-gray-900 mb-1.5" for="edit-url">
+                        Website URL <span class="text-orange-600">*</span>
                     </label>
                     <input type="url" id="edit-url" name="url" required
-                        class="w-full px-3 py-2 border-2 border-black focus:outline-none focus:border-blue-500">
+                        class="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm placeholder:text-gray-400 focus:outline-none focus:border-gray-400 focus:ring-1 focus:ring-gray-300">
                 </div>
 
-                <div class="mb-4">
-                    <label class="block text-sm font-bold mb-2" for="edit-description">
+                <div>
+                    <label class="block text-sm font-medium text-gray-900 mb-1.5" for="edit-description">
                         Description
                     </label>
                     <textarea id="edit-description" name="description" rows="4"
-                        class="w-full px-3 py-2 border-2 border-black focus:outline-none focus:border-blue-500"
-                        placeholder="Describe your startup..."></textarea>
+                        class="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm placeholder:text-gray-400 focus:outline-none focus:border-gray-400 focus:ring-1 focus:ring-gray-300"
+                        placeholder="Describe your startup…"></textarea>
                 </div>
 
-                <div class="mb-4">
-                    <label class="block text-sm font-bold mb-2" for="edit-slug">
-                        Slug *
+                <div>
+                    <label class="block text-sm font-medium text-gray-900 mb-1.5" for="edit-slug">
+                        Slug <span class="text-orange-600">*</span>
                     </label>
                     <input type="text" id="edit-slug" name="slug" required
-                        class="w-full px-3 py-2 border-2 border-black focus:outline-none focus:border-blue-500"
+                        class="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm placeholder:text-gray-400 focus:outline-none focus:border-gray-400 focus:ring-1 focus:ring-gray-300"
                         placeholder="your-startup-name">
-                    <p class="text-sm text-gray-600 mt-1">This will be your startup's URL:
-                        submithunt.com/startup/your-slug</p>
+                    <p class="text-xs text-gray-500 mt-1.5">This will be your startup's URL: submithunt.com/startup/your-slug</p>
                 </div>
 
-                <div class="flex justify-end space-x-4">
-                    <button type="button" id="cancel-edit"
-                        class="px-4 py-2 bg-gray-400 border-2 border-black brutalist-shadow hover:bg-gray-500 font-bold">
+                <div class="flex justify-end gap-2 pt-2 border-t border-gray-200 mt-6">
+                    <button type="button" id="cancel-edit" class="sh-btn-ghost">
                         Cancel
                     </button>
-                    <button type="submit" id="save-changes"
-                        class="px-4 py-2 bg-blue-400 border-2 border-black brutalist-shadow hover:bg-blue-500 font-bold">
-                        <i class="fas fa-save mr-2"></i>Save Changes
+                    <button type="submit" id="save-changes" class="sh-btn-primary">
+                        <i class="fas fa-save text-xs"></i> Save changes
                     </button>
                 </div>
             </form>
