@@ -78,46 +78,42 @@ const SubmitApp = () => {
   };
 
   return html`
-    <div class="min-h-screen flex flex-col bg-gray-50">
+    <div class="min-h-screen flex flex-col" style="background-color: var(--sh-bg);">
       <!-- Header -->
-      <header class="bg-blue-400 text-black border-b-4 border-black">
-        <div class="container max-w-6xl mx-auto px-4 py-6">
-          <div class="flex flex-col md:flex-row justify-between items-center">
-            <div class="flex items-center">
-              <a href="/" class="flex items-center hover:opacity-80 transition-opacity">
-                <img src="/src/sh-logo.png" alt="SubmitHunt Logo" class="w-10 h-10 mr-3" />
-                <h1 class="text-2xl md:text-3xl font-bold">Submit Hunt</h1>
-              </a>
-              <a href="/" class="ml-4 px-3 py-1 bg-white border-2 border-black rounded shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:bg-gray-100 font-bold text-sm">
-                ← Back to Home
-              </a>
-            </div>
-            <div class="mt-4 md:mt-0 flex items-center gap-4">
+      <header class="sticky top-0 z-40 bg-white/85 backdrop-blur border-b border-gray-200">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div class="flex h-16 items-center justify-between gap-4">
+            <a href="/" class="flex items-center gap-2">
+              <img src="/src/sh-logo.png" alt="SubmitHunt" class="w-8 h-8 rounded-md" />
+              <span class="text-base font-semibold tracking-tight text-gray-900">SubmitHunt</span>
+            </a>
+            <nav class="hidden md:flex items-center gap-1 text-sm">
+              <a href="/" class="px-3 py-1.5 rounded-lg text-gray-700 hover:bg-gray-100">Discover</a>
+              <a href="/blog" class="px-3 py-1.5 rounded-lg text-gray-700 hover:bg-gray-100">Blog</a>
+              <a href="/pricing" class="px-3 py-1.5 rounded-lg text-gray-700 hover:bg-gray-100">Pricing</a>
+              <a href="/submit" class="px-3 py-1.5 rounded-lg text-gray-900 bg-gray-100">Submit</a>
+            </nav>
+            <div class="flex items-center gap-2">
               ${user ? html`
-                <div class="flex items-center gap-3">
-                  <div class="flex items-center gap-2">
-                    <img 
-                      src=${user.user_metadata?.avatar_url || '/placeholder-avatar.png'} 
-                      alt="User avatar"
-                      class="w-8 h-8 rounded-full border-2 border-black"
-                    />
-                    <span class="font-medium text-sm">
-                      ${user.user_metadata?.full_name || user.email?.split('@')[0] || 'User'}
-                    </span>
-                  </div>
+                <div class="flex items-center gap-2 pl-2 ml-1">
+                  <img
+                    src=${user.user_metadata?.avatar_url || '/placeholder-avatar.png'}
+                    alt="User avatar"
+                    class="w-7 h-7 rounded-full ring-1 ring-gray-200"
+                  />
+                  <span class="hidden sm:inline text-sm text-gray-700">
+                    ${user.user_metadata?.full_name || user.email?.split('@')[0] || 'User'}
+                  </span>
                   <button
                     onClick=${() => auth.signOut()}
-                    class="neo-button inline-flex items-center px-3 py-1 bg-red-400 border-2 border-black rounded shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:bg-red-500 font-bold text-sm"
+                    class="text-xs text-gray-500 hover:text-gray-900 transition-colors ml-1"
                   >
-                    <i class="fas fa-sign-out-alt mr-1"></i> Logout
+                    Sign out
                   </button>
                 </div>
               ` : html`
-                <button
-                  onClick=${() => setShowLoginModal(true)}
-                  class="neo-button inline-flex items-center px-4 py-2 bg-green-400 border-2 border-black rounded shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:bg-green-500 font-bold"
-                >
-                  <i class="fas fa-sign-in-alt mr-2"></i> Login
+                <button onClick=${() => setShowLoginModal(true)} class="sh-btn-primary">
+                  <i class="fas fa-sign-in-alt text-xs"></i><span>Login</span>
                 </button>
               `}
             </div>

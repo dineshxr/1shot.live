@@ -63,43 +63,49 @@ export const OnlineVisitors = () => {
   if (!uniqueVisitors.length) {
     return html`
       <div
-        class="inline-flex h-[45px] items-center px-4 py-2 bg-yellow-400 border-2 border-black rounded shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] font-bold"
+        class="inline-flex items-center gap-2 px-3 py-1.5 bg-white border border-gray-200 rounded-full shadow-sm text-xs text-gray-500"
       >
-        <p class="text-sm">Waiting for visitors...</p>
+        <span class="w-1.5 h-1.5 rounded-full bg-gray-300"></span>
+        Waiting for visitors…
       </div>
     `;
   }
 
   return html`
-    <div class="max-w-xs mx-auto cursor-pointer">
+    <div class="cursor-pointer">
       <div
-        class="neo-button flex items-center justify-between gap-3 h-[45px] px-3 py-2 bg-yellow-400 border-2 border-black rounded shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] font-bold"
+        class="inline-flex items-center gap-3 px-3 py-1.5 bg-white border border-gray-200 rounded-full shadow-sm hover:border-gray-300 transition-colors"
         onClick=${() => setShowModal(true)}
       >
-        <div class="text-center text-sm">
-          ${uniqueVisitors.length} online visitors
+        <div class="flex items-center gap-1.5 text-xs font-medium text-gray-700">
+          <span class="relative flex h-2 w-2">
+            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-60"></span>
+            <span class="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+          </span>
+          <span class="tabular-nums">${uniqueVisitors.length}</span>
+          <span class="text-gray-500">online</span>
         </div>
-        <ul class="list-none p-0 flex h-6 -space-x-2 items-center">
-          ${uniqueVisitors.slice(0, 5).map((visitor, index) => {
+        <ul class="list-none p-0 flex -space-x-1.5 items-center">
+          ${uniqueVisitors.slice(0, 4).map((visitor, index) => {
             const visitorId = visitor?.session_id || "Unknown";
             const countryFlag = visitor?.country_flag;
             const isCurrentUser = visitorId === sessionId.current;
-            const className = isCurrentUser ? "border-2 border-green-700" : "";
+            const ringClass = isCurrentUser ? "ring-2 ring-green-500" : "ring-2 ring-white";
 
             return html`
               <li
                 key=${index}
-                class="group relative flex items-center justify-center bg-white border-2 border-black rounded-full w-8 h-8 hover:-translate-y-0.5 hover:z-10 transition-transform ${className}"
+                class="group relative flex items-center justify-center bg-white rounded-full w-6 h-6 ${ringClass}"
               >
                 <img
                   src="https://api.dicebear.com/9.x/pixel-art/svg?seed=${visitorId}"
                   alt="User"
-                  class="w-6 h-6 rounded-full"
+                  class="w-full h-full rounded-full"
                 />
                 <div
-                  class="absolute -top-8 left-1/2 -translate-x-1/2 hidden group-hover:block bg-black text-white text-xs px-2 py-1 rounded whitespace-nowrap"
+                  class="absolute -top-8 left-1/2 -translate-x-1/2 hidden group-hover:block bg-gray-900 text-white text-[11px] px-2 py-1 rounded-md whitespace-nowrap z-10"
                 >
-                  ${visitorId} ${isCurrentUser ? "(You)" : ""} ${countryFlag}
+                  ${isCurrentUser ? "You" : visitorId.slice(0, 6)} ${countryFlag}
                 </div>
               </li>
             `;
@@ -123,28 +129,29 @@ function OnlineVisitorsModal({ visitors, show, setShow, currentSessionId }) {
   const uniqueCountries = new Set(visitors.map((v) => v.country_flag)).size;
 
   return html`<div
-    class="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50"
+    class="fixed inset-0 bg-gray-900/50 backdrop-blur-sm flex items-center justify-center z-50"
     onClick=${(e) => {
       if (e.target === e.currentTarget) setShow(false);
     }}
   >
     <div
-      class="bg-white border-4 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] p-6 w-full max-w-md rounded relative mx-4"
+      class="bg-white border border-gray-200 shadow-xl p-6 w-full max-w-md rounded-2xl relative mx-4"
     >
       <button
         onClick=${() => setShow(false)}
-        class="absolute top-2 right-2 text-black hover:text-gray-700"
+        class="absolute top-3 right-3 w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-gray-900 hover:bg-gray-100 transition-colors"
         aria-label="Close"
       >
-        <i class="fas fa-times text-xl"></i>
+        <i class="fas fa-times"></i>
       </button>
 
-      <h2 class="text-2xl font-bold mb-4 text-black">
-        ${visitors.length} online visitors from ${uniqueCountries} countries
+      <h2 class="text-lg font-semibold mb-1 text-gray-900">
+        ${visitors.length} online visitors
       </h2>
+      <p class="text-sm text-gray-500 mb-5">From ${uniqueCountries} ${uniqueCountries === 1 ? 'country' : 'countries'}</p>
 
-      <div class="max-h-[60vh] overflow-y-auto">
-        <ul class="space-y-4">
+      <div class="max-h-[60vh] overflow-y-auto -mx-2">
+        <ul class="space-y-1">
           ${visitors.map((visitor, index) => {
             const visitorId = visitor?.session_id || "Unknown";
             const countryFlag = visitor?.country_flag;
@@ -154,22 +161,22 @@ function OnlineVisitorsModal({ visitors, show, setShow, currentSessionId }) {
             return html`
               <li
                 key=${index}
-                class="flex items-center gap-4 p-3 bg-yellow-100 border-2 border-black rounded"
+                class="flex items-center gap-3 px-2 py-2 rounded-lg hover:bg-gray-50 transition-colors"
               >
                 <div class="flex-shrink-0">
                   <img
                     src="https://api.dicebear.com/9.x/pixel-art/svg?seed=${visitorId}"
                     alt="User"
-                    class="w-12 h-12 rounded-full border-2 ${isCurrentUser
-                      ? "border-green-700"
-                      : "border-black"}"
+                    class="w-10 h-10 rounded-full ${isCurrentUser
+                      ? "ring-2 ring-green-500"
+                      : "ring-1 ring-gray-200"}"
                   />
                 </div>
-                <div class="flex-grow">
-                  <div class="font-bold text-black">
-                    ${visitorId} ${isCurrentUser ? "(You)" : ""}
+                <div class="flex-grow min-w-0">
+                  <div class="text-sm font-medium text-gray-900 truncate">
+                    ${isCurrentUser ? "You" : visitorId.slice(0, 12)}
                   </div>
-                  <div class="text-sm font-medium">${countryFlag} ${countryName}</div>
+                  <div class="text-xs text-gray-500">${countryFlag} ${countryName}</div>
                 </div>
               </li>
             `;

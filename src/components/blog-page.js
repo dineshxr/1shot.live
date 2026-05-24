@@ -23,68 +23,85 @@ export const BlogPage = () => {
 
   const formatDate = (dateString) => {
     return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric', month: 'long', day: 'numeric'
+      year: 'numeric', month: 'short', day: 'numeric'
     });
   };
 
-  const navigate = (path) => { window.history.pushState({}, '', path); window.dispatchEvent(new PopStateEvent('popstate')); };
+  const navigate = (path) => {
+    window.history.pushState({}, '', path);
+    window.dispatchEvent(new PopStateEvent('popstate'));
+  };
 
   if (loading) return html`
-    <div class="min-h-screen bg-gray-50 flex items-center justify-center py-12">
-      <div class="text-center">
-        <div class="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
-        <p class="mt-4 text-gray-600">Loading blog posts...</p>
+    <div class="min-h-[60vh] flex items-center justify-center py-16" style="background-color: var(--sh-bg);">
+      <div class="text-center text-gray-500">
+        <div class="inline-block animate-spin rounded-full h-10 w-10 border-2 border-gray-300 border-t-gray-900"></div>
+        <p class="mt-4 text-sm">Loading blog posts…</p>
       </div>
     </div>
   `;
 
   if (error) return html`
-    <div class="min-h-screen bg-gray-50 py-12">
-      <div class="max-w-4xl mx-auto px-4">
-        <div class="bg-red-50 border border-red-200 rounded-lg p-6">
-          <h3 class="text-red-800 font-bold mb-2">Error Loading Blog</h3>
-          <p class="text-red-600">${error}</p>
+    <div class="min-h-[60vh] py-16" style="background-color: var(--sh-bg);">
+      <div class="max-w-2xl mx-auto px-4">
+        <div class="bg-red-50 border border-red-200 rounded-2xl p-6">
+          <h3 class="text-red-800 font-semibold mb-2">Error loading blog</h3>
+          <p class="text-red-600 text-sm">${error}</p>
         </div>
       </div>
     </div>
   `;
 
   return html`
-    <div class="min-h-screen bg-gray-50">
-      <div class="bg-blue-400 border-b-4 border-black text-black py-12">
-        <div class="max-w-4xl mx-auto px-4">
-          <h1 class="text-4xl md:text-5xl font-bold mb-3">SubmitHunt Blog</h1>
-          <p class="text-lg font-medium">
-            Insights, tips, and strategies for launching and growing your startup
+    <div style="background-color: var(--sh-bg);">
+      <!-- Hero -->
+      <div class="border-b border-gray-200 bg-white">
+        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16">
+          <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-orange-50 text-orange-700 border border-orange-200 mb-4">
+            Blog
+          </span>
+          <h1 class="text-3xl sm:text-4xl font-semibold tracking-tight text-gray-900 mb-3">
+            Insights for launching and growing
+          </h1>
+          <p class="text-lg text-gray-500 max-w-2xl">
+            Tips, strategies, and lessons from indie founders who've shipped on SubmitHunt.
           </p>
         </div>
       </div>
 
-      <div class="max-w-6xl mx-auto px-4 py-12">
+      <!-- Posts grid -->
+      <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         ${posts.length === 0 ? html`
-          <div class="text-center py-12">
-            <p class="text-gray-600 text-lg">No blog posts yet. Check back soon!</p>
+          <div class="text-center py-16 text-gray-500">
+            <p class="text-base">No blog posts yet — check back soon.</p>
           </div>
         ` : html`
-          <div class="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
+          <div class="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
             ${posts.map(post => html`
               <article
                 key=${post.id}
-                class="bg-white border-2 border-black rounded shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] overflow-hidden hover:shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] transition-all cursor-pointer"
+                class="sh-card overflow-hidden cursor-pointer group"
                 onClick=${() => navigate(`/blog/${post.slug}`)}
               >
                 <div class="p-6">
-                  <div class="flex items-center gap-2 mb-3">
-                    <span class="text-sm text-gray-500">${formatDate(post.published_at)}</span>
+                  <div class="flex items-center gap-2 mb-3 text-xs text-gray-500">
+                    <span>${formatDate(post.published_at)}</span>
                     ${post.category && html`
-                      <span class="text-xs bg-pink-100 text-pink-800 px-2 py-0.5 rounded border border-pink-300 font-bold capitalize">${post.category}</span>
+                      <span class="text-gray-300">·</span>
+                      <span class="inline-flex items-center px-2 py-0.5 bg-gray-50 text-gray-600 border border-gray-200 rounded-full text-[11px] font-medium capitalize">
+                        ${post.category}
+                      </span>
                     `}
                   </div>
-                  <h2 class="text-xl font-bold text-gray-900 mb-3 line-clamp-2">${post.title}</h2>
-                  <p class="text-gray-600 mb-4 line-clamp-3 text-sm">${post.excerpt}</p>
-                  <div class="flex items-center justify-between">
-                    <span class="text-blue-600 font-bold text-sm hover:underline">Read More →</span>
-                    <span class="text-xs text-gray-400">${post.view_count || 0} views</span>
+                  <h2 class="text-base sm:text-lg font-semibold text-gray-900 mb-2 line-clamp-2 group-hover:text-orange-700 transition-colors">
+                    ${post.title}
+                  </h2>
+                  <p class="text-sm text-gray-600 mb-4 line-clamp-3 leading-relaxed">${post.excerpt}</p>
+                  <div class="flex items-center justify-between text-xs text-gray-500">
+                    <span class="inline-flex items-center gap-1 font-medium text-gray-900 group-hover:text-orange-700 transition-colors">
+                      Read article <i class="fas fa-arrow-right text-[10px]"></i>
+                    </span>
+                    <span>${post.view_count || 0} views</span>
                   </div>
                 </div>
               </article>
@@ -93,15 +110,13 @@ export const BlogPage = () => {
         `}
       </div>
 
-      <div class="bg-yellow-300 border-t-4 border-black py-16 mt-4">
-        <div class="max-w-4xl mx-auto px-4 text-center">
-          <h2 class="text-3xl font-bold mb-4">Ready to Launch Your Startup?</h2>
-          <p class="text-lg mb-8">Join thousands of founders who've launched on SubmitHunt</p>
-          <a
-            href="/submit"
-            class="inline-block bg-black text-white px-8 py-3 border-2 border-black rounded shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] font-bold text-lg hover:bg-gray-800 transition-colors"
-          >
-            🚀 Submit Your Startup
+      <!-- CTA -->
+      <div class="border-t border-gray-200 bg-white">
+        <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-14 text-center">
+          <h2 class="text-2xl sm:text-3xl font-semibold tracking-tight text-gray-900 mb-3">Ready to launch?</h2>
+          <p class="text-gray-500 mb-7">Join thousands of indie founders who've launched on SubmitHunt.</p>
+          <a href="/submit" class="sh-btn-primary justify-center">
+            <i class="fas fa-rocket text-xs"></i> Submit your startup
           </a>
         </div>
       </div>

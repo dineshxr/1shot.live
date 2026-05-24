@@ -556,12 +556,10 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
 
   // Show loading state while checking auth - login modal will auto-appear if not authenticated
   if (!user && !authLoading) {
-    // Trigger login modal and show a simple loading state
-    // The login modal is shown automatically by the parent component
     return html`
-      <div class="max-w-4xl mx-auto px-4 py-8 md:py-12 text-center">
-        <div class="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
-        <p class="mt-4 text-gray-600">Please sign in to continue...</p>
+      <div class="max-w-4xl mx-auto px-4 py-12 md:py-16 text-center">
+        <div class="inline-block animate-spin rounded-full h-10 w-10 border-2 border-gray-300 border-t-gray-900"></div>
+        <p class="mt-4 text-sm text-gray-500">Please sign in to continue…</p>
       </div>
     `;
   }
@@ -569,9 +567,9 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
   // Show loading state
   if (authLoading) {
     return html`
-      <div class="max-w-4xl mx-auto px-4 py-8 md:py-12 text-center">
-        <div class="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
-        <p class="mt-4 text-gray-600">Loading...</p>
+      <div class="max-w-4xl mx-auto px-4 py-12 md:py-16 text-center">
+        <div class="inline-block animate-spin rounded-full h-10 w-10 border-2 border-gray-300 border-t-gray-900"></div>
+        <p class="mt-4 text-sm text-gray-500">Loading…</p>
       </div>
     `;
   }
@@ -579,79 +577,77 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
   // Success page
   if (showSuccessPage) {
     return html`
-      <div class="max-w-4xl mx-auto px-4 py-6 md:py-8">
-        <div class="bg-white border-4 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] p-4 md:p-8 rounded-lg">
-          <h2 class="text-2xl font-bold mb-4 text-black">Startup Submitted Successfully! 🚀</h2>
-          
-          <div class="mb-6 p-4 bg-green-100 border-2 border-green-500 rounded text-center">
-            <p class="text-green-700 font-bold text-xl mb-2">Congratulations!</p>
+      <div class="max-w-3xl mx-auto px-4 py-10 md:py-14">
+        <div class="bg-white border border-gray-200 rounded-2xl shadow-sm p-6 md:p-10">
+          <div class="text-center mb-8">
+            <div class="inline-flex items-center justify-center w-14 h-14 rounded-full bg-emerald-50 border border-emerald-200 mb-4">
+              <i class="fas fa-check text-emerald-600 text-xl"></i>
+            </div>
+            <h2 class="text-2xl sm:text-3xl font-semibold tracking-tight text-gray-900 mb-2">Startup submitted 🚀</h2>
             ${formData.plan === 'free' ? html`
-              <p class="text-green-700">Your startup will be featured on the Home Page shortly.</p>
+              <p class="text-gray-500">Your startup will be featured on the Home Page shortly.</p>
             ` : ''}
           </div>
 
           ${formData.plan === 'premium' || formData.plan === 'featured' ? html`
-            <div class="mb-4 bg-yellow-300 p-3 border border-black rounded">
-              <div class="flex items-center gap-3">
-                <div class="animate-spin rounded-full h-5 w-5 border-b-2 border-black"></div>
-                <div>
-                  <p class="font-bold mb-1">Redirecting to payment...</p>
-                  <p class="text-sm">You'll be redirected to Stripe to complete your ${formData.plan === 'featured' ? '$50 payment' : '$20 payment'}.</p>
-                </div>
+            <div class="mb-6 flex items-center gap-3 px-4 py-3 bg-orange-50 border border-orange-200 rounded-xl">
+              <div class="animate-spin rounded-full h-4 w-4 border-2 border-orange-300 border-t-orange-700 shrink-0"></div>
+              <div class="text-sm">
+                <p class="font-medium text-gray-900">Redirecting to payment…</p>
+                <p class="text-gray-600">You'll be redirected to Stripe to complete your ${formData.plan === 'featured' ? '$50 payment' : '$20 payment'}.</p>
               </div>
             </div>
           ` : html`
-            <div class="mb-4 bg-blue-100 p-3 border border-black rounded">
-              <p>Your submission has been added to the queue and will be featured soon.</p>
+            <div class="mb-6 px-4 py-3 bg-blue-50 border border-blue-200 rounded-xl text-sm text-blue-900">
+              Your submission has been added to the queue and will be featured soon.
             </div>
           `}
-          
-          <div class="mt-6 p-4 border-2 border-black rounded bg-orange-50">
-            <h3 class="font-bold text-lg mb-2 flex items-center">
+
+          <div class="mt-6 p-5 border border-orange-200 rounded-2xl bg-orange-50/40">
+            <h3 class="font-semibold text-gray-900 mb-3 flex items-center">
               <i class="fas fa-award mr-2 text-orange-600"></i>
-              Get Your Badge & Keep Your 37+ DR Backlink!
+              Get your badge & keep your 37+ DR backlink
             </h3>
-            <div class="mb-4 p-3 bg-yellow-100 border border-yellow-400 rounded">
-              <p class="text-sm text-yellow-800">Add our badge to your website to make your listing <strong>permanent</strong> and keep your backlink as <strong>dofollow</strong>.</p>
+            <div class="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-xl">
+              <p class="text-sm text-amber-900">Add our badge to your website to make your listing <strong>permanent</strong> and keep your backlink as <strong>dofollow</strong>.</p>
             </div>
-            
-            <div class="border border-gray-300 rounded p-3">
-              <h4 class="font-bold mb-2">🔗 Embed Code</h4>
-              <div class="bg-gray-100 p-3 rounded text-xs font-mono mb-3 overflow-x-auto">
+
+            <div class="border border-gray-200 rounded-xl p-4 bg-white">
+              <h4 class="text-sm font-semibold text-gray-900 mb-2">Embed code</h4>
+              <div class="bg-gray-50 border border-gray-200 p-3 rounded-lg text-xs font-mono mb-3 overflow-x-auto text-gray-700">
                 <code id="embed-code">&lt;a href="https://submithunt.com" target="_blank" rel="noopener"&gt;&lt;img src="https://submithunt.com/badge.png" alt="Featured on SubmitHunt" width="150" height="45" /&gt;&lt;/a&gt;</code>
               </div>
-              <button 
+              <button
                 onClick=${() => {
         const embedCode = document.getElementById('embed-code').textContent;
         navigator.clipboard.writeText(embedCode);
       }}
-                class="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600 font-bold"
+                class="sh-btn-ghost text-sm"
               >
-                Copy Embed Code
+                <i class="fas fa-copy text-xs"></i> Copy embed code
               </button>
             </div>
           </div>
-          
-          <div class="mt-6 flex flex-col items-center">
-            <p class="mb-3 font-bold">Share your launch:</p>
-            <div class="flex space-x-4">
-              <a href="https://twitter.com/intent/tweet?text=I%20just%20launched%20my%20startup%20on%20submithunt.com%21" target="_blank" class="p-2 bg-blue-400 hover:bg-blue-500 rounded-full">
-                <i class="fab fa-twitter text-white text-xl"></i>
+
+          <div class="mt-8 flex flex-col items-center">
+            <p class="mb-3 text-sm font-medium text-gray-700">Share your launch</p>
+            <div class="flex space-x-3">
+              <a href="https://twitter.com/intent/tweet?text=I%20just%20launched%20my%20startup%20on%20submithunt.com%21" target="_blank"
+                 class="w-10 h-10 flex items-center justify-center rounded-full border border-gray-200 text-gray-700 hover:bg-gray-50 hover:text-gray-900 transition-colors">
+                <i class="fab fa-twitter"></i>
               </a>
-              <a href="https://www.linkedin.com/sharing/share-offsite/?url=https://submithunt.com" target="_blank" class="p-2 bg-blue-700 hover:bg-blue-800 rounded-full">
-                <i class="fab fa-linkedin-in text-white text-xl"></i>
+              <a href="https://www.linkedin.com/sharing/share-offsite/?url=https://submithunt.com" target="_blank"
+                 class="w-10 h-10 flex items-center justify-center rounded-full border border-gray-200 text-gray-700 hover:bg-gray-50 hover:text-gray-900 transition-colors">
+                <i class="fab fa-linkedin-in"></i>
               </a>
             </div>
           </div>
-          
+
           <${Confetti} />
-          
-          <div class="flex justify-center mt-6">
-            <a
-              href="/"
-              class="px-6 py-2 bg-blue-400 border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:bg-blue-500 font-bold"
-            >
-              Back to Home
+
+          <div class="flex justify-center mt-8">
+            <a href="/" class="sh-btn-primary">
+              <i class="fas fa-arrow-left text-xs"></i> Back to home
             </a>
           </div>
         </div>
@@ -661,21 +657,26 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
 
   // Main form
   return html`
-    <div class="max-w-4xl mx-auto px-4 py-6 md:py-8">
-      <div class="bg-white border-4 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] p-4 md:p-8 rounded-lg">
-        <h2 class="text-2xl font-bold mb-2 text-black">Submit Your Startup</h2>
-        <p class="text-gray-700 mb-4">Launch your project on the best Product Hunt alternative.</p>
-        
-        <div class="mb-4 bg-yellow-300 p-3 border border-black rounded">
-          <p class="font-bold flex items-center">
-            <span class="mr-2">🚀</span> Submit Your Startup, Get a 37+ DR Backlink
-          </p>
-          <p class="text-sm mt-1">Join hundreds of founders who chose SubmitHunt</p>
+    <div class="max-w-3xl mx-auto px-4 py-10 md:py-14">
+      <div class="bg-white border border-gray-200 rounded-2xl shadow-sm p-6 md:p-10">
+        <div class="mb-6">
+          <h2 class="text-2xl sm:text-3xl font-semibold tracking-tight text-gray-900 mb-2">Submit your startup</h2>
+          <p class="text-gray-500">Launch your project on the best Product Hunt alternative.</p>
+        </div>
+
+        <div class="mb-6 flex items-start gap-3 p-4 bg-orange-50/60 border border-orange-200 rounded-xl">
+          <div class="w-8 h-8 rounded-lg bg-white border border-orange-200 flex items-center justify-center text-orange-600 shrink-0">
+            <i class="fas fa-rocket text-sm"></i>
+          </div>
+          <div class="text-sm">
+            <p class="font-medium text-gray-900">Submit your startup, get a 37+ DR backlink</p>
+            <p class="text-gray-600 mt-0.5">Join hundreds of founders who chose SubmitHunt.</p>
+          </div>
         </div>
 
         ${error && html`
-          <div class="mb-4 p-3 bg-red-100 border-2 border-red-500 rounded">
-            <p class="text-red-700">${error}</p>
+          <div class="mb-6 px-4 py-3 bg-red-50 border border-red-200 rounded-xl">
+            <p class="text-sm text-red-700">${error}</p>
           </div>
         `}
 
@@ -783,20 +784,15 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
                 <p class="text-sm text-gray-500 mt-1">Your X username for attribution</p>
               </div>
 
-              <div class="flex justify-end pt-4">
-                <a
-                  href="/"
-                  class="mr-2 px-4 py-2 bg-gray-200 border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:bg-gray-300 font-bold"
-                >
-                  Cancel
-                </a>
+              <div class="flex justify-end gap-2 pt-4">
+                <a href="/" class="sh-btn-ghost">Cancel</a>
                 <button
                   type="button"
                   onClick=${goToNextPage}
-                  class="neo-button px-4 py-2 bg-blue-400 border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:bg-blue-500 font-bold"
+                  class="sh-btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
                   disabled=${loading}
                 >
-                  Next
+                  Next <i class="fas fa-arrow-right text-xs"></i>
                 </button>
               </div>
             </div>
@@ -1042,39 +1038,39 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
                 <button
                   type="button"
                   onClick=${goToPreviousPage}
-                  class="px-6 py-3 bg-gray-200 border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:bg-gray-300 font-bold rounded-lg"
+                  class="sh-btn-ghost"
                   disabled=${loading}
                 >
-                  <i class="fas fa-arrow-left mr-2"></i>Previous
+                  <i class="fas fa-arrow-left text-xs"></i> Previous
                 </button>
-                
+
                 ${formData.plan === 'free' && availableLaunchDates.filter(d => d.freeAvailable).length > 0 ? html`
                   <button
                     type="submit"
-                    class="px-6 py-3 bg-blue-500 text-white border-2 border-blue-600 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:bg-blue-600 font-bold rounded-lg disabled:opacity-50"
+                    class="sh-btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
                     disabled=${loading}
                   >
-                    ${loading ? html`<i class="fas fa-spinner fa-spin mr-2"></i>Submitting...` : html`Submit Free Launch <i class="fas fa-arrow-right ml-2"></i>`}
+                    ${loading ? html`<i class="fas fa-spinner fa-spin text-xs"></i> Submitting…` : html`Submit free launch <i class="fas fa-arrow-right text-xs"></i>`}
                   </button>
                 ` : ''}
-                
+
                 ${formData.plan === 'featured' ? html`
                   <button
                     type="submit"
-                    class="px-6 py-3 bg-purple-500 text-white border-2 border-purple-600 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:bg-purple-600 font-bold rounded-lg disabled:opacity-50"
+                    class="sh-btn-accent disabled:opacity-50 disabled:cursor-not-allowed"
                     disabled=${loading}
                   >
-                    ${loading ? html`<i class="fas fa-spinner fa-spin mr-2"></i>Redirecting to Stripe...` : html`Continue to Payment <i class="fas fa-arrow-right ml-2"></i>`}
+                    ${loading ? html`<i class="fas fa-spinner fa-spin text-xs"></i> Redirecting to Stripe…` : html`Continue to payment <i class="fas fa-arrow-right text-xs"></i>`}
                   </button>
                 ` : ''}
 
                 ${formData.plan === 'premium' ? html`
                   <button
                     type="submit"
-                    class="px-6 py-3 bg-orange-500 text-white border-2 border-orange-600 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:bg-orange-600 font-bold rounded-lg disabled:opacity-50"
+                    class="sh-btn-accent disabled:opacity-50 disabled:cursor-not-allowed"
                     disabled=${loading}
                   >
-                    ${loading ? html`<i class="fas fa-spinner fa-spin mr-2"></i>Redirecting to Stripe...` : html`Continue to Payment <i class="fas fa-arrow-right ml-2"></i>`}
+                    ${loading ? html`<i class="fas fa-spinner fa-spin text-xs"></i> Redirecting to Stripe…` : html`Continue to payment <i class="fas fa-arrow-right text-xs"></i>`}
                   </button>
                 ` : ''}
               </div>

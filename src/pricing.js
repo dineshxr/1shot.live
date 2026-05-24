@@ -9,7 +9,6 @@ window.useState = useState;
 window.useEffect = useEffect;
 window.html = html;
 
-// Pricing Page Component
 const PricingPage = () => {
   const [user, setUser] = useState(null);
 
@@ -25,26 +24,24 @@ const PricingPage = () => {
   }, []);
 
   return html`
-    <div class="min-h-screen flex flex-col bg-gray-50">
+    <div class="min-h-screen flex flex-col" style="background-color: var(--sh-bg);">
       <!-- Header -->
-      <header class="bg-blue-400 text-black border-b-4 border-black">
-        <div class="container max-w-6xl mx-auto px-4 py-6">
-          <div class="flex flex-col md:flex-row justify-between items-center">
-            <div class="flex items-center">
-              <a href="/" class="flex items-center hover:opacity-80 transition-opacity">
-                <img src="/src/sh-logo.png" alt="SubmitHunt Logo" class="w-10 h-10 mr-3" />
-                <h1 class="text-2xl md:text-3xl font-bold">Submit Hunt</h1>
-              </a>
-              <a href="/" class="ml-4 px-3 py-1 bg-white border-2 border-black rounded shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:bg-gray-100 font-bold text-sm">
-                ← Back to Home
-              </a>
-            </div>
-            <div class="mt-4 md:mt-0">
-              <a
-                href="/submit"
-                class="neo-button inline-flex items-center px-4 py-2 bg-green-400 border-2 border-black rounded shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:bg-green-500 font-bold"
-              >
-                <i class="fas fa-rocket mr-2"></i> Submit Product
+      <header class="sticky top-0 z-40 bg-white/85 backdrop-blur border-b border-gray-200">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div class="flex h-16 items-center justify-between gap-4">
+            <a href="/" class="flex items-center gap-2">
+              <img src="/src/sh-logo.png" alt="SubmitHunt" class="w-8 h-8 rounded-md" />
+              <span class="text-base font-semibold tracking-tight text-gray-900">SubmitHunt</span>
+            </a>
+            <nav class="hidden md:flex items-center gap-1 text-sm">
+              <a href="/" class="px-3 py-1.5 rounded-lg text-gray-700 hover:bg-gray-100">Discover</a>
+              <a href="/blog" class="px-3 py-1.5 rounded-lg text-gray-700 hover:bg-gray-100">Blog</a>
+              <a href="/pricing" class="px-3 py-1.5 rounded-lg text-gray-900 bg-gray-100">Pricing</a>
+              <a href="/featured" class="px-3 py-1.5 rounded-lg text-gray-700 hover:bg-gray-100">Featured</a>
+            </nav>
+            <div class="flex items-center gap-2">
+              <a href="/submit" class="sh-btn-primary">
+                <i class="fas fa-plus text-xs"></i><span>Submit</span>
               </a>
             </div>
           </div>
@@ -52,212 +49,187 @@ const PricingPage = () => {
       </header>
 
       <!-- Main Content -->
-      <main class="flex-1 py-12 px-4">
+      <main class="flex-1 py-12 sm:py-16 px-4 sm:px-6 lg:px-8">
         <div class="max-w-6xl mx-auto">
           <!-- Page Header -->
-          <div class="text-center mb-12">
-            <h1 class="text-4xl md:text-5xl font-bold text-gray-900 mb-4">
-              Simple, Transparent Pricing
+          <div class="text-center mb-12 sm:mb-16">
+            <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-orange-50 text-orange-700 border border-orange-200 mb-5">
+              <span class="w-1.5 h-1.5 rounded-full bg-orange-500"></span>
+              Pricing
+            </span>
+            <h1 class="text-4xl sm:text-5xl font-semibold tracking-tight text-gray-900 mb-4">
+              Simple, transparent pricing
             </h1>
-            <p class="text-xl text-gray-600 max-w-2xl mx-auto">
-              Choose the perfect plan to launch your startup and get discovered by thousands of daily visitors
+            <p class="text-lg text-gray-500 max-w-2xl mx-auto">
+              Choose the plan that fits your launch. Every plan comes with a high-authority dofollow backlink.
             </p>
           </div>
 
           <!-- Pricing Cards -->
-          <div class="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
-            
+          <div class="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
+
             <!-- Free Plan -->
-            <div class="bg-white rounded-2xl border-2 border-gray-200 p-8 hover:shadow-lg transition-shadow">
+            <div class="bg-white rounded-2xl border border-gray-200 p-7 shadow-sm flex flex-col">
               <div class="mb-6">
-                <h3 class="text-xl font-bold text-gray-900 mb-2">Standard Launch</h3>
-                <div class="flex items-baseline">
-                  <span class="text-4xl font-bold text-gray-900">Free</span>
+                <h3 class="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">Standard Launch</h3>
+                <div class="flex items-baseline gap-1">
+                  <span class="text-4xl font-semibold tracking-tight text-gray-900">Free</span>
                 </div>
+                <p class="text-sm text-gray-500 mt-2">For founders happy to wait for a slot.</p>
               </div>
-              
-              <div class="space-y-4 mb-8">
-                <div class="flex items-start gap-3">
-                  <span class="text-gray-400 mt-0.5">
-                    <i class="fas fa-home"></i>
-                  </span>
+
+              <ul class="space-y-3 mb-8 text-sm flex-1">
+                <li class="flex items-start gap-2.5">
+                  <i class="fas fa-check text-gray-400 mt-1 text-xs"></i>
                   <span class="text-gray-700">Live on homepage for 7 days</span>
-                </div>
-                
-                <div class="flex items-start gap-3">
-                  <span class="text-orange-500 mt-0.5">
-                    <i class="fas fa-trophy"></i>
-                  </span>
-                  <span class="text-gray-700">
-                    <span class="bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded text-sm font-medium">Badge for top 3 ranking products</span>
-                  </span>
-                </div>
-                
-                <div class="flex items-start gap-3">
-                  <span class="text-gray-400 mt-0.5">
-                    <i class="fas fa-chart-bar"></i>
-                  </span>
+                </li>
+                <li class="flex items-start gap-2.5">
+                  <i class="fas fa-check text-gray-400 mt-1 text-xs"></i>
+                  <span class="text-gray-700">Badge for top 3 ranking products</span>
+                </li>
+                <li class="flex items-start gap-2.5">
+                  <i class="fas fa-check text-gray-400 mt-1 text-xs"></i>
                   <span class="text-gray-700">High authority backlink for top 3 ranking products</span>
-                </div>
-                
-                <div class="flex items-start gap-3">
-                  <span class="text-red-500 mt-0.5">
-                    <i class="fas fa-clock"></i>
-                  </span>
-                  <span class="text-red-600 font-medium">⏳ Launch delayed ~1 week</span>
-                </div>
-              </div>
-              
-              <a
-                href="/submit"
-                class="block w-full text-center py-3 px-4 border-2 border-gray-300 rounded-lg text-gray-700 font-semibold hover:bg-gray-50 hover:border-gray-400 transition-all"
-              >
-                Get Started
+                </li>
+                <li class="flex items-start gap-2.5">
+                  <i class="fas fa-clock text-amber-500 mt-1 text-xs"></i>
+                  <span class="text-amber-700">Launch delayed by ~1 week</span>
+                </li>
+              </ul>
+
+              <a href="/submit"
+                 class="block w-full text-center py-2.5 px-4 border border-gray-200 rounded-xl text-gray-900 font-medium text-sm hover:bg-gray-50 hover:border-gray-300 transition-colors">
+                Get started
               </a>
             </div>
 
             <!-- Premium Plan -->
-            <div class="bg-white rounded-2xl border-4 border-orange-400 p-8 shadow-lg relative">
-              <div class="absolute -top-3 left-1/2 transform -translate-x-1/2">
-                <span class="bg-orange-400 text-white text-sm font-bold px-4 py-1 rounded-full">
-                  MOST POPULAR
+            <div class="bg-white rounded-2xl border border-orange-300 p-7 shadow-md flex flex-col relative ring-1 ring-orange-200">
+              <div class="absolute -top-3 left-1/2 -translate-x-1/2">
+                <span class="inline-flex items-center gap-1 bg-orange-600 text-white text-[10px] font-semibold uppercase tracking-wider px-3 py-1 rounded-full">
+                  Most popular
                 </span>
               </div>
-              
+
               <div class="mb-6">
-                <h3 class="text-xl font-bold text-gray-900 mb-2">Premium Launch</h3>
-                <div class="flex items-baseline">
-                  <span class="text-4xl font-bold text-gray-900">$20</span>
-                  <span class="text-gray-500 ml-1">/launch</span>
+                <h3 class="text-sm font-semibold text-orange-700 uppercase tracking-wider mb-3">Premium Launch</h3>
+                <div class="flex items-baseline gap-1">
+                  <span class="text-4xl font-semibold tracking-tight text-gray-900">$20</span>
+                  <span class="text-gray-500 text-sm">/ launch</span>
                 </div>
+                <p class="text-sm text-gray-500 mt-2">Skip the queue and launch right away.</p>
               </div>
-              
-              <div class="space-y-4 mb-8">
-                <div class="flex items-start gap-3">
-                  <span class="text-orange-500 mt-0.5">
-                    <i class="fas fa-home"></i>
-                  </span>
+
+              <ul class="space-y-3 mb-8 text-sm flex-1">
+                <li class="flex items-start gap-2.5">
+                  <i class="fas fa-check text-orange-600 mt-1 text-xs"></i>
                   <span class="text-gray-700">Live on homepage for 14 days</span>
-                </div>
-                
-                <div class="flex items-start gap-3">
-                  <span class="text-orange-500 mt-0.5">
-                    <i class="fas fa-trophy"></i>
-                  </span>
+                </li>
+                <li class="flex items-start gap-2.5">
+                  <i class="fas fa-check text-orange-600 mt-1 text-xs"></i>
                   <span class="text-gray-700">Badge for top 3 ranking products</span>
-                </div>
-                
-                <div class="flex items-start gap-3">
-                  <span class="text-orange-500 mt-0.5">
-                    <i class="fas fa-chart-bar"></i>
-                  </span>
-                  <span class="text-gray-700 font-semibold">Guaranteed high authority backlink (37+ DR)</span>
-                </div>
-                
-                <div class="flex items-start gap-3">
-                  <span class="text-orange-500 mt-0.5">
-                    <i class="fas fa-bolt"></i>
-                  </span>
-                  <span class="text-gray-700">Skip the queue - launch immediately</span>
-                </div>
-                
-                <div class="flex items-start gap-3">
-                  <span class="text-orange-500 mt-0.5">
-                    <i class="fas fa-envelope"></i>
-                  </span>
+                </li>
+                <li class="flex items-start gap-2.5">
+                  <i class="fas fa-check text-orange-600 mt-1 text-xs"></i>
+                  <span class="text-gray-900 font-medium">Guaranteed high-authority backlink (37+ DR)</span>
+                </li>
+                <li class="flex items-start gap-2.5">
+                  <i class="fas fa-bolt text-orange-600 mt-1 text-xs"></i>
+                  <span class="text-gray-700">Skip the queue — launch immediately</span>
+                </li>
+                <li class="flex items-start gap-2.5">
+                  <i class="fas fa-envelope text-orange-600 mt-1 text-xs"></i>
                   <span class="text-gray-700">Featured in our newsletter</span>
-                </div>
-              </div>
-              
-              <a
-                href="/submit?plan=premium"
-                class="block w-full text-center py-3 px-4 bg-orange-400 border-2 border-orange-500 rounded-lg text-white font-bold hover:bg-orange-500 transition-all shadow-md"
-              >
+                </li>
+              </ul>
+
+              <a href="/submit?plan=premium" class="sh-btn-accent justify-center w-full">
                 Choose Premium
               </a>
             </div>
 
             <!-- Featured Spot -->
-            <div class="bg-white rounded-2xl border-2 border-gray-200 p-8 hover:shadow-lg transition-shadow">
+            <div class="bg-white rounded-2xl border border-gray-200 p-7 shadow-sm flex flex-col">
               <div class="mb-6">
-                <h3 class="text-xl font-bold text-gray-900 mb-2">Featured Spot</h3>
-                <div class="flex items-baseline gap-1 mb-2">
-                  <span class="text-4xl font-bold text-gray-900">$50</span>
-                  <span class="text-gray-500">one-time</span>
+                <h3 class="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">Featured Spot</h3>
+                <div class="flex items-baseline gap-1">
+                  <span class="text-4xl font-semibold tracking-tight text-gray-900">$50</span>
+                  <span class="text-gray-500 text-sm">one-time</span>
                 </div>
-                <div class="text-sm text-gray-500">Premium placement for 7 days</div>
+                <p class="text-sm text-gray-500 mt-2">Premium placement for 7 days.</p>
               </div>
-              
-              <div class="space-y-3 mb-8 text-sm">
-                <div class="flex items-start gap-3">
-                  <span class="text-purple-500 mt-0.5">
-                    <i class="fas fa-star"></i>
-                  </span>
+
+              <ul class="space-y-3 mb-8 text-sm flex-1">
+                <li class="flex items-start gap-2.5">
+                  <i class="fas fa-star text-gray-400 mt-1 text-xs"></i>
                   <span class="text-gray-700">Featured placement in feed</span>
-                </div>
-                
-                <div class="flex items-start gap-3">
-                  <span class="text-purple-500 mt-0.5">
-                    <i class="fas fa-eye"></i>
-                  </span>
+                </li>
+                <li class="flex items-start gap-2.5">
+                  <i class="fas fa-eye text-gray-400 mt-1 text-xs"></i>
                   <span class="text-gray-700">High visibility to daily visitors</span>
-                </div>
-                
-                <div class="flex items-start gap-3">
-                  <span class="text-purple-500 mt-0.5">
-                    <i class="fas fa-border-all"></i>
-                  </span>
-                  <span class="text-gray-700">Colorful gradient border</span>
-                </div>
-                
-                <div class="flex items-start gap-3">
-                  <span class="text-purple-500 mt-0.5">
-                    <i class="fas fa-bolt"></i>
-                  </span>
+                </li>
+                <li class="flex items-start gap-2.5">
+                  <i class="fas fa-border-all text-gray-400 mt-1 text-xs"></i>
+                  <span class="text-gray-700">Colorful gradient border on card</span>
+                </li>
+                <li class="flex items-start gap-2.5">
+                  <i class="fas fa-bolt text-gray-400 mt-1 text-xs"></i>
                   <span class="text-gray-700">One-time payment, no subscription</span>
-                </div>
-              </div>
-              
-              <a
-                href="/submit?plan=featured"
-                class="block w-full text-center py-3 px-4 bg-purple-500 border-2 border-purple-600 rounded-lg text-white font-bold hover:bg-purple-600 transition-all"
-              >
+                </li>
+              </ul>
+
+              <a href="/submit?plan=featured"
+                 class="block w-full text-center py-2.5 px-4 bg-gray-900 text-white rounded-xl font-medium text-sm hover:bg-gray-800 transition-colors">
                 Choose Featured
               </a>
             </div>
           </div>
 
           <!-- FAQ Section -->
-          <div class="mt-16 max-w-3xl mx-auto">
-            <h2 class="text-2xl font-bold text-center text-gray-900 mb-8">Frequently Asked Questions</h2>
-            
-            <div class="space-y-4">
-              <div class="bg-white rounded-lg border border-gray-200 p-6">
-                <h3 class="font-bold text-gray-900 mb-2">What is a dofollow backlink?</h3>
-                <p class="text-gray-600">A dofollow backlink passes SEO authority from our site (37+ DR) to yours, helping improve your search engine rankings.</p>
-              </div>
-              
-              <div class="bg-white rounded-lg border border-gray-200 p-6">
-                <h3 class="font-bold text-gray-900 mb-2">How long does my listing stay live?</h3>
-                <p class="text-gray-600">Free listings stay live for 7 days, while Premium listings stay for 14 days. Featured spots run for the duration you purchase.</p>
-              </div>
-              
-              <div class="bg-white rounded-lg border border-gray-200 p-6">
-                <h3 class="font-bold text-gray-900 mb-2">Can I submit multiple products?</h3>
-                <p class="text-gray-600">Yes! Free users get one free submission. For additional products, choose the Premium plan.</p>
-              </div>
+          <div class="mt-20 max-w-3xl mx-auto">
+            <h2 class="text-2xl font-semibold tracking-tight text-center text-gray-900 mb-3">Frequently asked questions</h2>
+            <p class="text-center text-gray-500 mb-10 text-sm">Anything else? Ping us on X.</p>
+
+            <div class="space-y-3">
+              <details class="group bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+                <summary class="flex items-center justify-between cursor-pointer px-6 py-5 list-none">
+                  <h3 class="font-medium text-gray-900">What is a dofollow backlink?</h3>
+                  <i class="fas fa-chevron-down text-gray-400 text-xs transition-transform group-open:rotate-180"></i>
+                </summary>
+                <div class="px-6 pb-5 text-sm text-gray-600 leading-relaxed">
+                  A dofollow backlink passes SEO authority from our site (37+ DR) to yours, helping improve your search engine rankings.
+                </div>
+              </details>
+
+              <details class="group bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+                <summary class="flex items-center justify-between cursor-pointer px-6 py-5 list-none">
+                  <h3 class="font-medium text-gray-900">How long does my listing stay live?</h3>
+                  <i class="fas fa-chevron-down text-gray-400 text-xs transition-transform group-open:rotate-180"></i>
+                </summary>
+                <div class="px-6 pb-5 text-sm text-gray-600 leading-relaxed">
+                  Free listings stay live for 7 days, Premium listings for 14 days. Featured spots run for the duration you purchase.
+                </div>
+              </details>
+
+              <details class="group bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+                <summary class="flex items-center justify-between cursor-pointer px-6 py-5 list-none">
+                  <h3 class="font-medium text-gray-900">Can I submit multiple products?</h3>
+                  <i class="fas fa-chevron-down text-gray-400 text-xs transition-transform group-open:rotate-180"></i>
+                </summary>
+                <div class="px-6 pb-5 text-sm text-gray-600 leading-relaxed">
+                  Yes — free users get one free submission. For additional products, choose the Premium plan.
+                </div>
+              </details>
             </div>
           </div>
         </div>
       </main>
 
-      <!-- Footer -->
       <${Footer} />
     </div>
   `;
 };
 
-// Initialize the app
 document.addEventListener('DOMContentLoaded', () => {
   const root = document.getElementById('app-root');
   if (root) {

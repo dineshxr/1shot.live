@@ -1,11 +1,12 @@
 {
   "name": "submit-hunt",
   "scripts": {
-    "dev": "npx live-server",
+    "dev": "node scripts/dev-server.js",
     "supabase:typegen": "bunx supabase gen types --lang=typescript --local > supabase/database-generated.types.ts"
   },
   "devDependencies": {
-    "@supabase/supabase-js": "^2.57.4"
+    "@supabase/supabase-js": "^2.57.4",
+    "live-server": "^1.2.2"
   },
   "dependencies": {
     "@vercel/analytics": "^1.1.1"

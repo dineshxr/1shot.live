@@ -67,30 +67,30 @@ export const UpvoteButton = ({ startup, user, onUpvoteChange }) => {
   };
 
   return html`
-    <div class="flex items-center gap-1">
-      <button
-        onclick=${handleUpvote}
-        disabled=${isVoting}
-        class="p-2 text-gray-400 hover:text-gray-600 transition-colors rounded-lg hover:bg-gray-50 ${
-          userVoted ? 'text-orange-500 hover:text-orange-600' : ''
-        } ${isVoting ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}"
-        title=${user ? (userVoted ? 'Remove upvote' : 'Upvote this startup') : 'Login to upvote'}
+    <button
+      onclick=${handleUpvote}
+      disabled=${isVoting}
+      class="flex flex-col items-center justify-center gap-0.5 min-w-[52px] px-2 py-1.5 rounded-xl border transition-colors ${
+        userVoted
+          ? 'border-orange-300 bg-orange-50 text-orange-700 hover:bg-orange-100'
+          : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300 hover:bg-gray-50'
+      } ${isVoting ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}"
+      title=${user ? (userVoted ? 'Remove upvote' : 'Upvote this startup') : 'Login to upvote'}
+    >
+      <svg
+        class="w-3.5 h-3.5"
+        fill=${userVoted ? 'currentColor' : 'none'}
+        stroke="currentColor"
+        viewBox="0 0 24 24"
       >
-        <svg 
-          class="w-4 h-4" 
-          fill=${userVoted ? 'currentColor' : 'none'} 
-          stroke="currentColor" 
-          viewBox="0 0 24 24"
-        >
-          <path 
-            stroke-linecap="round" 
-            stroke-linejoin="round" 
-            stroke-width="2" 
-            d="M5 15l7-7 7 7"
-          />
-        </svg>
-      </button>
-      <span class="text-sm font-medium text-gray-600">${upvoteCount}</span>
-    </div>
+        <path
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          stroke-width="2.5"
+          d="M5 15l7-7 7 7"
+        />
+      </svg>
+      <span class="text-xs font-semibold tabular-nums leading-none">${upvoteCount}</span>
+    </button>
   `;
 };
