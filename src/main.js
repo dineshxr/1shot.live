@@ -4,14 +4,14 @@
 import {
   h,
   render,
-} from "https://unpkg.com/preact@10.13.1/dist/preact.module.js";
+} from "/vendor/preact.module.js";
 import {
   useState,
   useEffect,
   useRef,
   useMemo,
-} from "https://unpkg.com/preact@10.13.1/hooks/dist/hooks.module.js";
-import htm from "https://unpkg.com/htm@3.1.1/dist/htm.module.js";
+} from "/vendor/preact-hooks.module.js";
+import htm from "/vendor/htm.module.js";
 
 // Import our root App component
 import { App } from "./components/app.js";

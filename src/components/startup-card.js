@@ -256,7 +256,7 @@ export const StartupCard = ({ startup, user, onUpvoteChange, allStartups }) => {
   }
 
   return html`
-    <div class="startup-card bg-white border border-gray-200 rounded-xl p-6 hover:shadow-md transition-all duration-200 w-full max-w-4xl ${rankingClass} ${featuredClass}">
+    <div class="sh-card startup-card p-5 w-full ${rankingClass} ${featuredClass}">
       ${rankingLabel && html`
         <span class="ranking-label ranking-label-${startup.daily_rank === 1 ? '1st' : startup.daily_rank === 2 ? '2nd' : '3rd'}">
           ${rankingLabel}
@@ -265,7 +265,7 @@ export const StartupCard = ({ startup, user, onUpvoteChange, allStartups }) => {
       <div class="flex items-start gap-4">
         <!-- Logo -->
         <div class="flex-shrink-0">
-          <div class="w-12 h-12 rounded-lg border border-gray-200 overflow-hidden bg-white flex items-center justify-center">
+          <div class="w-12 h-12 rounded-xl ring-1 ring-gray-200 overflow-hidden bg-white flex items-center justify-center">
             <img
               src=${startup.logo || getCurrentImage()}
               alt=${`${startup.title} logo`}
@@ -277,14 +277,14 @@ export const StartupCard = ({ startup, user, onUpvoteChange, allStartups }) => {
             />
           </div>
         </div>
-        
+
         <!-- Content -->
         <div class="flex-1 min-w-0">
-          <div class="flex items-start justify-between">
-            <div class="flex-1 min-w-0 pr-4">
-              <a 
-                href=${getInternalDetailUrl()} 
-                class="block group" 
+          <div class="flex items-start justify-between gap-4">
+            <div class="flex-1 min-w-0">
+              <a
+                href=${getInternalDetailUrl()}
+                class="block group"
                 onClick=${(e) => {
       e.preventDefault();
       trackEvent(ANALYTICS_EVENTS.LINK_CLICK, {
@@ -296,52 +296,56 @@ export const StartupCard = ({ startup, user, onUpvoteChange, allStartups }) => {
       window.dispatchEvent(new PopStateEvent('popstate'));
     }}
               >
-                <h3 class="text-lg font-semibold text-gray-900 group-hover:text-blue-600 transition-colors mb-1 truncate">
-                  ${startup.title}
-                </h3>
+                <div class="flex items-center gap-2 mb-1 flex-wrap">
+                  <h3 class="text-base font-semibold text-gray-900 group-hover:text-orange-700 transition-colors truncate">
+                    ${startup.title}
+                  </h3>
+                  ${startup.plan === 'featured' && html`
+                    <span class="text-[10px] font-semibold uppercase tracking-wider text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full">
+                      Featured
+                    </span>
+                  `}
+                  ${startup.plan === 'premium' && html`
+                    <span class="text-[10px] font-semibold uppercase tracking-wider text-orange-700 bg-orange-50 border border-orange-200 px-2 py-0.5 rounded-full">
+                      Premium
+                    </span>
+                  `}
+                </div>
               </a>
-              
-              <div class="flex items-center text-sm text-gray-600 mb-2">
-                ${startup.plan === 'featured' && html`
-                  <span class="bg-yellow-400 text-black text-xs font-bold px-2 py-0.5 rounded mr-2">FEATURED</span>
-                `}
-                ${startup.plan === 'premium' && html`
-                  <span class="bg-orange-400 text-white text-xs font-bold px-2 py-0.5 rounded mr-2">PREMIUM</span>
-                `}
+
+              <p class="text-sm text-gray-600 leading-relaxed line-clamp-2 overflow-hidden mb-2">
+                ${startup.description || ''}
+              </p>
+
+              <div class="flex items-center gap-2 text-xs text-gray-500 flex-wrap">
                 <span class="truncate">by ${startup.author?.name || 'Anonymous'}</span>
                 ${startup.category && html`
-                  <span class="mx-2 text-gray-400">•</span>
-                  <span class="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded-full">
+                  <span class="text-gray-300">·</span>
+                  <span class="inline-flex items-center px-2 py-0.5 bg-gray-50 text-gray-600 border border-gray-200 rounded-full text-[11px] font-medium">
                     ${startup.category}
                   </span>
                 `}
               </div>
-              
-              <p class="text-sm text-gray-700 leading-relaxed line-clamp-2 overflow-hidden">
-                ${startup.description || ''}
-              </p>
             </div>
-            
+
             <!-- Actions -->
-            <div class="flex items-center gap-2 ml-4">
+            <div class="flex items-center gap-1 shrink-0">
               ${UpvoteButton({ startup, user, onUpvoteChange })}
-              
+
               <button
                 onClick=${(e) => {
       e.preventDefault();
       e.stopPropagation();
 
-      // Track external link click
       trackEvent(ANALYTICS_EVENTS.STARTUP_VIEW, {
         startupId: startup.id,
         startupName: startup.title,
         startupUrl: startup.url
       });
 
-      // Open startup URL in new tab
       window.open(addReferralParam(startup.url), '_blank', 'noopener,noreferrer');
     }}
-                class="p-2 text-gray-400 hover:text-gray-600 transition-colors rounded-lg hover:bg-gray-50"
+                class="p-2 text-gray-400 hover:text-gray-900 transition-colors rounded-lg hover:bg-gray-100"
                 aria-label="Visit startup"
               >
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -352,7 +356,7 @@ export const StartupCard = ({ startup, user, onUpvoteChange, allStartups }) => {
           </div>
         </div>
       </div>
-      
+
     </div>
   `;
 };

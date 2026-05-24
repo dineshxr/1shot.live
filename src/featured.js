@@ -4,23 +4,24 @@
 import {
   h,
   render,
-} from "https://unpkg.com/preact@10.13.1/dist/preact.module.js";
+} from "/vendor/preact.module.js";
 import {
   useState,
   useEffect,
   useRef,
   useMemo,
-} from "https://unpkg.com/preact@10.13.1/hooks/dist/hooks.module.js";
-import htm from "https://unpkg.com/htm@3.1.1/dist/htm.module.js";
+} from "/vendor/preact-hooks.module.js";
+import htm from "/vendor/htm.module.js";
 
 // Import components
 import { Footer } from "./components/footer.js";
 import { OnlineVisitors } from "./components/online-visitors.js";
 import { LoginModal } from "./components/login-modal.js";
+import { LaunchCountdown } from "./components/launch-countdown.js";
 import { auth } from "./lib/auth.js";
 
 // Import analytics
-import { trackPageView, trackEvent, ANALYTICS_EVENTS } from './lib/analytics.js';
+import { trackPageView, trackEvent } from './lib/analytics.js';
 
 // Make Preact and hooks available globally for our components
 window.h = h;
@@ -35,133 +36,6 @@ if (typeof window !== 'undefined') {
   trackPageView();
 }
 
-// Launch countdown component: matches homepage timer logic exactly
-const LaunchCountdown = () => {
-  const [timeLeft, setTimeLeft] = useState({
-    days: 0,
-    hours: 0,
-    minutes: 0,
-    seconds: 0
-  });
-  const [nextLaunchDate, setNextLaunchDate] = useState(null);
-  const [isWeekend, setIsWeekend] = useState(false);
-
-  // Calculate next launch date (weekday at 8 AM PST, skipping weekends)
-  const getNextLaunchDate = () => {
-    const now = new Date();
-    const pstNow = new Date(now.toLocaleString('en-US', { timeZone: 'America/Los_Angeles' }));
-
-    let nextDate = new Date(pstNow);
-
-    // If it's before 8 AM today and it's a weekday, launch is today at 8 AM PST
-    if (pstNow.getHours() < 8) {
-      nextDate.setHours(8, 0, 0, 0);
-      const dayOfWeek = nextDate.getDay(); // 0 = Sunday, 1 = Monday, etc.
-
-      // If today is a weekday, use today
-      if (dayOfWeek >= 1 && dayOfWeek <= 5) {
-        return nextDate;
-      }
-    }
-
-    // Otherwise, find the next weekday at 8 AM PST
-    nextDate.setDate(pstNow.getDate() + 1);
-    nextDate.setHours(8, 0, 0, 0);
-
-    // Keep incrementing until we hit a weekday
-    while (true) {
-      const dayOfWeek = nextDate.getDay();
-
-      // If it's a weekday (Monday = 1 through Friday = 5), we found our date
-      if (dayOfWeek >= 1 && dayOfWeek <= 5) {
-        break;
-      }
-
-      // Otherwise, move to next day
-      nextDate.setDate(nextDate.getDate() + 1);
-    }
-
-    return nextDate;
-  };
-
-  // Check if we're currently in a weekend
-  const checkIfWeekend = () => {
-    const now = new Date();
-    const pstNow = new Date(now.toLocaleString('en-US', { timeZone: 'America/Los_Angeles' }));
-    const dayOfWeek = pstNow.getDay(); // 0 = Sunday, 6 = Saturday
-
-    return dayOfWeek === 0 || dayOfWeek === 6;
-  };
-
-  // Calculate time remaining
-  const calculateTimeLeft = () => {
-    const now = new Date();
-    const pstNow = new Date(now.toLocaleString('en-US', { timeZone: 'America/Los_Angeles' }));
-    const target = getNextLaunchDate();
-
-    const difference = target.getTime() - pstNow.getTime();
-
-    if (difference > 0) {
-      return {
-        days: Math.floor(difference / (1000 * 60 * 60 * 24)),
-        hours: Math.floor((difference / (1000 * 60 * 60)) % 24),
-        minutes: Math.floor((difference / 1000 / 60) % 60),
-        seconds: Math.floor((difference / 1000) % 60)
-      };
-    }
-
-    return { days: 0, hours: 0, minutes: 0, seconds: 0 };
-  };
-
-  useEffect(() => {
-    // Initial calculation
-    const updateCountdown = () => {
-      setTimeLeft(calculateTimeLeft());
-      setNextLaunchDate(getNextLaunchDate());
-      setIsWeekend(checkIfWeekend());
-    };
-
-    updateCountdown();
-
-    // Update every second
-    const timer = setInterval(updateCountdown, 1000);
-
-    return () => clearInterval(timer);
-  }, []);
-
-  const formatDate = (date) => {
-    if (!date) return '';
-    return date.toLocaleDateString('en-US', {
-      weekday: 'long',
-      month: 'long',
-      day: 'numeric',
-      timeZone: 'America/New_York'
-    });
-  };
-
-  const formatTime = (date) => {
-    if (!date) return '';
-    return date.toLocaleTimeString('en-US', {
-      hour: 'numeric',
-      minute: '2-digit',
-      timeZoneName: 'short',
-      timeZone: 'America/New_York'
-    });
-  };
-
-  return html`
-    <div class="border-t border-black">
-      <div class="container mx-auto px-4 py-4 flex items-center gap-3 text-black">
-        <span class="text-lg font-semibold">Next launch in</span>
-        ${timeLeft.days > 0 ? html`<span class="inline-block rounded-md bg-black text-white px-3 py-1 font-semibold">${timeLeft.days}d</span>` : ''}
-        <span class="inline-block rounded-md bg-black text-white px-3 py-1 font-semibold">${timeLeft.hours}h</span>
-        <span class="inline-block rounded-md bg-black text-white px-3 py-1 font-semibold">${timeLeft.minutes}m</span>
-        <span class="inline-block rounded-md bg-black text-white px-3 py-1 font-semibold">${timeLeft.seconds}s</span>
-      </div>
-    </div>
-  `;
-};
-
 // Featured Page Component
 const FeaturedPage = () => {
   const [showLoginModal, setShowLoginModal] = useState(false);
@@ -171,16 +45,13 @@ const FeaturedPage = () => {
   useEffect(() => {
     document.title = "Featured Submissions | SubmitHunt";
 
-    // Track page view with custom event
     trackEvent("FEATURED_PAGE_VIEW");
 
-    // Subscribe to auth state changes
     const unsubscribe = auth.subscribe((authState) => {
       setUser(authState.user);
       setAuthLoading(authState.loading);
     });
 
-    // Set initial user state
     const currentAuthState = auth.getAuthState();
     setUser(currentAuthState.user);
     setAuthLoading(currentAuthState.loading);
@@ -188,10 +59,7 @@ const FeaturedPage = () => {
     return unsubscribe;
   }, []);
 
-  // Route users to /submit?plan=featured — the canonical paid flow with
-  // Stripe Checkout. The legacy SubmitStartupForm modal hardcoded plan='free'
-  // on insert and never invoked Stripe, so any "featured" intent that came
-  // through it became a free submission.
+  // Route users to /submit?plan=featured — the canonical paid flow with Stripe Checkout.
   const goToFeaturedSubmit = () => {
     if (auth.isAuthenticated()) {
       window.location.href = '/submit?plan=featured';
@@ -213,31 +81,25 @@ const FeaturedPage = () => {
   };
 
   return html`
-    <div class="min-h-screen flex flex-col">
-      <!-- Custom Header for Featured Page -->
-      <header class="bg-blue-400 text-black border-b-4 border-black">
-        <div class="container max-w-6xl mx-auto px-4 py-6 md:py-8">
-          <div class="flex flex-col md:flex-row justify-between items-center">
-            <div class="flex items-center">
-              <a href="/" class="flex items-center hover:opacity-80 transition-opacity">
-                <div class="flex items-center">
-                  <img src="/src/sh-logo.png" alt="SubmitHunt Logo" class="w-10 h-10 mr-3" />
-                  <h1 class="text-3xl md:text-4xl font-bold">Submit Hunt</h1>
-                </div>
-              </a>
-              <a href="/" class="ml-4 px-3 py-1 bg-white border-2 border-black rounded shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:bg-gray-100 font-bold text-sm">
-                ← Back to Home
-              </a>
-            </div>
-            <div
-              class="mt-4 md:mt-0 flex flex-col md:flex-row items-center gap-4"
-            >
-              <${OnlineVisitors} />
-              <button
-                onClick=${handleContactClick}
-                class="neo-button inline-flex items-center px-6 py-3 bg-yellow-400 border-2 border-black rounded shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:bg-yellow-500 font-bold text-lg cursor-pointer"
-              >
-                <i class="fas fa-star mr-2"></i> Ready to be Featured
+    <div class="min-h-screen flex flex-col" style="background-color: var(--sh-bg);">
+      <!-- Header -->
+      <header class="sticky top-0 z-40 bg-white/85 backdrop-blur border-b border-gray-200">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div class="flex h-16 items-center justify-between gap-4">
+            <a href="/" class="flex items-center gap-2">
+              <img src="/src/sh-logo.png" alt="SubmitHunt" class="w-8 h-8 rounded-md" />
+              <span class="text-base font-semibold tracking-tight text-gray-900">SubmitHunt</span>
+            </a>
+            <nav class="hidden md:flex items-center gap-1 text-sm">
+              <a href="/" class="px-3 py-1.5 rounded-lg text-gray-700 hover:bg-gray-100">Discover</a>
+              <a href="/blog" class="px-3 py-1.5 rounded-lg text-gray-700 hover:bg-gray-100">Blog</a>
+              <a href="/pricing" class="px-3 py-1.5 rounded-lg text-gray-700 hover:bg-gray-100">Pricing</a>
+              <a href="/featured" class="px-3 py-1.5 rounded-lg text-gray-900 bg-gray-100">Featured</a>
+            </nav>
+            <div class="flex items-center gap-2">
+              <div class="hidden lg:block"><${OnlineVisitors} /></div>
+              <button onClick=${handleContactClick} class="sh-btn-accent">
+                <i class="fas fa-star text-xs"></i><span>Get Featured</span>
               </button>
             </div>
           </div>
@@ -245,214 +107,267 @@ const FeaturedPage = () => {
       </header>
 
       <!-- Login Modal -->
-      <${LoginModal} 
-        isOpen=${showLoginModal} 
+      <${LoginModal}
+        isOpen=${showLoginModal}
         onClose=${() => setShowLoginModal(false)}
         onLoginSuccess=${handleLoginSuccess}
       />
-      
-      <main class="flex-grow">
+
+      <main class="flex-1">
         <!-- Hero Section -->
-        <section class="bg-gradient-to-r from-blue-500 to-purple-600 text-white py-16">
-          <div class="container mx-auto px-4 text-center">
-            <h1 class="text-4xl md:text-5xl font-bold mb-4">Featured Product Spot</h1>
-            <p class="text-xl md:text-2xl max-w-3xl mx-auto">
-              Get maximum visibility for your product with premium placement on SubmitHunt
+        <section class="py-16 sm:py-20 border-b border-gray-200 bg-white">
+          <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+            <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-orange-50 text-orange-700 border border-orange-200 mb-5">
+              <span class="w-1.5 h-1.5 rounded-full bg-orange-500"></span>
+              Featured placement
+            </span>
+            <h1 class="text-4xl sm:text-5xl font-semibold tracking-tight text-gray-900 mb-4">
+              Get maximum visibility for your product
+            </h1>
+            <p class="text-lg text-gray-500 max-w-2xl mx-auto mb-8">
+              Premium placement at the top of SubmitHunt — seen by every visitor, every day.
             </p>
+            <div class="flex flex-wrap items-center justify-center gap-3">
+              <button onClick=${handleSubmitClick} class="sh-btn-accent">
+                <i class="fas fa-star text-xs"></i> Get featured — $50
+              </button>
+              <a href="/pricing" class="sh-btn-ghost">
+                View all plans
+              </a>
+            </div>
           </div>
         </section>
 
-        <!-- Countdown directly below hero -->
-        ${LaunchCountdown()}
-        
-        <!-- Featured Product Demo Section -->
-        <section class="py-12 bg-gray-50">
-          <div class="container mx-auto px-4">
-            <div class="max-w-4xl mx-auto">
-              <div class="bg-white border-4 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] p-6 rounded-lg">
-                <div class="flex items-center mb-4">
-                  <span class="bg-yellow-400 text-black text-xs font-bold px-2 py-1 rounded mr-2">FEATURED</span>
-                  <h2 class="text-2xl font-bold">Your Product Here</h2>
+        <!-- Countdown -->
+        <section class="py-8 border-b border-gray-200">
+          <div class="max-w-3xl mx-auto px-4">
+            ${LaunchCountdown()}
+          </div>
+        </section>
+
+        <!-- Featured Product Demo -->
+        <section class="py-12 sm:py-16">
+          <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-8">
+              <h2 class="text-2xl sm:text-3xl font-semibold tracking-tight text-gray-900 mb-2">
+                Here's what a featured card looks like
+              </h2>
+              <p class="text-gray-500 text-sm">A premium spot in the main feed, with subtle gradient border.</p>
+            </div>
+
+            <div class="sh-card startup-card startup-card-featured p-6">
+              <div class="flex items-start gap-4">
+                <div class="w-14 h-14 rounded-xl ring-1 ring-gray-200 bg-gradient-to-br from-orange-100 to-amber-100 flex items-center justify-center shrink-0">
+                  <i class="fas fa-star text-orange-600 text-lg"></i>
                 </div>
-                
-                <div class="flex flex-col md:flex-row gap-6">
-                  <div class="md:w-1/3 bg-gray-200 rounded-lg h-48 flex items-center justify-center">
-                    <span class="text-gray-500 text-lg">Product Image</span>
+                <div class="flex-1 min-w-0">
+                  <div class="flex items-center gap-2 mb-1 flex-wrap">
+                    <h3 class="text-base font-semibold text-gray-900">Your product here</h3>
+                    <span class="text-[10px] font-semibold uppercase tracking-wider text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full">
+                      Featured
+                    </span>
                   </div>
-                  
-                  <div class="md:w-2/3">
-                    <p class="text-lg mb-4">
-                      This premium spot will showcase your product to all SubmitHunt visitors.
-                    </p>
-                    <div class="flex flex-wrap gap-2 mb-4">
-                      <span class="bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-0.5 rounded">Featured</span>
-                      <span class="bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-0.5 rounded">Premium</span>
-                      <span class="bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-0.5 rounded">Sponsored</span>
-                    </div>
-                    <button onClick=${handleSubmitClick} class="inline-block bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded cursor-pointer">
-                      Get Featured
-                    </button>
+                  <p class="text-sm text-gray-600 leading-relaxed mb-2">
+                    This premium spot showcases your product to every SubmitHunt visitor.
+                  </p>
+                  <div class="flex items-center gap-2 text-xs text-gray-500 flex-wrap">
+                    <span>by you</span>
+                    <span class="text-gray-300">·</span>
+                    <span class="inline-flex items-center px-2 py-0.5 bg-gray-50 text-gray-600 border border-gray-200 rounded-full text-[11px] font-medium">
+                      Your category
+                    </span>
                   </div>
                 </div>
+                <button onClick=${handleSubmitClick} class="sh-btn-primary text-xs shrink-0">
+                  Get featured
+                </button>
               </div>
             </div>
           </div>
         </section>
-        
+
         <!-- Website Stats Section -->
-        <section class="py-12 bg-white border-t border-gray-200">
-          <div class="container mx-auto px-4">
-            <div class="max-w-4xl mx-auto">
-              <h2 class="text-2xl font-bold text-center mb-8">2026 STATISTICS ©</h2>
-              <div class="grid grid-cols-2 md:grid-cols-4 gap-6">
-                <div class="text-center p-4 border-2 border-black rounded-lg shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
-                  <div class="text-3xl font-bold text-gray-900">275,374</div>
-                  <div class="text-sm text-gray-500">Visits</div>
-                </div>
-                <div class="text-center p-4 border-2 border-black rounded-lg shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
-                  <div class="text-3xl font-bold text-gray-900">1,150,289</div>
-                  <div class="text-sm text-gray-500">Page views</div>
-                </div>
-                <div class="text-center p-4 border-2 border-black rounded-lg shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
-                  <div class="text-3xl font-bold text-gray-900">2,847</div>
-                  <div class="text-sm text-gray-500">Startups</div>
-                </div>
-                <div class="text-center p-4 border-2 border-black rounded-lg shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
-                  <div class="text-3xl font-bold text-gray-900">45,692</div>
-                  <div class="text-sm text-gray-500">Upvotes</div>
-                </div>
+        <section class="py-12 sm:py-14">
+          <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-8">
+              <span class="text-[11px] font-semibold text-gray-500 uppercase tracking-wider">2026 Statistics</span>
+              <h2 class="text-2xl sm:text-3xl font-semibold tracking-tight text-gray-900 mt-2">An engaged audience, every day</h2>
+            </div>
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div class="bg-white border border-gray-200 rounded-2xl shadow-sm p-5 text-center">
+                <div class="text-2xl sm:text-3xl font-semibold text-gray-900 tabular-nums">275,374</div>
+                <div class="text-xs text-gray-500 mt-1">Visits</div>
+              </div>
+              <div class="bg-white border border-gray-200 rounded-2xl shadow-sm p-5 text-center">
+                <div class="text-2xl sm:text-3xl font-semibold text-gray-900 tabular-nums">1,150,289</div>
+                <div class="text-xs text-gray-500 mt-1">Page views</div>
+              </div>
+              <div class="bg-white border border-gray-200 rounded-2xl shadow-sm p-5 text-center">
+                <div class="text-2xl sm:text-3xl font-semibold text-gray-900 tabular-nums">2,847</div>
+                <div class="text-xs text-gray-500 mt-1">Startups</div>
+              </div>
+              <div class="bg-white border border-gray-200 rounded-2xl shadow-sm p-5 text-center">
+                <div class="text-2xl sm:text-3xl font-semibold text-gray-900 tabular-nums">45,692</div>
+                <div class="text-xs text-gray-500 mt-1">Upvotes</div>
               </div>
             </div>
           </div>
         </section>
 
         <!-- Benefits Section -->
-        <section class="py-16 bg-white">
-          <div class="container mx-auto px-4">
-            <h2 class="text-3xl font-bold text-center mb-12">Why Get Featured?</h2>
-            
-            <div class="grid grid-cols-1 md:grid-cols-4 gap-8 max-w-6xl mx-auto">
-              <!-- Benefit 1 -->
-              <div class="text-center p-6 border-2 border-black rounded-lg shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:translate-y-[-4px] transition-transform">
-                <div class="text-4xl mb-4">🎯</div>
-                <h3 class="text-xl font-bold mb-2">Prominent placement on page</h3>
-                <p class="text-gray-600">Your product will be displayed prominently at the top of our pages.</p>
+        <section class="py-12 sm:py-16">
+          <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-10">
+              <h2 class="text-2xl sm:text-3xl font-semibold tracking-tight text-gray-900 mb-3">Why get featured?</h2>
+              <p class="text-gray-500">Premium placement, more eyes, faster launch.</p>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div class="bg-white border border-gray-200 rounded-2xl shadow-sm p-6">
+                <div class="w-10 h-10 rounded-xl bg-gray-50 border border-gray-200 flex items-center justify-center text-lg mb-4">🎯</div>
+                <h3 class="text-sm font-semibold text-gray-900 mb-1.5">Prominent placement</h3>
+                <p class="text-sm text-gray-500 leading-relaxed">Your product sits at the top of our feed, with a subtle gradient border that draws the eye.</p>
               </div>
-              
-              <!-- Benefit 2 -->
-              <div class="text-center p-6 border-2 border-black rounded-lg shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:translate-y-[-4px] transition-transform">
-                <div class="text-4xl mb-4">👀</div>
-                <h3 class="text-xl font-bold mb-2">High visibility to daily visitors</h3>
-                <p class="text-gray-600">Get seen by our community of tech enthusiasts, investors, and early adopters.</p>
+
+              <div class="bg-white border border-gray-200 rounded-2xl shadow-sm p-6">
+                <div class="w-10 h-10 rounded-xl bg-gray-50 border border-gray-200 flex items-center justify-center text-lg mb-4">👀</div>
+                <h3 class="text-sm font-semibold text-gray-900 mb-1.5">High daily visibility</h3>
+                <p class="text-sm text-gray-500 leading-relaxed">Get seen by our community of indie hackers, investors, and early adopters.</p>
               </div>
-              
-              <!-- Benefit 3 -->
-              <div class="text-center p-6 border-2 border-black rounded-lg shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:translate-y-[-4px] transition-transform">
-                <div class="text-4xl mb-4">💎</div>
-                <h3 class="text-xl font-bold mb-2">Professional presentation</h3>
-                <p class="text-gray-600">Your product will be showcased in a professional, attention-grabbing format.</p>
+
+              <div class="bg-white border border-gray-200 rounded-2xl shadow-sm p-6">
+                <div class="w-10 h-10 rounded-xl bg-gray-50 border border-gray-200 flex items-center justify-center text-lg mb-4">💎</div>
+                <h3 class="text-sm font-semibold text-gray-900 mb-1.5">Professional presentation</h3>
+                <p class="text-sm text-gray-500 leading-relaxed">Showcased in a polished, attention-grabbing card layout.</p>
               </div>
-              
-              <!-- Benefit 4 - Skip Queue -->
-              <div class="text-center p-6 border-2 border-black rounded-lg shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:translate-y-[-4px] transition-transform bg-yellow-50">
-                <div class="text-4xl mb-4">⚡</div>
-                <h3 class="text-xl font-bold mb-2">Skip the waitlist queue</h3>
-                <p class="text-gray-600">Launch immediately without waiting in the standard submission queue.</p>
+
+              <div class="bg-orange-50/60 border border-orange-200 rounded-2xl shadow-sm p-6">
+                <div class="w-10 h-10 rounded-xl bg-white border border-orange-200 flex items-center justify-center text-lg mb-4">⚡</div>
+                <h3 class="text-sm font-semibold text-gray-900 mb-1.5">Skip the waitlist</h3>
+                <p class="text-sm text-gray-700 leading-relaxed">Launch immediately — no need to wait in the standard submission queue.</p>
               </div>
             </div>
           </div>
         </section>
-        
+
         <!-- Premium Spot Details -->
-        <section class="py-16 bg-gray-50">
-          <div class="container mx-auto px-4">
-            <div class="max-w-4xl mx-auto bg-white border-4 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] p-8 rounded-lg">
-              <h2 class="text-3xl font-bold mb-6">Premium Spot</h2>
-              
-              <p class="text-lg mb-6">
-                Top of page placement, maximum visibility. Additionally, a random featured product will be displayed on each launch page, further increasing visibility.
+        <section class="py-12 sm:py-16">
+          <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="bg-white border border-gray-200 rounded-2xl shadow-sm p-8 md:p-10">
+              <div class="flex items-start gap-3 mb-6">
+                <span class="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-semibold uppercase tracking-wider bg-orange-100 text-orange-700 border border-orange-200">
+                  Premium spot
+                </span>
+              </div>
+
+              <h2 class="text-2xl sm:text-3xl font-semibold tracking-tight text-gray-900 mb-3">Top placement, maximum visibility</h2>
+              <p class="text-gray-600 mb-8 leading-relaxed">
+                A featured product is randomly displayed on every launch page in addition to the top of homepage — your reach compounds across the site.
               </p>
-              
-              <!-- Features List -->
-              <div class="bg-yellow-50 border-2 border-yellow-300 rounded-lg p-6 mb-6">
-                <h3 class="text-xl font-bold mb-4 text-yellow-800">✨ Featured Benefits Include:</h3>
-                <ul class="space-y-2 text-gray-700">
-                  <li class="flex items-center"><i class="fas fa-check text-green-500 mr-2"></i> <strong>Skip the waitlist queue</strong> - Launch immediately</li>
-                  <li class="flex items-center"><i class="fas fa-check text-green-500 mr-2"></i> Premium placement at top of homepage</li>
-                  <li class="flex items-center"><i class="fas fa-check text-green-500 mr-2"></i> Guaranteed high authority backlink</li>
-                  <li class="flex items-center"><i class="fas fa-check text-green-500 mr-2"></i> Featured in our startup newsletter</li>
-                  <li class="flex items-center"><i class="fas fa-check text-green-500 mr-2"></i> Maximum visibility to daily visitors</li>
+
+              <div class="bg-orange-50/60 border border-orange-200 rounded-2xl p-6 mb-8">
+                <h3 class="text-sm font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                  <i class="fas fa-sparkles text-orange-600 text-xs"></i> Featured benefits
+                </h3>
+                <ul class="space-y-2.5 text-sm text-gray-700">
+                  <li class="flex items-start gap-2.5">
+                    <i class="fas fa-check text-orange-600 mt-1 text-xs"></i>
+                    <span><strong class="text-gray-900">Skip the waitlist queue</strong> — launch immediately</span>
+                  </li>
+                  <li class="flex items-start gap-2.5">
+                    <i class="fas fa-check text-orange-600 mt-1 text-xs"></i>
+                    <span>Premium placement at the top of homepage</span>
+                  </li>
+                  <li class="flex items-start gap-2.5">
+                    <i class="fas fa-check text-orange-600 mt-1 text-xs"></i>
+                    <span>Guaranteed high-authority backlink (37+ DR)</span>
+                  </li>
+                  <li class="flex items-start gap-2.5">
+                    <i class="fas fa-check text-orange-600 mt-1 text-xs"></i>
+                    <span>Featured in our startup newsletter</span>
+                  </li>
+                  <li class="flex items-start gap-2.5">
+                    <i class="fas fa-check text-orange-600 mt-1 text-xs"></i>
+                    <span>Maximum visibility to daily visitors</span>
+                  </li>
                 </ul>
               </div>
-              
-              <div class="flex flex-col md:flex-row items-center justify-between gap-8 mb-8">
-                <div class="text-center md:text-left">
-                  <div class="text-4xl font-bold text-blue-600">$50</div>
-                  <div class="text-gray-500">/week</div>
+
+              <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 pt-6 border-t border-gray-200">
+                <div>
+                  <div class="flex items-baseline gap-1">
+                    <span class="text-3xl font-semibold tracking-tight text-gray-900">$50</span>
+                    <span class="text-sm text-gray-500">/ week</span>
+                  </div>
+                  <p class="text-xs text-gray-500 mt-1">One-time payment · no subscription</p>
                 </div>
-                
-                <button 
-                  onClick=${handleSubmitClick}
-                  class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-6 rounded-lg shadow-md transition-all transform hover:scale-105 inline-block cursor-pointer"
-                >
-                  Ready to get featured?
+                <button onClick=${handleSubmitClick} class="sh-btn-accent">
+                  Get featured <i class="fas fa-arrow-right text-xs"></i>
                 </button>
               </div>
-              
-              <div class="bg-blue-50 p-4 rounded-lg">
-                <p class="text-center font-medium">
-                  Click the button above or <button onClick=${handleSubmitClick} class="text-blue-600 hover:underline cursor-pointer bg-transparent border-0 p-0 inline font-inherit">submit your startup</button> to get started
-                </p>
-              </div>
             </div>
           </div>
         </section>
-        
+
         <!-- FAQ Section -->
-        <section class="py-16 bg-white">
-          <div class="container mx-auto px-4">
-            <h2 class="text-3xl font-bold text-center mb-12">Frequently Asked Questions</h2>
-            
-            <div class="max-w-3xl mx-auto space-y-6">
-              <div class="border-2 border-black rounded-lg p-6 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
-                <h3 class="text-xl font-bold mb-2">How long will my product be featured?</h3>
-                <p class="text-gray-600">Your product will be featured for the duration of your subscription, starting at one week. You can extend this period as needed.</p>
-              </div>
-              
-              <div class="border-2 border-black rounded-lg p-6 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
-                <h3 class="text-xl font-bold mb-2">What information do I need to provide?</h3>
-                <p class="text-gray-600">We'll need your product name, description, logo/image, website URL, and any specific call-to-action you'd like to include.</p>
-              </div>
-              
-              <div class="border-2 border-black rounded-lg p-6 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
-                <h3 class="text-xl font-bold mb-2">Can I see performance metrics?</h3>
-                <p class="text-gray-600">Yes, we provide basic metrics including impressions, clicks, and engagement rates for your featured placement.</p>
-              </div>
+        <section class="py-12 sm:py-16">
+          <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
+            <h2 class="text-2xl sm:text-3xl font-semibold tracking-tight text-center text-gray-900 mb-3">Frequently asked questions</h2>
+            <p class="text-center text-gray-500 mb-10 text-sm">Anything else? Ping us on X.</p>
+
+            <div class="space-y-3">
+              <details class="group bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+                <summary class="flex items-center justify-between cursor-pointer px-6 py-5 list-none">
+                  <h3 class="font-medium text-gray-900">How long will my product be featured?</h3>
+                  <i class="fas fa-chevron-down text-gray-400 text-xs transition-transform group-open:rotate-180"></i>
+                </summary>
+                <div class="px-6 pb-5 text-sm text-gray-600 leading-relaxed">
+                  Your product will be featured for the duration of your subscription, starting at one week. You can extend the period any time.
+                </div>
+              </details>
+
+              <details class="group bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+                <summary class="flex items-center justify-between cursor-pointer px-6 py-5 list-none">
+                  <h3 class="font-medium text-gray-900">What information do I need to provide?</h3>
+                  <i class="fas fa-chevron-down text-gray-400 text-xs transition-transform group-open:rotate-180"></i>
+                </summary>
+                <div class="px-6 pb-5 text-sm text-gray-600 leading-relaxed">
+                  Product name, description, logo/image, website URL, and any specific call-to-action you'd like to include.
+                </div>
+              </details>
+
+              <details class="group bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+                <summary class="flex items-center justify-between cursor-pointer px-6 py-5 list-none">
+                  <h3 class="font-medium text-gray-900">Can I see performance metrics?</h3>
+                  <i class="fas fa-chevron-down text-gray-400 text-xs transition-transform group-open:rotate-180"></i>
+                </summary>
+                <div class="px-6 pb-5 text-sm text-gray-600 leading-relaxed">
+                  Yes — we provide basic metrics including impressions, clicks, and engagement rates for your featured placement.
+                </div>
+              </details>
             </div>
           </div>
         </section>
-        
+
         <!-- CTA Section -->
-        <section class="py-16 bg-gradient-to-r from-blue-500 to-purple-600 text-white">
-          <div class="container mx-auto px-4 text-center">
-            <h2 class="text-3xl font-bold mb-6">Ready to Boost Your Product's Visibility?</h2>
-            <p class="text-xl max-w-3xl mx-auto mb-8">
-              Get your product in front of our engaged audience of tech enthusiasts, investors, and early adopters.
+        <section class="py-14 sm:py-20 border-t border-gray-200 bg-white">
+          <div class="max-w-3xl mx-auto px-4 text-center">
+            <h2 class="text-2xl sm:text-3xl font-semibold tracking-tight text-gray-900 mb-3">
+              Ready to boost your product's visibility?
+            </h2>
+            <p class="text-gray-500 max-w-2xl mx-auto mb-8">
+              Get your product in front of an engaged audience of indie founders, investors, and early adopters.
             </p>
-            <button 
-              onClick=${handleSubmitClick}
-              class="bg-white text-blue-600 hover:bg-gray-100 font-bold py-3 px-8 rounded-lg shadow-lg transition-all transform hover:scale-105 inline-block cursor-pointer"
-            >
-              Get Featured Today
+            <button onClick=${handleSubmitClick} class="sh-btn-accent">
+              <i class="fas fa-star text-xs"></i> Get featured today
             </button>
           </div>
         </section>
       </main>
-      
+
       <${Footer} />
     </div>
   `;
 };
 
-// Render the FeaturedPage component
 render(html`<${FeaturedPage} />`, document.getElementById("app-root"));

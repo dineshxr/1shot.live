@@ -556,12 +556,10 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
 
   // Show loading state while checking auth - login modal will auto-appear if not authenticated
   if (!user && !authLoading) {
-    // Trigger login modal and show a simple loading state
-    // The login modal is shown automatically by the parent component
     return html`
-      <div class="max-w-4xl mx-auto px-4 py-8 md:py-12 text-center">
-        <div class="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
-        <p class="mt-4 text-gray-600">Please sign in to continue...</p>
+      <div class="max-w-4xl mx-auto px-4 py-12 md:py-16 text-center">
+        <div class="inline-block animate-spin rounded-full h-10 w-10 border-2 border-gray-300 border-t-gray-900"></div>
+        <p class="mt-4 text-sm text-gray-500">Please sign in to continue…</p>
       </div>
     `;
   }
@@ -569,9 +567,9 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
   // Show loading state
   if (authLoading) {
     return html`
-      <div class="max-w-4xl mx-auto px-4 py-8 md:py-12 text-center">
-        <div class="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
-        <p class="mt-4 text-gray-600">Loading...</p>
+      <div class="max-w-4xl mx-auto px-4 py-12 md:py-16 text-center">
+        <div class="inline-block animate-spin rounded-full h-10 w-10 border-2 border-gray-300 border-t-gray-900"></div>
+        <p class="mt-4 text-sm text-gray-500">Loading…</p>
       </div>
     `;
   }
@@ -579,79 +577,77 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
   // Success page
   if (showSuccessPage) {
     return html`
-      <div class="max-w-4xl mx-auto px-4 py-6 md:py-8">
-        <div class="bg-white border-4 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] p-4 md:p-8 rounded-lg">
-          <h2 class="text-2xl font-bold mb-4 text-black">Startup Submitted Successfully! 🚀</h2>
-          
-          <div class="mb-6 p-4 bg-green-100 border-2 border-green-500 rounded text-center">
-            <p class="text-green-700 font-bold text-xl mb-2">Congratulations!</p>
+      <div class="max-w-3xl mx-auto px-4 py-10 md:py-14">
+        <div class="bg-white border border-gray-200 rounded-2xl shadow-sm p-6 md:p-10">
+          <div class="text-center mb-8">
+            <div class="inline-flex items-center justify-center w-14 h-14 rounded-full bg-emerald-50 border border-emerald-200 mb-4">
+              <i class="fas fa-check text-emerald-600 text-xl"></i>
+            </div>
+            <h2 class="text-2xl sm:text-3xl font-semibold tracking-tight text-gray-900 mb-2">Startup submitted 🚀</h2>
             ${formData.plan === 'free' ? html`
-              <p class="text-green-700">Your startup will be featured on the Home Page shortly.</p>
+              <p class="text-gray-500">Your startup will be featured on the Home Page shortly.</p>
             ` : ''}
           </div>
 
           ${formData.plan === 'premium' || formData.plan === 'featured' ? html`
-            <div class="mb-4 bg-yellow-300 p-3 border border-black rounded">
-              <div class="flex items-center gap-3">
-                <div class="animate-spin rounded-full h-5 w-5 border-b-2 border-black"></div>
-                <div>
-                  <p class="font-bold mb-1">Redirecting to payment...</p>
-                  <p class="text-sm">You'll be redirected to Stripe to complete your ${formData.plan === 'featured' ? '$50 payment' : '$20 payment'}.</p>
-                </div>
+            <div class="mb-6 flex items-center gap-3 px-4 py-3 bg-orange-50 border border-orange-200 rounded-xl">
+              <div class="animate-spin rounded-full h-4 w-4 border-2 border-orange-300 border-t-orange-700 shrink-0"></div>
+              <div class="text-sm">
+                <p class="font-medium text-gray-900">Redirecting to payment…</p>
+                <p class="text-gray-600">You'll be redirected to Stripe to complete your ${formData.plan === 'featured' ? '$50 payment' : '$20 payment'}.</p>
               </div>
             </div>
           ` : html`
-            <div class="mb-4 bg-blue-100 p-3 border border-black rounded">
-              <p>Your submission has been added to the queue and will be featured soon.</p>
+            <div class="mb-6 px-4 py-3 bg-blue-50 border border-blue-200 rounded-xl text-sm text-blue-900">
+              Your submission has been added to the queue and will be featured soon.
             </div>
           `}
-          
-          <div class="mt-6 p-4 border-2 border-black rounded bg-orange-50">
-            <h3 class="font-bold text-lg mb-2 flex items-center">
+
+          <div class="mt-6 p-5 border border-orange-200 rounded-2xl bg-orange-50/40">
+            <h3 class="font-semibold text-gray-900 mb-3 flex items-center">
               <i class="fas fa-award mr-2 text-orange-600"></i>
-              Get Your Badge & Keep Your 37+ DR Backlink!
+              Get your badge & keep your 37+ DR backlink
             </h3>
-            <div class="mb-4 p-3 bg-yellow-100 border border-yellow-400 rounded">
-              <p class="text-sm text-yellow-800">Add our badge to your website to make your listing <strong>permanent</strong> and keep your backlink as <strong>dofollow</strong>.</p>
+            <div class="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-xl">
+              <p class="text-sm text-amber-900">Add our badge to your website to make your listing <strong>permanent</strong> and keep your backlink as <strong>dofollow</strong>.</p>
             </div>
-            
-            <div class="border border-gray-300 rounded p-3">
-              <h4 class="font-bold mb-2">🔗 Embed Code</h4>
-              <div class="bg-gray-100 p-3 rounded text-xs font-mono mb-3 overflow-x-auto">
+
+            <div class="border border-gray-200 rounded-xl p-4 bg-white">
+              <h4 class="text-sm font-semibold text-gray-900 mb-2">Embed code</h4>
+              <div class="bg-gray-50 border border-gray-200 p-3 rounded-lg text-xs font-mono mb-3 overflow-x-auto text-gray-700">
                 <code id="embed-code">&lt;a href="https://submithunt.com" target="_blank" rel="noopener"&gt;&lt;img src="https://submithunt.com/badge.png" alt="Featured on SubmitHunt" width="150" height="45" /&gt;&lt;/a&gt;</code>
               </div>
-              <button 
+              <button
                 onClick=${() => {
         const embedCode = document.getElementById('embed-code').textContent;
         navigator.clipboard.writeText(embedCode);
       }}
-                class="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600 font-bold"
+                class="sh-btn-ghost text-sm"
               >
-                Copy Embed Code
+                <i class="fas fa-copy text-xs"></i> Copy embed code
               </button>
             </div>
           </div>
-          
-          <div class="mt-6 flex flex-col items-center">
-            <p class="mb-3 font-bold">Share your launch:</p>
-            <div class="flex space-x-4">
-              <a href="https://twitter.com/intent/tweet?text=I%20just%20launched%20my%20startup%20on%20submithunt.com%21" target="_blank" class="p-2 bg-blue-400 hover:bg-blue-500 rounded-full">
-                <i class="fab fa-twitter text-white text-xl"></i>
+
+          <div class="mt-8 flex flex-col items-center">
+            <p class="mb-3 text-sm font-medium text-gray-700">Share your launch</p>
+            <div class="flex space-x-3">
+              <a href="https://twitter.com/intent/tweet?text=I%20just%20launched%20my%20startup%20on%20submithunt.com%21" target="_blank"
+                 class="w-10 h-10 flex items-center justify-center rounded-full border border-gray-200 text-gray-700 hover:bg-gray-50 hover:text-gray-900 transition-colors">
+                <i class="fab fa-twitter"></i>
               </a>
-              <a href="https://www.linkedin.com/sharing/share-offsite/?url=https://submithunt.com" target="_blank" class="p-2 bg-blue-700 hover:bg-blue-800 rounded-full">
-                <i class="fab fa-linkedin-in text-white text-xl"></i>
+              <a href="https://www.linkedin.com/sharing/share-offsite/?url=https://submithunt.com" target="_blank"
+                 class="w-10 h-10 flex items-center justify-center rounded-full border border-gray-200 text-gray-700 hover:bg-gray-50 hover:text-gray-900 transition-colors">
+                <i class="fab fa-linkedin-in"></i>
               </a>
             </div>
           </div>
-          
+
           <${Confetti} />
-          
-          <div class="flex justify-center mt-6">
-            <a
-              href="/"
-              class="px-6 py-2 bg-blue-400 border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:bg-blue-500 font-bold"
-            >
-              Back to Home
+
+          <div class="flex justify-center mt-8">
+            <a href="/" class="sh-btn-primary">
+              <i class="fas fa-arrow-left text-xs"></i> Back to home
             </a>
           </div>
         </div>
@@ -661,27 +657,32 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
 
   // Main form
   return html`
-    <div class="max-w-4xl mx-auto px-4 py-6 md:py-8">
-      <div class="bg-white border-4 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] p-4 md:p-8 rounded-lg">
-        <h2 class="text-2xl font-bold mb-2 text-black">Submit Your Startup</h2>
-        <p class="text-gray-700 mb-4">Launch your project on the best Product Hunt alternative.</p>
-        
-        <div class="mb-4 bg-yellow-300 p-3 border border-black rounded">
-          <p class="font-bold flex items-center">
-            <span class="mr-2">🚀</span> Submit Your Startup, Get a 37+ DR Backlink
-          </p>
-          <p class="text-sm mt-1">Join hundreds of founders who chose SubmitHunt</p>
+    <div class="max-w-5xl mx-auto px-4 py-10 md:py-14">
+      <div class="bg-white border border-gray-200 rounded-2xl shadow-sm p-6 md:p-10">
+        <div class="mb-6">
+          <h2 class="text-2xl sm:text-3xl font-semibold tracking-tight text-gray-900 mb-2">Submit your startup</h2>
+          <p class="text-gray-500">Launch your project on the best Product Hunt alternative.</p>
+        </div>
+
+        <div class="mb-6 flex items-start gap-3 p-4 bg-orange-50/60 border border-orange-200 rounded-xl">
+          <div class="w-8 h-8 rounded-lg bg-white border border-orange-200 flex items-center justify-center text-orange-600 shrink-0">
+            <i class="fas fa-rocket text-sm"></i>
+          </div>
+          <div class="text-sm">
+            <p class="font-medium text-gray-900">Submit your startup, get a 37+ DR backlink</p>
+            <p class="text-gray-600 mt-0.5">Join hundreds of founders who chose SubmitHunt.</p>
+          </div>
         </div>
 
         ${error && html`
-          <div class="mb-4 p-3 bg-red-100 border-2 border-red-500 rounded">
-            <p class="text-red-700">${error}</p>
+          <div class="mb-6 px-4 py-3 bg-red-50 border border-red-200 rounded-xl">
+            <p class="text-sm text-red-700">${error}</p>
           </div>
         `}
 
         <form onSubmit=${handleSubmit}>
           ${currentPage === 1 ? html`
-            <div class="space-y-4">
+            <div class="max-w-2xl mx-auto space-y-4">
               <div>
                 <label class="block text-black font-bold mb-2" for="projectName">Startup Name</label>
                 <input
@@ -783,212 +784,219 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
                 <p class="text-sm text-gray-500 mt-1">Your X username for attribution</p>
               </div>
 
-              <div class="flex justify-end pt-4">
-                <a
-                  href="/"
-                  class="mr-2 px-4 py-2 bg-gray-200 border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:bg-gray-300 font-bold"
-                >
-                  Cancel
-                </a>
+              <div class="flex justify-end gap-2 pt-4">
+                <a href="/" class="sh-btn-ghost">Cancel</a>
                 <button
                   type="button"
                   onClick=${goToNextPage}
-                  class="neo-button px-4 py-2 bg-blue-400 border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:bg-blue-500 font-bold"
+                  class="sh-btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
                   disabled=${loading}
                 >
-                  Next
+                  Next <i class="fas fa-arrow-right text-xs"></i>
                 </button>
               </div>
             </div>
           ` : html`
             <!-- Page 2: Plan Selection -->
             <div class="space-y-6">
-              <h3 class="text-xl font-bold text-black">Choose Your Launch Plan</h3>
-              
+              <div>
+                <h3 class="text-xl font-semibold tracking-tight text-gray-900">Choose your launch plan</h3>
+                <p class="text-sm text-gray-500 mt-1">Every plan comes with a high-authority dofollow backlink.</p>
+              </div>
+
               ${checkingPreviousSubmissions ? html`
                 <div class="text-center py-4">
-                  <div class="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500"></div>
-                  <p class="text-sm text-gray-600 mt-2">Checking submission history...</p>
+                  <div class="inline-block animate-spin rounded-full h-6 w-6 border-2 border-gray-300 border-t-gray-900"></div>
+                  <p class="text-sm text-gray-500 mt-2">Checking submission history…</p>
                 </div>
               ` : ''}
-              
+
               ${userHasPreviousSubmissions && formData.plan === 'free' ? html`
-                <div class="p-4 bg-yellow-50 border-2 border-yellow-300 rounded-lg">
-                  <p class="text-yellow-700 text-sm">
+                <div class="px-4 py-3 bg-amber-50 border border-amber-200 rounded-xl">
+                  <p class="text-amber-800 text-sm">
                     You have already submitted a startup for free. Please choose the Premium plan for additional submissions.
                   </p>
                 </div>
               ` : ''}
-              
-              <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
+
+              <div class="grid grid-cols-1 md:grid-cols-${userHasPreviousSubmissions ? '2' : '3'} gap-4">
                 <!-- Free Plan -->
                 ${!userHasPreviousSubmissions ? html`
-                  <div 
-                    class="bg-white rounded-xl overflow-hidden transition-all flex flex-col ${formData.plan === 'free' ? 'ring-4 ring-blue-500 shadow-xl' : 'border-2 border-gray-200 hover:shadow-lg'}"
+                  <div
+                    class="bg-white rounded-2xl border ${formData.plan === 'free' ? 'border-gray-900 ring-2 ring-gray-900/10' : 'border-gray-200 hover:border-gray-300'} transition-all flex flex-col overflow-hidden"
                   >
-                    <div class="bg-gray-100 px-5 py-3 border-b-4 border-gray-300">
-                      <span class="text-gray-700 text-xs font-bold uppercase tracking-wide">FREE</span>
+                    <div class="px-5 pt-5 pb-4">
+                      <span class="inline-flex items-center text-[10px] font-semibold uppercase tracking-wider text-gray-600 bg-gray-50 border border-gray-200 px-2 py-0.5 rounded-full">
+                        Free
+                      </span>
                     </div>
-                    
-                    <div class="p-5 flex-1 flex flex-col">
-                      <div class="mb-1 text-gray-500 text-sm">Standard Launch</div>
-                      <div class="flex items-baseline mb-4">
-                        <span class="text-4xl font-bold text-gray-900">Free</span>
+
+                    <div class="px-5 pb-5 flex-1 flex flex-col">
+                      <div class="text-sm text-gray-500 mb-1">Standard Launch</div>
+                      <div class="flex items-baseline mb-1">
+                        <span class="text-3xl font-semibold tracking-tight text-gray-900">Free</span>
                       </div>
-                      <div class="text-xs text-gray-500 mb-4">no payment method needed</div>
-                      
+                      <div class="text-xs text-gray-500 mb-5">No payment method needed</div>
+
                       <button
                         type="button"
-                        class="w-full py-3 px-4 rounded-lg font-bold text-sm mb-6 flex items-center justify-center gap-2 transition-all ${formData.plan === 'free' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}"
+                        class="w-full py-2.5 px-4 rounded-xl font-medium text-sm mb-5 flex items-center justify-center gap-2 transition-colors ${formData.plan === 'free' ? 'bg-gray-900 text-white' : 'bg-white text-gray-900 border border-gray-200 hover:bg-gray-50 hover:border-gray-300'}"
                         onClick=${() => selectPlan('free')}
                       >
-                        ${formData.plan === 'free' ? html`<i class="fas fa-check"></i> Selected` : html`Start with Free <i class="fas fa-arrow-right"></i>`}
+                        ${formData.plan === 'free' ? html`<i class="fas fa-check text-xs"></i> Selected` : html`Start with Free <i class="fas fa-arrow-right text-xs"></i>`}
                       </button>
-                      
-                      <div class="space-y-3 flex-1">
-                        <div class="flex items-start gap-2">
-                          <span class="text-green-500 mt-0.5"><i class="fas fa-check-circle"></i></span>
+
+                      <div class="space-y-2.5 flex-1">
+                        <div class="flex items-start gap-2.5">
+                          <i class="fas fa-check text-gray-400 mt-1 text-xs"></i>
                           <span class="text-gray-700 text-sm">Live on homepage for 7 days</span>
                         </div>
-                        <div class="flex items-start gap-2">
-                          <span class="text-green-500 mt-0.5"><i class="fas fa-check-circle"></i></span>
+                        <div class="flex items-start gap-2.5">
+                          <i class="fas fa-check text-gray-400 mt-1 text-xs"></i>
                           <span class="text-gray-700 text-sm">Badge for top 3 ranking</span>
                         </div>
-                        <div class="flex items-start gap-2">
-                          <span class="text-green-500 mt-0.5"><i class="fas fa-check-circle"></i></span>
+                        <div class="flex items-start gap-2.5">
+                          <i class="fas fa-check text-gray-400 mt-1 text-xs"></i>
                           <span class="text-gray-700 text-sm">Backlink for top 3 ranking</span>
                         </div>
-                        <div class="flex items-start gap-2 mt-4 pt-3 border-t border-gray-200">
-                          <span class="text-amber-500 mt-0.5"><i class="fas fa-clock"></i></span>
-                          <span class="text-amber-600 text-sm font-medium">Launch in ${getDelayText()}</span>
+                        <div class="flex items-start gap-2.5 mt-3 pt-3 border-t border-gray-200">
+                          <i class="fas fa-clock text-amber-500 mt-1 text-xs"></i>
+                          <span class="text-amber-700 text-sm font-medium">Launch in ${getDelayText()}</span>
                         </div>
                       </div>
                     </div>
                   </div>
                 ` : ''}
-                
+
                 <!-- Premium Plan -->
-                <div 
-                  class="bg-white rounded-xl overflow-hidden transition-all flex flex-col ${formData.plan === 'premium' ? 'ring-4 ring-orange-500 shadow-xl' : 'border-4 border-orange-400 hover:shadow-lg'}"
+                <div
+                  class="bg-white rounded-2xl border ${formData.plan === 'premium' ? 'border-orange-500 ring-2 ring-orange-200' : 'border-orange-300'} transition-all flex flex-col overflow-hidden relative"
                 >
-                  <div class="bg-orange-400 px-5 py-3 border-b-4 border-orange-500">
-                    <span class="text-white text-xs font-bold uppercase tracking-wide">MOST POPULAR</span>
+                  <div class="absolute -top-2.5 left-1/2 -translate-x-1/2">
+                    <span class="inline-flex items-center text-[10px] font-semibold uppercase tracking-wider text-white bg-orange-600 px-3 py-0.5 rounded-full">
+                      Most popular
+                    </span>
                   </div>
-                  
-                  <div class="p-5 flex-1 flex flex-col">
-                    <div class="mb-1 text-gray-500 text-sm">Premium Launch</div>
-                    <div class="flex items-baseline mb-4">
-                      <span class="text-4xl font-bold text-gray-900">$20</span>
-                      <span class="text-gray-500 ml-1 text-sm">/launch</span>
+
+                  <div class="px-5 pt-7 pb-4">
+                    <span class="inline-flex items-center text-[10px] font-semibold uppercase tracking-wider text-orange-700 bg-orange-50 border border-orange-200 px-2 py-0.5 rounded-full">
+                      Premium
+                    </span>
+                  </div>
+
+                  <div class="px-5 pb-5 flex-1 flex flex-col">
+                    <div class="text-sm text-gray-500 mb-1">Premium Launch</div>
+                    <div class="flex items-baseline gap-1 mb-1">
+                      <span class="text-3xl font-semibold tracking-tight text-gray-900">$20</span>
+                      <span class="text-gray-500 text-sm">/ launch</span>
                     </div>
-                    <div class="text-xs text-gray-500 mb-4">one-time payment</div>
-                    
+                    <div class="text-xs text-gray-500 mb-5">One-time payment</div>
+
                     <button
                       type="button"
-                      class="w-full py-3 px-4 rounded-lg font-bold text-sm mb-6 flex items-center justify-center gap-2 transition-all ${formData.plan === 'premium' ? 'bg-orange-500 text-white' : 'bg-orange-400 text-white hover:bg-orange-500'}"
+                      class="w-full py-2.5 px-4 rounded-xl font-medium text-sm mb-5 flex items-center justify-center gap-2 transition-colors ${formData.plan === 'premium' ? 'bg-orange-700 text-white' : 'bg-orange-600 text-white hover:bg-orange-700'}"
                       onClick=${() => selectPlan('premium')}
                     >
-                      ${formData.plan === 'premium' ? html`<i class="fas fa-check"></i> Selected` : html`Choose Premium <i class="fas fa-arrow-right"></i>`}
+                      ${formData.plan === 'premium' ? html`<i class="fas fa-check text-xs"></i> Selected` : html`Choose Premium <i class="fas fa-arrow-right text-xs"></i>`}
                     </button>
-                    
+
                     ${formData.plan === 'premium' ? html`
                       <!-- Early Bird Urgency Section -->
-                      <div class="mb-4 p-3 bg-gradient-to-r from-orange-100 to-yellow-100 border-2 border-orange-400 rounded-lg">
+                      <div class="mb-4 p-3 bg-orange-50/60 border border-orange-200 rounded-xl">
                         <div class="flex items-center gap-2 mb-2">
-                          <span class="text-orange-700 font-bold text-sm">🔥 Early Bird Special</span>
+                          <span class="text-orange-800 font-semibold text-xs">🔥 Early Bird Special</span>
                         </div>
                         <div class="flex items-center justify-between gap-3 mb-2">
                           <div class="flex gap-1">
-                            <!-- Slot 1: Taken -->
-                            <div class="w-10 h-10 bg-gray-400 border-2 border-gray-600 rounded flex items-center justify-center" title="Taken">
-                              <i class="fas fa-check text-white text-sm"></i>
+                            <div class="w-8 h-8 bg-gray-200 border border-gray-300 rounded-md flex items-center justify-center" title="Taken">
+                              <i class="fas fa-check text-gray-500 text-xs"></i>
                             </div>
-                            <!-- Slot 2: Available -->
-                            <div class="w-10 h-10 bg-yellow-300 border-2 border-orange-500 rounded flex items-center justify-center animate-pulse" title="Available">
-                              <i class="fas fa-star text-orange-600 text-sm"></i>
+                            <div class="w-8 h-8 bg-white border border-orange-300 rounded-md flex items-center justify-center animate-pulse" title="Available">
+                              <i class="fas fa-star text-orange-600 text-xs"></i>
                             </div>
-                            <!-- Slot 3: Available -->
-                            <div class="w-10 h-10 bg-yellow-300 border-2 border-orange-500 rounded flex items-center justify-center animate-pulse" title="Available">
-                              <i class="fas fa-star text-orange-600 text-sm"></i>
+                            <div class="w-8 h-8 bg-white border border-orange-300 rounded-md flex items-center justify-center animate-pulse" title="Available">
+                              <i class="fas fa-star text-orange-600 text-xs"></i>
                             </div>
                           </div>
-                          <div class="flex-1">
-                            <div class="text-orange-800 font-bold text-xs">2 of 3 slots left today</div>
-                            <div class="text-orange-700 text-xs">Offer expires soon!</div>
+                          <div class="flex-1 min-w-0">
+                            <div class="text-orange-800 font-semibold text-xs">2 of 3 slots left today</div>
+                            <div class="text-orange-700 text-[11px]">Offer expires soon</div>
                           </div>
                         </div>
-                        <div class="bg-white border border-orange-300 rounded px-2 py-1 text-center">
-                          <div class="text-xs font-bold text-orange-600">
+                        <div class="bg-white border border-orange-200 rounded-md px-2 py-1 text-center">
+                          <div class="text-xs font-semibold text-orange-700 tabular-nums">
                             ⏰ ${String(Math.floor(timeLeft / 60)).padStart(2, '0')}:${String(timeLeft % 60).padStart(2, '0')}
                           </div>
                         </div>
                       </div>
                     ` : ''}
-                    
-                    <div class="space-y-3 flex-1">
-                      <div class="flex items-start gap-2">
-                        <span class="text-green-500 mt-0.5"><i class="fas fa-check-circle"></i></span>
+
+                    <div class="space-y-2.5 flex-1">
+                      <div class="flex items-start gap-2.5">
+                        <i class="fas fa-check text-orange-600 mt-1 text-xs"></i>
                         <span class="text-gray-700 text-sm">Live on homepage for 14 days</span>
                       </div>
-                      <div class="flex items-start gap-2">
-                        <span class="text-green-500 mt-0.5"><i class="fas fa-check-circle"></i></span>
+                      <div class="flex items-start gap-2.5">
+                        <i class="fas fa-check text-orange-600 mt-1 text-xs"></i>
                         <span class="text-gray-700 text-sm">Badge for top 3 ranking</span>
                       </div>
-                      <div class="flex items-start gap-2">
-                        <span class="text-green-500 mt-0.5"><i class="fas fa-check-circle"></i></span>
-                        <span class="text-gray-700 text-sm font-semibold">Guaranteed backlink (37+ DR)</span>
+                      <div class="flex items-start gap-2.5">
+                        <i class="fas fa-check text-orange-600 mt-1 text-xs"></i>
+                        <span class="text-gray-900 text-sm font-medium">Guaranteed backlink (37+ DR)</span>
                       </div>
-                      <div class="flex items-start gap-2">
-                        <span class="text-green-500 mt-0.5"><i class="fas fa-check-circle"></i></span>
-                        <span class="text-gray-700 text-sm">Skip queue - launch immediately</span>
+                      <div class="flex items-start gap-2.5">
+                        <i class="fas fa-bolt text-orange-600 mt-1 text-xs"></i>
+                        <span class="text-gray-700 text-sm">Skip queue — launch immediately</span>
                       </div>
-                      <div class="flex items-start gap-2">
-                        <span class="text-green-500 mt-0.5"><i class="fas fa-check-circle"></i></span>
+                      <div class="flex items-start gap-2.5">
+                        <i class="fas fa-envelope text-orange-600 mt-1 text-xs"></i>
                         <span class="text-gray-700 text-sm">Featured in newsletter</span>
                       </div>
                     </div>
                   </div>
                 </div>
-                
+
                 <!-- Featured Spot -->
                 <div
-                  class="bg-white rounded-xl overflow-hidden transition-all flex flex-col ${formData.plan === 'featured' ? 'ring-4 ring-purple-500 shadow-xl' : 'border-2 border-purple-300 hover:shadow-lg'}"
+                  class="bg-white rounded-2xl border ${formData.plan === 'featured' ? 'border-gray-900 ring-2 ring-gray-900/10' : 'border-gray-200 hover:border-gray-300'} transition-all flex flex-col overflow-hidden"
                 >
-                  <div class="bg-purple-500 px-5 py-3 border-b-4 border-purple-600">
-                    <span class="text-white text-xs font-bold uppercase tracking-wide">FEATURED SPOT</span>
+                  <div class="px-5 pt-5 pb-4">
+                    <span class="inline-flex items-center text-[10px] font-semibold uppercase tracking-wider text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full">
+                      Featured spot
+                    </span>
                   </div>
 
-                  <div class="p-5 flex-1 flex flex-col">
-                    <div class="mb-1 text-gray-500 text-sm">Premium Placement</div>
-                    <div class="flex items-baseline mb-4">
-                      <span class="text-4xl font-bold text-gray-900">$50</span>
-                      <span class="text-gray-500 ml-1 text-sm">one-time</span>
+                  <div class="px-5 pb-5 flex-1 flex flex-col">
+                    <div class="text-sm text-gray-500 mb-1">Premium Placement</div>
+                    <div class="flex items-baseline gap-1 mb-1">
+                      <span class="text-3xl font-semibold tracking-tight text-gray-900">$50</span>
+                      <span class="text-gray-500 text-sm">one-time</span>
                     </div>
-                    <div class="text-xs text-gray-500 mb-4">7 days featured, no subscription</div>
+                    <div class="text-xs text-gray-500 mb-5">7 days featured, no subscription</div>
 
                     <button
                       type="button"
-                      class="w-full py-3 px-4 rounded-lg font-bold text-sm mb-6 flex items-center justify-center gap-2 transition-all ${formData.plan === 'featured' ? 'bg-purple-600 text-white' : 'bg-purple-500 text-white hover:bg-purple-600'}"
+                      class="w-full py-2.5 px-4 rounded-xl font-medium text-sm mb-5 flex items-center justify-center gap-2 transition-colors ${formData.plan === 'featured' ? 'bg-gray-900 text-white' : 'bg-white text-gray-900 border border-gray-200 hover:bg-gray-50 hover:border-gray-300'}"
                       onClick=${() => selectPlan('featured')}
                     >
-                      ${formData.plan === 'featured' ? html`<i class="fas fa-check"></i> Selected` : html`Choose Featured <i class="fas fa-arrow-right"></i>`}
+                      ${formData.plan === 'featured' ? html`<i class="fas fa-check text-xs"></i> Selected` : html`Choose Featured <i class="fas fa-arrow-right text-xs"></i>`}
                     </button>
-                    
-                    <div class="space-y-3 flex-1">
-                      <div class="flex items-start gap-2">
-                        <span class="text-green-500 mt-0.5"><i class="fas fa-check-circle"></i></span>
+
+                    <div class="space-y-2.5 flex-1">
+                      <div class="flex items-start gap-2.5">
+                        <i class="fas fa-check text-gray-400 mt-1 text-xs"></i>
                         <span class="text-gray-700 text-sm">Featured placement in feed</span>
                       </div>
-                      <div class="flex items-start gap-2">
-                        <span class="text-green-500 mt-0.5"><i class="fas fa-check-circle"></i></span>
+                      <div class="flex items-start gap-2.5">
+                        <i class="fas fa-check text-gray-400 mt-1 text-xs"></i>
                         <span class="text-gray-700 text-sm">High visibility to daily visitors</span>
                       </div>
-                      <div class="flex items-start gap-2">
-                        <span class="text-green-500 mt-0.5"><i class="fas fa-check-circle"></i></span>
+                      <div class="flex items-start gap-2.5">
+                        <i class="fas fa-check text-gray-400 mt-1 text-xs"></i>
                         <span class="text-gray-700 text-sm">Colorful gradient border</span>
                       </div>
-                      <div class="flex items-start gap-2">
-                        <span class="text-green-500 mt-0.5"><i class="fas fa-check-circle"></i></span>
+                      <div class="flex items-start gap-2.5">
+                        <i class="fas fa-check text-gray-400 mt-1 text-xs"></i>
                         <span class="text-gray-700 text-sm">One-time payment, no subscription</span>
                       </div>
                     </div>
@@ -1042,39 +1050,39 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
                 <button
                   type="button"
                   onClick=${goToPreviousPage}
-                  class="px-6 py-3 bg-gray-200 border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:bg-gray-300 font-bold rounded-lg"
+                  class="sh-btn-ghost"
                   disabled=${loading}
                 >
-                  <i class="fas fa-arrow-left mr-2"></i>Previous
+                  <i class="fas fa-arrow-left text-xs"></i> Previous
                 </button>
-                
+
                 ${formData.plan === 'free' && availableLaunchDates.filter(d => d.freeAvailable).length > 0 ? html`
                   <button
                     type="submit"
-                    class="px-6 py-3 bg-blue-500 text-white border-2 border-blue-600 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:bg-blue-600 font-bold rounded-lg disabled:opacity-50"
+                    class="sh-btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
                     disabled=${loading}
                   >
-                    ${loading ? html`<i class="fas fa-spinner fa-spin mr-2"></i>Submitting...` : html`Submit Free Launch <i class="fas fa-arrow-right ml-2"></i>`}
+                    ${loading ? html`<i class="fas fa-spinner fa-spin text-xs"></i> Submitting…` : html`Submit free launch <i class="fas fa-arrow-right text-xs"></i>`}
                   </button>
                 ` : ''}
-                
+
                 ${formData.plan === 'featured' ? html`
                   <button
                     type="submit"
-                    class="px-6 py-3 bg-purple-500 text-white border-2 border-purple-600 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:bg-purple-600 font-bold rounded-lg disabled:opacity-50"
+                    class="sh-btn-accent disabled:opacity-50 disabled:cursor-not-allowed"
                     disabled=${loading}
                   >
-                    ${loading ? html`<i class="fas fa-spinner fa-spin mr-2"></i>Redirecting to Stripe...` : html`Continue to Payment <i class="fas fa-arrow-right ml-2"></i>`}
+                    ${loading ? html`<i class="fas fa-spinner fa-spin text-xs"></i> Redirecting to Stripe…` : html`Continue to payment <i class="fas fa-arrow-right text-xs"></i>`}
                   </button>
                 ` : ''}
 
                 ${formData.plan === 'premium' ? html`
                   <button
                     type="submit"
-                    class="px-6 py-3 bg-orange-500 text-white border-2 border-orange-600 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:bg-orange-600 font-bold rounded-lg disabled:opacity-50"
+                    class="sh-btn-accent disabled:opacity-50 disabled:cursor-not-allowed"
                     disabled=${loading}
                   >
-                    ${loading ? html`<i class="fas fa-spinner fa-spin mr-2"></i>Redirecting to Stripe...` : html`Continue to Payment <i class="fas fa-arrow-right ml-2"></i>`}
+                    ${loading ? html`<i class="fas fa-spinner fa-spin text-xs"></i> Redirecting to Stripe…` : html`Continue to payment <i class="fas fa-arrow-right text-xs"></i>`}
                   </button>
                 ` : ''}
               </div>

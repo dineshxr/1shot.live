@@ -3,98 +3,66 @@ import { OnlineVisitors } from "./online-visitors.js";
 export const Header = ({ user }) => {
   /* global html */
   return html`
-    <header class="bg-blue-400 text-black border-b-4 border-black">
-      <div class="container max-w-6xl mx-auto px-4 py-6 md:py-8">
-        <div class="flex flex-col md:flex-row justify-between items-center">
-          <div>
-            <a href="/" class="flex items-center hover:opacity-90 transition-opacity">
-              <img src="/src/sh-logo.png" alt="SubmitHunt Logo" class="w-12 h-12 mr-3" />
-              <h1 class="text-3xl md:text-4xl font-bold">Submit Hunt</h1>
-            </a>
-            <p class="mt-2 text-black font-medium">
-              Discover Startups and AI projects
-            </p>
-            <p class="mt-1 text-black font-bold bg-yellow-300 inline-block px-2 py-1 rounded border border-black">
-              🚀 Launch Today, Get a 37+ DR Backlink
-            </p>
-          </div>
-          <div
-            class="mt-4 md:mt-0 flex flex-col md:flex-row items-center gap-4"
-          >
-            ${!user ? html`<${OnlineVisitors} />` : ''}
+    <header class="sticky top-0 z-40 bg-white/85 backdrop-blur border-b border-gray-200">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="flex h-16 items-center justify-between gap-4">
+          <!-- Brand -->
+          <a href="/" class="flex items-center gap-2 group">
+            <img src="/src/sh-logo.png" alt="SubmitHunt" class="w-8 h-8 rounded-md" />
+            <span class="text-base font-semibold tracking-tight text-gray-900">
+              SubmitHunt
+            </span>
+          </a>
+
+          <!-- Primary nav -->
+          <nav class="hidden md:flex items-center gap-1 text-sm">
+            <a href="/" class="px-3 py-1.5 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors">Discover</a>
+            <a href="/blog" class="px-3 py-1.5 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors">Blog</a>
+            <a href="/pricing" class="px-3 py-1.5 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors">Pricing</a>
+            <a href="/featured" class="px-3 py-1.5 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors">Featured</a>
+          </nav>
+
+          <!-- Right cluster -->
+          <div class="flex items-center gap-2">
+            ${!user ? html`<div class="hidden lg:block"><${OnlineVisitors} /></div>` : ''}
+
             ${user ? html`
-              <div class="flex items-center gap-3">
-                <div class="flex items-center gap-2">
-                  <img 
-                    src=${user.user_metadata?.avatar_url || '/placeholder-avatar.png'} 
-                    alt="User avatar"
-                    class="w-8 h-8 rounded-full border-2 border-black"
-                  />
-                  <span class="font-medium text-sm">
-                    @${user.user_metadata?.user_name || user.email?.split('@')[0] || 'User'}
-                  </span>
-                </div>
-                <a
-                  href="/"
-                  class="neo-button inline-flex items-center px-3 py-2 bg-white border-2 border-black rounded shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:bg-gray-100 font-bold text-sm"
-                >
-                  <i class="fas fa-home mr-2"></i> Home
-                </a>
-                <a
-                  href="/blog"
-                  class="neo-button inline-flex items-center px-3 py-2 bg-white border-2 border-black rounded shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:bg-gray-100 font-bold text-sm"
-                >
-                  <i class="fas fa-rss mr-2"></i> Blog
-                </a>
               <a
-                  href="/pricing"
-                  class="neo-button inline-flex items-center px-3 py-2 bg-yellow-400 border-2 border-black rounded shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:bg-yellow-500 font-bold text-sm"
-                >
-                  <i class="fas fa-tags mr-2"></i> Pricing
-                </a>
-                <a
-                  href="/dashboard.html"
-                  class="neo-button inline-flex items-center px-3 py-2 bg-blue-400 border-2 border-black rounded shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:bg-blue-500 font-bold text-sm"
-                >
-                  <i class="fas fa-tachometer-alt mr-2"></i> Dashboard
-                </a>
-                <a
-                  href="/submit"
-                  class="neo-button inline-flex items-center px-4 py-2 bg-green-400 border-2 border-black rounded shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:bg-green-500 font-bold animate-pulse"
-                >
-                  <i class="fas fa-rocket mr-2"></i> Submit Product
-                </a>
+                href="/dashboard"
+                class="hidden sm:inline-flex items-center gap-2 px-3 py-1.5 text-sm text-gray-700 rounded-lg hover:bg-gray-100 transition-colors"
+                title="Dashboard"
+              >
+                <i class="fas fa-tachometer-alt text-xs"></i>
+                <span>Dashboard</span>
+              </a>
+              <a
+                href="/submit"
+                class="sh-btn-primary"
+              >
+                <i class="fas fa-plus text-xs"></i>
+                <span>Submit</span>
+              </a>
+              <div class="flex items-center gap-2 pl-2 ml-1 border-l border-gray-200">
+                <img
+                  src=${user.user_metadata?.avatar_url || '/placeholder-avatar.png'}
+                  alt="User avatar"
+                  class="w-7 h-7 rounded-full ring-1 ring-gray-200"
+                />
                 <button
                   onClick=${() => window.auth.signOut()}
-                  class="neo-button inline-flex items-center px-3 py-1 bg-red-400 border-2 border-black rounded shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:bg-red-500 font-bold text-sm"
+                  class="text-xs text-gray-500 hover:text-gray-900 transition-colors"
+                  title="Sign out"
                 >
-                  <i class="fas fa-sign-out-alt mr-1"></i> Logout
+                  Sign out
                 </button>
               </div>
             ` : html`
               <a
-                href="/"
-                class="neo-button inline-flex items-center px-3 py-2 bg-white border-2 border-black rounded shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:bg-gray-100 font-bold text-sm"
-              >
-                <i class="fas fa-home mr-2"></i> Home
-              </a>
-              <a
-                href="/blog"
-                class="neo-button inline-flex items-center px-3 py-2 bg-white border-2 border-black rounded shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:bg-gray-100 font-bold text-sm"
-              >
-                <i class="fas fa-rss mr-2"></i> Blog
-              </a>
-              <a
-                href="/pricing"
-                class="neo-button inline-flex items-center px-3 py-2 bg-yellow-400 border-2 border-black rounded shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:bg-yellow-500 font-bold text-sm"
-              >
-                <i class="fas fa-tags mr-2"></i> Pricing
-              </a>
-              <a
                 href="/submit"
-                class="neo-button inline-flex items-center px-4 py-2 bg-purple-400 border-2 border-black rounded shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:bg-purple-500 font-bold"
+                class="sh-btn-primary"
               >
-                <i class="fas fa-plus mr-2"></i> Submit Product
+                <i class="fas fa-plus text-xs"></i>
+                <span>Submit</span>
               </a>
             `}
           </div>

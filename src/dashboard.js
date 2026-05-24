@@ -158,10 +158,12 @@ class Dashboard {
 
         if (this.upvotedStartups.length === 0) {
             container.innerHTML = `
-                <div class="col-span-full text-center py-8 text-gray-500">
-                    <i class="fas fa-heart text-4xl mb-4"></i>
-                    <p>You haven't upvoted any startups yet.</p>
-                    <p class="text-sm">Visit the homepage to discover and upvote startups!</p>
+                <div class="col-span-full text-center py-10">
+                    <div class="inline-flex items-center justify-center w-12 h-12 rounded-full bg-rose-50 border border-rose-200 text-rose-500 mb-3">
+                        <i class="fas fa-heart text-sm"></i>
+                    </div>
+                    <p class="text-sm font-medium text-gray-900">You haven't upvoted any startups yet</p>
+                    <p class="text-xs text-gray-500 mt-1">Visit the homepage to discover and upvote startups.</p>
                 </div>
             `;
             return;
@@ -172,41 +174,37 @@ class Dashboard {
 
     createUpvotedStartupCard(startup) {
         const votedDate = new Date(startup.voted_at).toLocaleDateString();
-        
+
         return `
-            <div class="startup-card bg-white border-2 border-black brutalist-shadow p-4">
-                <div class="flex items-start justify-between mb-2">
-                    <h3 class="font-bold text-lg flex-1 mr-2">${startup.name}</h3>
+            <div class="sh-card p-5">
+                <div class="flex items-start justify-between gap-2 mb-2">
+                    <h3 class="font-semibold text-base text-gray-900 flex-1 min-w-0 truncate">${startup.name}</h3>
                     ${startup.daily_rank && startup.daily_rank <= 3 ? `
-                        <span class="bg-yellow-400 border border-black px-2 py-1 text-xs font-bold">
-                            <i class="fas fa-trophy mr-1"></i>#${startup.daily_rank}
+                        <span class="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full shrink-0">
+                            <i class="fas fa-trophy text-[10px]"></i>#${startup.daily_rank}
                         </span>
                     ` : ''}
                 </div>
-                
-                <p class="text-gray-600 text-sm mb-3 line-clamp-2">
+
+                <p class="text-sm text-gray-600 leading-relaxed line-clamp-2 mb-4">
                     ${startup.tagline || 'No tagline provided'}
                 </p>
-                
-                <div class="space-y-2 mb-4">
-                    <div class="flex items-center text-sm text-gray-600">
-                        <i class="fas fa-heart mr-2 text-red-500"></i>
-                        <span>${startup.upvote_count} upvotes</span>
-                    </div>
-                    <div class="flex items-center text-sm text-gray-600">
-                        <i class="fas fa-calendar mr-2"></i>
-                        <span>Upvoted: ${votedDate}</span>
-                    </div>
+
+                <div class="flex items-center gap-4 text-xs text-gray-500 mb-4">
+                    <span class="inline-flex items-center gap-1.5">
+                        <i class="fas fa-heart text-rose-500 text-[11px]"></i>
+                        <span class="tabular-nums">${startup.upvote_count}</span> upvotes
+                    </span>
+                    <span class="text-gray-300">·</span>
+                    <span>Upvoted ${votedDate}</span>
                 </div>
-                
-                <div class="flex space-x-2">
-                    <a href="/startup/${startup.slug}" target="_blank"
-                       class="flex-1 px-3 py-2 bg-green-400 border-2 border-black brutalist-shadow hover:bg-green-500 font-bold text-sm text-center">
-                        <i class="fas fa-eye mr-1"></i>View
+
+                <div class="flex gap-2">
+                    <a href="/startup/${startup.slug}" target="_blank" class="sh-btn-ghost text-sm flex-1 justify-center">
+                        <i class="fas fa-eye text-xs"></i> View
                     </a>
-                    <a href="${startup.url}" target="_blank"
-                       class="flex-1 px-3 py-2 bg-blue-400 border-2 border-black brutalist-shadow hover:bg-blue-500 font-bold text-sm text-center">
-                        <i class="fas fa-external-link-alt mr-1"></i>Visit
+                    <a href="${startup.url}" target="_blank" class="sh-btn-primary text-sm flex-1 justify-center">
+                        <i class="fas fa-external-link-alt text-xs"></i> Visit
                     </a>
                 </div>
             </div>
@@ -236,94 +234,98 @@ class Dashboard {
         const isFeatured = listing.plan === 'featured';
         const isLive = listing.is_live;
         
-        // Determine badge
+        // Determine plan badge
         let badge = '';
         if (isFeatured) {
-            badge = `<span class="bg-purple-500 text-white border border-purple-700 px-2 py-1 text-xs font-bold">
-                <i class="fas fa-crown mr-1"></i>FEATURED
+            badge = `<span class="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-orange-700 bg-orange-50 border border-orange-200 px-2 py-0.5 rounded-full shrink-0">
+                <i class="fas fa-crown text-[9px]"></i> Featured
             </span>`;
         } else if (isPremium) {
-            badge = `<span class="bg-yellow-400 border border-black px-2 py-1 text-xs font-bold">
-                <i class="fas fa-star mr-1"></i>PREMIUM
+            badge = `<span class="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full shrink-0">
+                <i class="fas fa-star text-[9px]"></i> Premium
             </span>`;
         } else {
-            badge = `<span class="bg-green-400 border border-black px-2 py-1 text-xs font-bold">
-                FREE
+            badge = `<span class="inline-flex items-center text-[10px] font-semibold uppercase tracking-wider text-gray-600 bg-gray-50 border border-gray-200 px-2 py-0.5 rounded-full shrink-0">
+                Free
             </span>`;
         }
-        
+
         // Status indicator
-        const statusBadge = isLive 
-            ? `<span class="bg-green-100 text-green-800 px-2 py-1 text-xs font-medium rounded-full"><i class="fas fa-circle text-green-500 mr-1" style="font-size: 6px;"></i>Live</span>`
-            : `<span class="bg-yellow-100 text-yellow-800 px-2 py-1 text-xs font-medium rounded-full"><i class="fas fa-clock mr-1"></i>Pending</span>`;
-        
+        const statusBadge = isLive
+            ? `<span class="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
+                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Live
+            </span>`
+            : `<span class="inline-flex items-center gap-1 text-[11px] font-medium text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full">
+                <i class="fas fa-clock text-[9px]"></i> Pending
+            </span>`;
+
         return `
-            <div class="startup-card bg-white border-2 border-black brutalist-shadow p-4 ${isFeatured ? 'ring-2 ring-purple-500' : ''}">
+            <div class="sh-card p-0 overflow-hidden ${isFeatured ? 'ring-1 ring-orange-200' : ''}">
                 ${listing.screenshot_url ? `
-                    <img src="${listing.screenshot_url}" alt="${listing.title}" 
-                         class="w-full h-32 object-cover border-2 border-black mb-3">
+                    <img src="${listing.screenshot_url}" alt="${listing.title}"
+                         class="w-full h-36 object-cover border-b border-gray-200">
                 ` : `
-                    <div class="w-full h-32 bg-gray-200 border-2 border-black mb-3 flex items-center justify-center">
-                        <i class="fas fa-image text-gray-400 text-2xl"></i>
+                    <div class="w-full h-36 bg-gray-50 border-b border-gray-200 flex items-center justify-center text-gray-400">
+                        <i class="fas fa-image text-2xl"></i>
                     </div>
                 `}
-                
-                <div class="flex items-start justify-between mb-2">
-                    <h3 class="font-bold text-lg flex-1 mr-2">${listing.title}</h3>
-                    ${badge}
-                </div>
-                
-                <div class="flex items-center gap-2 mb-2">
-                    ${statusBadge}
-                </div>
-                
-                <p class="text-gray-600 text-sm mb-3 line-clamp-2">
-                    ${listing.description || 'No description provided'}
-                </p>
-                
-                <div class="space-y-2 mb-4">
-                    <div class="flex items-center text-sm text-gray-600">
-                        <i class="fas fa-link mr-2"></i>
-                        <a href="${listing.url}" target="_blank" class="hover:text-blue-600 truncate">
-                            ${listing.url}
+
+                <div class="p-5">
+                    <div class="flex items-start justify-between gap-2 mb-2">
+                        <h3 class="font-semibold text-base text-gray-900 flex-1 min-w-0 truncate">${listing.title}</h3>
+                        ${badge}
+                    </div>
+
+                    <div class="flex items-center gap-2 mb-3">
+                        ${statusBadge}
+                    </div>
+
+                    <p class="text-sm text-gray-600 leading-relaxed line-clamp-2 mb-4">
+                        ${listing.description || 'No description provided'}
+                    </p>
+
+                    <div class="space-y-1.5 mb-4 text-xs text-gray-500">
+                        <div class="flex items-center gap-1.5">
+                            <i class="fas fa-link text-[10px] text-gray-400"></i>
+                            <a href="${listing.url}" target="_blank" class="hover:text-gray-900 truncate">
+                                ${listing.url}
+                            </a>
+                        </div>
+                        <div class="flex items-center gap-1.5">
+                            <i class="fas fa-calendar text-[10px] text-gray-400"></i>
+                            <span>Created ${createdDate}</span>
+                        </div>
+                        <div class="flex items-center gap-1.5">
+                            <i class="fas fa-rocket text-[10px] text-gray-400"></i>
+                            <span>Launch ${launchDate}</span>
+                        </div>
+                    </div>
+
+                    <div class="flex gap-2">
+                        <button onclick="dashboard.editListing('${listing.id}')" class="sh-btn-ghost text-sm flex-1 justify-center">
+                            <i class="fas fa-edit text-xs"></i> Edit
+                        </button>
+                        <a href="/startup/${listing.slug}" target="_blank" class="sh-btn-primary text-sm flex-1 justify-center">
+                            <i class="fas fa-eye text-xs"></i> View
                         </a>
                     </div>
-                    <div class="flex items-center text-sm text-gray-600">
-                        <i class="fas fa-calendar mr-2"></i>
-                        <span>Created: ${createdDate}</span>
+
+                    ${!isPremium && !isFeatured ? `
+                    <div class="border-t border-gray-200 pt-4 mt-4">
+                        <p class="text-[11px] uppercase tracking-wider font-semibold text-gray-500 mb-2">Boost your listing</p>
+                        <div class="flex gap-2">
+                            <button onclick="dashboard.showUpgradeModal('${listing.id}', '${listing.title.replace(/'/g, "\\'")}', 'premium')"
+                                    class="sh-btn-ghost text-xs flex-1 justify-center">
+                                <i class="fas fa-star text-[10px]"></i> Premium $20
+                            </button>
+                            <button onclick="dashboard.showUpgradeModal('${listing.id}', '${listing.title.replace(/'/g, "\\'")}', 'featured')"
+                                    class="sh-btn-accent text-xs flex-1 justify-center">
+                                <i class="fas fa-crown text-[10px]"></i> Featured $50/wk
+                            </button>
+                        </div>
                     </div>
-                    <div class="flex items-center text-sm text-gray-600">
-                        <i class="fas fa-rocket mr-2"></i>
-                        <span>Launch: ${launchDate}</span>
-                    </div>
+                    ` : ''}
                 </div>
-                
-                <div class="flex space-x-2 mb-2">
-                    <button onclick="dashboard.editListing('${listing.id}')" 
-                            class="flex-1 px-3 py-2 bg-blue-400 border-2 border-black brutalist-shadow hover:bg-blue-500 font-bold text-sm">
-                        <i class="fas fa-edit mr-1"></i>Edit
-                    </button>
-                    <a href="/startup/${listing.slug}" target="_blank"
-                       class="flex-1 px-3 py-2 bg-green-400 border-2 border-black brutalist-shadow hover:bg-green-500 font-bold text-sm text-center">
-                        <i class="fas fa-eye mr-1"></i>View
-                    </a>
-                </div>
-                
-                ${!isPremium && !isFeatured ? `
-                <div class="border-t-2 border-gray-200 pt-3 mt-2">
-                    <p class="text-xs text-gray-500 mb-2 font-medium">🚀 Boost your listing:</p>
-                    <div class="flex space-x-2">
-                        <button onclick="dashboard.showUpgradeModal('${listing.id}', '${listing.title.replace(/'/g, "\\'")}', 'premium')" 
-                                class="flex-1 px-3 py-2 bg-orange-400 border-2 border-black brutalist-shadow hover:bg-orange-500 font-bold text-xs">
-                            <i class="fas fa-star mr-1"></i>Premium $20
-                        </button>
-                        <button onclick="dashboard.showUpgradeModal('${listing.id}', '${listing.title.replace(/'/g, "\\'")}', 'featured')" 
-                                class="flex-1 px-3 py-2 bg-purple-500 text-white border-2 border-purple-700 brutalist-shadow hover:bg-purple-600 font-bold text-xs">
-                            <i class="fas fa-crown mr-1"></i>Featured $50/wk
-                        </button>
-                    </div>
-                </div>
-                ` : ''}
             </div>
         `;
     }
@@ -333,50 +335,70 @@ class Dashboard {
         if (!listing) return;
 
         const isPremium = productType === 'premium';
+        const accentText = isPremium ? 'text-amber-700' : 'text-orange-700';
+        const accentBg = isPremium ? 'bg-amber-50 border-amber-200' : 'bg-orange-50 border-orange-200';
+        const checks = isPremium
+            ? [
+                ['<strong>Guaranteed high-authority backlink</strong>'],
+                ['14 days on homepage (vs. 7 days)'],
+                ['Featured in our newsletter'],
+                ['Re-launch to the feed today'],
+              ]
+            : [
+                ['<strong>Guaranteed high-authority backlink</strong>'],
+                ['Featured placement at top of feed'],
+                ['Colorful gradient border'],
+                ['FEATURED badge on listing'],
+                ['Re-launch to the feed today'],
+              ];
+        const featureList = checks.map(([txt]) => `
+            <li class="flex items-start gap-2.5">
+                <i class="fas fa-check ${isPremium ? 'text-amber-600' : 'text-orange-600'} mt-1 text-xs"></i>
+                <span class="text-gray-700">${txt}</span>
+            </li>
+        `).join('');
+
         const modalHtml = `
-            <div id="upgrade-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-                <div class="bg-white border-4 border-black brutalist-shadow max-w-md w-full p-6">
-                    <div class="flex justify-between items-start mb-4">
-                        <h2 class="text-2xl font-bold">${isPremium ? '⭐ Upgrade to Premium' : '👑 Get Featured'}</h2>
-                        <button onclick="dashboard.closeUpgradeModal()" class="text-2xl font-bold hover:text-red-500">&times;</button>
-                    </div>
-                    
-                    <div class="mb-4 p-3 bg-gray-100 border-2 border-black">
-                        <p class="font-bold">${listingTitle}</p>
-                    </div>
-                    
-                    ${isPremium ? `
-                    <div class="mb-6">
-                        <div class="text-3xl font-bold text-orange-500 mb-2">$20 <span class="text-sm text-gray-500 font-normal">one-time</span></div>
-                        <ul class="space-y-2 text-sm">
-                            <li class="flex items-center"><i class="fas fa-check text-green-500 mr-2"></i><strong>Guaranteed high authority backlink</strong></li>
-                            <li class="flex items-center"><i class="fas fa-check text-green-500 mr-2"></i>14 days on homepage (vs 7 days)</li>
-                            <li class="flex items-center"><i class="fas fa-check text-green-500 mr-2"></i>Featured in our newsletter</li>
-                            <li class="flex items-center"><i class="fas fa-check text-green-500 mr-2"></i>Re-launch to the feed today</li>
-                        </ul>
-                    </div>
-                    ` : `
-                    <div class="mb-6">
-                        <div class="text-3xl font-bold text-purple-500 mb-2">$50 <span class="text-sm text-gray-500 font-normal">/week</span></div>
-                        <ul class="space-y-2 text-sm">
-                            <li class="flex items-center"><i class="fas fa-check text-green-500 mr-2"></i><strong>Guaranteed high authority backlink</strong></li>
-                            <li class="flex items-center"><i class="fas fa-check text-green-500 mr-2"></i>Featured placement at top of feed</li>
-                            <li class="flex items-center"><i class="fas fa-check text-green-500 mr-2"></i>Colorful gradient border</li>
-                            <li class="flex items-center"><i class="fas fa-check text-green-500 mr-2"></i>FEATURED badge on listing</li>
-                            <li class="flex items-center"><i class="fas fa-check text-green-500 mr-2"></i>Re-launch to the feed today</li>
-                        </ul>
-                    </div>
-                    `}
-                    
-                    <div class="flex space-x-3">
-                        <button onclick="dashboard.closeUpgradeModal()" 
-                                class="flex-1 px-4 py-3 bg-gray-200 border-2 border-black brutalist-shadow hover:bg-gray-300 font-bold">
-                            Cancel
+            <div id="upgrade-modal" class="fixed inset-0 bg-gray-900/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+                <div class="bg-white border border-gray-200 rounded-2xl shadow-xl max-w-md w-full">
+                    <div class="flex justify-between items-start px-6 py-5 border-b border-gray-200">
+                        <div>
+                            <span class="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider ${accentText} ${accentBg} border px-2 py-0.5 rounded-full mb-2">
+                                <i class="fas ${isPremium ? 'fa-star' : 'fa-crown'} text-[9px]"></i>
+                                ${isPremium ? 'Premium' : 'Featured'}
+                            </span>
+                            <h2 class="text-lg font-semibold text-gray-900">${isPremium ? 'Upgrade to Premium' : 'Get Featured'}</h2>
+                        </div>
+                        <button onclick="dashboard.closeUpgradeModal()" class="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-gray-900 hover:bg-gray-100 transition-colors">
+                            <i class="fas fa-times"></i>
                         </button>
-                        <button onclick="dashboard.processUpgrade('${listingId}', '${listingTitle.replace(/'/g, "\\'")}', '${productType}')" 
-                                class="flex-1 px-4 py-3 ${isPremium ? 'bg-orange-400 hover:bg-orange-500' : 'bg-purple-500 text-white hover:bg-purple-600'} border-2 border-black brutalist-shadow font-bold">
-                            <i class="fas fa-credit-card mr-2"></i>Pay Now
-                        </button>
+                    </div>
+
+                    <div class="px-6 py-5">
+                        <div class="mb-5 px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl">
+                            <p class="text-xs text-gray-500">Listing</p>
+                            <p class="font-medium text-gray-900 truncate">${listingTitle}</p>
+                        </div>
+
+                        <div class="mb-6">
+                            <div class="flex items-baseline gap-1 mb-4">
+                                <span class="text-3xl font-semibold tracking-tight text-gray-900">${isPremium ? '$20' : '$50'}</span>
+                                <span class="text-sm text-gray-500">${isPremium ? 'one-time' : '/ week'}</span>
+                            </div>
+                            <ul class="space-y-2.5 text-sm">
+                                ${featureList}
+                            </ul>
+                        </div>
+
+                        <div class="flex gap-2 pt-4 border-t border-gray-200">
+                            <button onclick="dashboard.closeUpgradeModal()" class="sh-btn-ghost flex-1 justify-center">
+                                Cancel
+                            </button>
+                            <button onclick="dashboard.processUpgrade('${listingId}', '${listingTitle.replace(/'/g, "\\'")}', '${productType}')"
+                                    class="sh-btn-accent flex-1 justify-center">
+                                <i class="fas fa-credit-card text-xs"></i> Pay now
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -593,48 +615,40 @@ class Dashboard {
     }
 
     showError(message) {
-        // Create a simple error notification
         const notification = document.createElement('div');
-        notification.className = 'fixed top-4 right-4 bg-red-400 border-2 border-black brutalist-shadow p-4 z-50';
+        notification.className = 'fixed top-4 right-4 bg-white border border-red-200 rounded-xl shadow-lg px-4 py-3 z-50 max-w-sm';
         notification.innerHTML = `
-            <div class="flex items-center">
-                <i class="fas fa-exclamation-triangle mr-2"></i>
-                <span>${message}</span>
-                <button onclick="this.parentElement.parentElement.remove()" class="ml-4 text-black hover:text-gray-700">
-                    <i class="fas fa-times"></i>
+            <div class="flex items-start gap-3">
+                <i class="fas fa-exclamation-triangle text-red-500 text-sm mt-0.5"></i>
+                <span class="text-sm text-gray-900 flex-1">${message}</span>
+                <button onclick="this.parentElement.parentElement.remove()" class="text-gray-400 hover:text-gray-900 transition-colors -mr-1">
+                    <i class="fas fa-times text-xs"></i>
                 </button>
             </div>
         `;
         document.body.appendChild(notification);
-        
-        // Auto-remove after 5 seconds
+
         setTimeout(() => {
-            if (notification.parentElement) {
-                notification.remove();
-            }
+            if (notification.parentElement) notification.remove();
         }, 5000);
     }
 
     showSuccess(message) {
-        // Create a simple success notification
         const notification = document.createElement('div');
-        notification.className = 'fixed top-4 right-4 bg-green-400 border-2 border-black brutalist-shadow p-4 z-50';
+        notification.className = 'fixed top-4 right-4 bg-white border border-emerald-200 rounded-xl shadow-lg px-4 py-3 z-50 max-w-sm';
         notification.innerHTML = `
-            <div class="flex items-center">
-                <i class="fas fa-check-circle mr-2"></i>
-                <span>${message}</span>
-                <button onclick="this.parentElement.parentElement.remove()" class="ml-4 text-black hover:text-gray-700">
-                    <i class="fas fa-times"></i>
+            <div class="flex items-start gap-3">
+                <i class="fas fa-check-circle text-emerald-500 text-sm mt-0.5"></i>
+                <span class="text-sm text-gray-900 flex-1">${message}</span>
+                <button onclick="this.parentElement.parentElement.remove()" class="text-gray-400 hover:text-gray-900 transition-colors -mr-1">
+                    <i class="fas fa-times text-xs"></i>
                 </button>
             </div>
         `;
         document.body.appendChild(notification);
-        
-        // Auto-remove after 3 seconds
+
         setTimeout(() => {
-            if (notification.parentElement) {
-                notification.remove();
-            }
+            if (notification.parentElement) notification.remove();
         }, 3000);
     }
 }

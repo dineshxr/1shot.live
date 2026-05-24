@@ -1,61 +1,144 @@
-@import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap");
 
-body {
-  font-family: "IBM Plex Sans", sans-serif;
-  background-color: #f0f0f0;
+:root {
+  --sh-bg: #fafafa;
+  --sh-surface: #ffffff;
+  --sh-surface-muted: #f5f5f5;
+  --sh-border: #e5e7eb;
+  --sh-border-strong: #d4d4d8;
+  --sh-text: #111827;
+  --sh-text-muted: #6b7280;
+  --sh-text-subtle: #9ca3af;
+  --sh-accent: #c2410c;        /* warm rust */
+  --sh-accent-soft: #fff7ed;
+  --sh-accent-hover: #9a3412;
+  --sh-card-shadow:
+    inset 0 -2px 6px rgba(0, 0, 0, 0.03),
+    0 7px 10px 0 rgba(0, 0, 0, 0.04);
+  --sh-card-shadow-hover:
+    inset 0 -2px 6px rgba(0, 0, 0, 0.04),
+    0 12px 20px 0 rgba(0, 0, 0, 0.06);
 }
 
+html, body {
+  background-color: var(--sh-bg);
+  color: var(--sh-text);
+  font-family: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI",
+    Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Soft card hover */
+.sh-card {
+  background: var(--sh-surface);
+  border: 1px solid var(--sh-border);
+  border-radius: 16px;
+  box-shadow: var(--sh-card-shadow);
+  transition: box-shadow 0.2s ease, transform 0.2s ease, border-color 0.2s ease;
+}
+
+.sh-card:hover {
+  box-shadow: var(--sh-card-shadow-hover);
+  border-color: var(--sh-border-strong);
+}
+
+/* Primary CTA — dark neutral */
+.sh-btn-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: #111827;
+  color: #ffffff;
+  border: 1px solid #111827;
+  padding: 0.5rem 0.875rem;
+  border-radius: 10px;
+  font-weight: 500;
+  font-size: 0.875rem;
+  transition: background 0.15s ease, transform 0.1s ease;
+}
+.sh-btn-primary:hover { background: #1f2937; }
+.sh-btn-primary:active { transform: translateY(1px); }
+
+/* Accent CTA — warm rust */
+.sh-btn-accent {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: var(--sh-accent);
+  color: #ffffff;
+  border: 1px solid var(--sh-accent);
+  padding: 0.5rem 0.875rem;
+  border-radius: 10px;
+  font-weight: 500;
+  font-size: 0.875rem;
+  transition: background 0.15s ease;
+}
+.sh-btn-accent:hover { background: var(--sh-accent-hover); border-color: var(--sh-accent-hover); }
+
+/* Secondary — white pill with hairline */
+.sh-btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: #ffffff;
+  color: var(--sh-text);
+  border: 1px solid var(--sh-border);
+  padding: 0.5rem 0.875rem;
+  border-radius: 10px;
+  font-weight: 500;
+  font-size: 0.875rem;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+.sh-btn-ghost:hover { background: var(--sh-surface-muted); border-color: var(--sh-border-strong); }
+
+/* Pills / tags */
+.sh-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  background: var(--sh-surface-muted);
+  color: var(--sh-text-muted);
+  border: 1px solid var(--sh-border);
+  border-radius: 9999px;
+  padding: 0.125rem 0.625rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+/* Hairline section divider */
+.sh-divider {
+  height: 1px;
+  background: var(--sh-border);
+  width: 100%;
+}
+
+/* Cards — keep legacy class for backward compat */
 .game-card {
   transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
-
 .game-card:hover {
-  transform: translateY(-5px);
+  transform: translateY(-2px);
 }
 
-.neo-button {
-  transition: transform 0.1s ease, box-shadow 0.1s ease;
-}
-
-.neo-button:hover {
-  transform: translate(-2px, -2px);
-  box-shadow: 6px 6px 0 0 rgba(0, 0, 0, 1);
-}
-
-.neo-button:active {
-  transform: translate(0, 0);
-  box-shadow: 2px 2px 0 0 rgba(0, 0, 0, 1);
-}
-
-/* Slider arrow styles */
-.game-card button[aria-label="Previous image"],
-.game-card button[aria-label="Next image"] {
-  opacity: 0.8;
-  transition: opacity 0.2s ease, transform 0.1s ease, box-shadow 0.1s ease;
-}
-
-.game-card button[aria-label="Previous image"]:hover,
-.game-card button[aria-label="Next image"]:hover {
-  opacity: 1;
-}
-
-/* Ranking borders for today's top 3 */
+/* Ranking borders for today's top 3 — refined, hairline accents */
 .startup-card-1st {
   position: relative;
-  border: 2px solid #f59e0b !important;
-  background: linear-gradient(to bottom, rgba(251, 191, 36, 0.05), white) !important;
+  border-color: #f59e0b !important;
+  background: linear-gradient(to bottom, rgba(251, 191, 36, 0.04), #ffffff) !important;
 }
 
 .startup-card-2nd {
   position: relative;
-  border: 2px solid #9ca3af !important;
-  background: linear-gradient(to bottom, rgba(156, 163, 175, 0.05), white) !important;
+  border-color: #9ca3af !important;
+  background: linear-gradient(to bottom, rgba(156, 163, 175, 0.04), #ffffff) !important;
 }
 
 .startup-card-3rd {
   position: relative;
-  border: 2px solid #d97706 !important;
-  background: linear-gradient(to bottom, rgba(217, 119, 6, 0.05), white) !important;
+  border-color: #d97706 !important;
+  background: linear-gradient(to bottom, rgba(217, 119, 6, 0.04), #ffffff) !important;
 }
 
 /* Ranking badge labels */
@@ -66,44 +149,35 @@ body {
   padding: 2px 10px;
   font-size: 11px;
   font-weight: 600;
-  border-radius: 4px;
+  border-radius: 9999px;
   z-index: 10;
+  letter-spacing: 0.01em;
 }
 
-.ranking-label-1st {
-  background-color: #fbbf24;
-  color: #78350f;
-}
+.ranking-label-1st { background-color: #fef3c7; color: #92400e; border: 1px solid #fde68a; }
+.ranking-label-2nd { background-color: #f3f4f6; color: #374151; border: 1px solid #e5e7eb; }
+.ranking-label-3rd { background-color: #fed7aa; color: #9a3412; border: 1px solid #fdba74; }
 
-.ranking-label-2nd {
-  background-color: #d1d5db;
-  color: #374151;
-}
-
-.ranking-label-3rd {
-  background-color: #f59e0b;
-  color: #78350f;
-}
-
-/* Featured listing with colorful gradient border */
+/* Featured listing with subtle gradient border */
 .startup-card-featured {
   position: relative;
   border: none !important;
-  background: white !important;
+  background: #ffffff !important;
 }
 
 .startup-card-featured::before {
   content: '';
   position: absolute;
-  top: -3px;
-  left: -3px;
-  right: -3px;
-  bottom: -3px;
-  background: linear-gradient(90deg, #ff6b6b, #feca57, #48dbfb, #ff9ff3, #ff6b6b);
+  top: -1px;
+  left: -1px;
+  right: -1px;
+  bottom: -1px;
+  background: linear-gradient(90deg, #fda4af, #fcd34d, #93c5fd, #f0abfc, #fda4af);
   background-size: 400% 400%;
-  border-radius: 14px;
+  border-radius: 17px;
   z-index: -1;
-  animation: gradient-border 3s ease infinite;
+  animation: gradient-border 6s ease infinite;
+  opacity: 0.6;
 }
 
 .startup-card-featured::after {
@@ -113,26 +187,88 @@ body {
   left: 0;
   right: 0;
   bottom: 0;
-  background: white;
-  border-radius: 12px;
+  background: #ffffff;
+  border-radius: 16px;
   z-index: -1;
 }
 
 @keyframes gradient-border {
-  0% {
-    background-position: 0% 50%;
-  }
-  50% {
-    background-position: 100% 50%;
-  }
-  100% {
-    background-position: 0% 50%;
-  }
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
 }
 
-/* Featured badge - now inline, keeping for backwards compatibility */
-.featured-badge {
-  display: none; /* Deprecated - using inline badges now */
+/* Deprecated; kept for compat */
+.featured-badge { display: none; }
+
+/* Map old neo-button class to a clean ghost button so legacy HTML still looks right */
+.neo-button {
+  transition: background 0.15s ease, border-color 0.15s ease, transform 0.1s ease;
+  box-shadow: none !important;
+}
+.neo-button:hover { transform: none; }
+
+/* === Neutralize legacy neobrutalist styling on un-refactored surfaces === */
+
+/* Replace thick black borders with hairline neutral borders */
+.border-black { border-color: var(--sh-border) !important; }
+.border-4.border-black,
+.border-2.border-black,
+.border-b-4.border-black,
+.border-t-4.border-black { border-width: 1px !important; }
+
+/* Soften hard drop shadows */
+[class*="shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"],
+[class*="shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]"],
+[class*="shadow-[6px_6px_0px_0px_rgba(0,0,0,1)]"],
+[class*="shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]"] {
+  box-shadow: 0 1px 2px rgba(17, 24, 39, 0.04), 0 4px 12px rgba(17, 24, 39, 0.05) !important;
+}
+[class*="hover:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]"]:hover,
+[class*="hover:shadow-[6px_6px_0px_0px_rgba(0,0,0,1)]"]:hover,
+[class*="hover:shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]"]:hover {
+  box-shadow: 0 2px 6px rgba(17, 24, 39, 0.06), 0 12px 24px rgba(17, 24, 39, 0.08) !important;
+}
+
+/* Soften saturated full-tone bgs used as page/section blocks */
+.bg-yellow-300 { background-color: #fff7ed !important; color: #7c2d12 !important; }
+.bg-yellow-400 { background-color: #fef3c7 !important; color: #78350f !important; }
+.bg-blue-400  { background-color: #eff6ff !important; color: #1e3a8a !important; }
+.bg-green-400 { background-color: #ecfdf5 !important; color: #065f46 !important; }
+.bg-purple-400 { background-color: #faf5ff !important; color: #581c87 !important; }
+.bg-orange-400 { background-color: #fff7ed !important; color: #7c2d12 !important; }
+.bg-red-400 { background-color: #fef2f2 !important; color: #991b1b !important; }
+
+/* And their hover variants */
+.hover\:bg-yellow-500:hover { background-color: #fde68a !important; }
+.hover\:bg-blue-500:hover { background-color: #dbeafe !important; }
+.hover\:bg-green-500:hover { background-color: #d1fae5 !important; }
+.hover\:bg-purple-500:hover { background-color: #f3e8ff !important; }
+.hover\:bg-red-500:hover { background-color: #fee2e2 !important; }
+
+/* Soften default rounded radii on brutalist cards */
+[class*="border-black"][class*="rounded"] {
+  border-radius: 14px !important;
+}
+
+/* Make focus rings less harsh on legacy form inputs */
+.focus\:ring-blue-400:focus { --tw-ring-color: rgba(17, 24, 39, 0.15) !important; }
+.focus\:ring-blue-500:focus { --tw-ring-color: rgba(17, 24, 39, 0.2) !important; }
+
+/* Polish legacy form fields that still use `border-2 border-black` */
+input.border-black,
+textarea.border-black,
+select.border-black {
+  border-radius: 10px !important;
+  background-color: #ffffff !important;
+  font-size: 0.875rem !important;
+}
+input.border-black:focus,
+textarea.border-black:focus,
+select.border-black:focus {
+  border-color: #9ca3af !important;
+  outline: none !important;
+  box-shadow: 0 0 0 3px rgba(17, 24, 39, 0.08) !important;
 }
 
 /* Blog post content typography */
@@ -159,7 +295,7 @@ body {
   margin-bottom: 0.75rem;
   color: #111827;
   padding-bottom: 0.4rem;
-  border-bottom: 2px solid #f3f4f6;
+  border-bottom: 1px solid var(--sh-border);
 }
 
 .blog-content h3 {
@@ -183,56 +319,41 @@ body {
   padding-left: 1.75rem;
 }
 
-.blog-content ul {
-  list-style-type: disc;
-}
-
-.blog-content ol {
-  list-style-type: decimal;
-}
+.blog-content ul { list-style-type: disc; }
+.blog-content ol { list-style-type: decimal; }
 
 .blog-content li {
   margin-bottom: 0.5rem;
   padding-left: 0.25rem;
 }
 
-.blog-content li::marker {
-  color: #60a5fa;
-}
+.blog-content li::marker { color: var(--sh-accent); }
 
-.blog-content strong {
-  font-weight: 600;
-  color: #111827;
-}
-
-.blog-content em {
-  font-style: italic;
-}
+.blog-content strong { font-weight: 600; color: #111827; }
+.blog-content em { font-style: italic; }
 
 .blog-content a {
-  color: #2563eb;
+  color: var(--sh-accent);
   font-weight: 500;
   text-decoration: underline;
   text-underline-offset: 2px;
 }
 
-.blog-content a:hover {
-  color: #1d4ed8;
-}
+.blog-content a:hover { color: var(--sh-accent-hover); }
 
 .blog-content blockquote {
-  border-left: 4px solid #60a5fa;
+  border-left: 3px solid var(--sh-accent);
   padding: 0.75rem 1.25rem;
   margin: 1.5rem 0;
-  background: #eff6ff;
-  border-radius: 0 6px 6px 0;
-  color: #1e40af;
+  background: var(--sh-accent-soft);
+  border-radius: 0 8px 8px 0;
+  color: #7c2d12;
   font-style: italic;
 }
 
 .blog-content code {
-  background: #f3f4f6;
-  border: 1px solid #e5e7eb;
+  background: var(--sh-surface-muted);
+  border: 1px solid var(--sh-border);
   border-radius: 4px;
   padding: 0.15em 0.4em;
   font-size: 0.875em;
@@ -241,8 +362,8 @@ body {
 }
 
 .blog-content pre {
-  background: #1f2937;
-  border-radius: 8px;
+  background: #111827;
+  border-radius: 12px;
   padding: 1.25rem 1.5rem;
   overflow-x: auto;
   margin: 1.5rem 0;
@@ -258,7 +379,7 @@ body {
 
 .blog-content hr {
   border: none;
-  border-top: 2px solid #f3f4f6;
+  border-top: 1px solid var(--sh-border);
   margin: 2rem 0;
 }
 
@@ -270,8 +391,8 @@ body {
 }
 
 .blog-content th {
-  background: #f9fafb;
-  border: 1px solid #e5e7eb;
+  background: var(--sh-surface-muted);
+  border: 1px solid var(--sh-border);
   padding: 0.625rem 1rem;
   font-weight: 600;
   text-align: left;
@@ -279,12 +400,12 @@ body {
 }
 
 .blog-content td {
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--sh-border);
   padding: 0.625rem 1rem;
 }
 
 .blog-content tr:nth-child(even) td {
-  background: #f9fafb;
+  background: var(--sh-surface-muted);
 }
 
 .blog-content img {
@@ -294,10 +415,5 @@ body {
   display: block;
 }
 
-.blog-content > *:first-child {
-  margin-top: 0;
-}
-
-.blog-content > *:last-child {
-  margin-bottom: 0;
-}
+.blog-content > *:first-child { margin-top: 0; }
+.blog-content > *:last-child { margin-bottom: 0; }

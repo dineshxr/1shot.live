@@ -114,13 +114,25 @@ export const LaunchCountdown = () => {
   };
 
   return html`
-    <div class="border-t border-black">
-      <div class="container mx-auto px-4 py-4 flex items-center gap-3 text-black">
-        <span class="text-lg font-semibold">Next launch in</span>
-        ${timeLeft.days > 0 ? html`<span class="inline-block rounded-md bg-black text-white px-3 py-1 font-semibold">${timeLeft.days}d</span>` : ''}
-        <span class="inline-block rounded-md bg-black text-white px-3 py-1 font-semibold">${timeLeft.hours}h</span>
-        <span class="inline-block rounded-md bg-black text-white px-3 py-1 font-semibold">${timeLeft.minutes}m</span>
-        <span class="inline-block rounded-md bg-black text-white px-3 py-1 font-semibold">${timeLeft.seconds}s</span>
+    <div class="bg-white border border-gray-200 rounded-2xl shadow-sm px-5 py-3">
+      <div class="flex flex-wrap items-center gap-3 text-gray-900">
+        <span class="text-sm font-medium text-gray-600">Next launch in</span>
+        <div class="flex items-center gap-1.5">
+          ${timeLeft.days > 0 ? html`
+            <span class="inline-flex items-baseline gap-1 rounded-lg bg-gray-900 text-white px-2.5 py-1 text-sm font-semibold tabular-nums">
+              ${timeLeft.days}<span class="text-[10px] font-normal opacity-70 ml-0.5">d</span>
+            </span>
+          ` : ''}
+          <span class="inline-flex items-baseline gap-1 rounded-lg bg-gray-900 text-white px-2.5 py-1 text-sm font-semibold tabular-nums">
+            ${String(timeLeft.hours).padStart(2, '0')}<span class="text-[10px] font-normal opacity-70 ml-0.5">h</span>
+          </span>
+          <span class="inline-flex items-baseline gap-1 rounded-lg bg-gray-900 text-white px-2.5 py-1 text-sm font-semibold tabular-nums">
+            ${String(timeLeft.minutes).padStart(2, '0')}<span class="text-[10px] font-normal opacity-70 ml-0.5">m</span>
+          </span>
+          <span class="inline-flex items-baseline gap-1 rounded-lg bg-gray-900 text-white px-2.5 py-1 text-sm font-semibold tabular-nums">
+            ${String(timeLeft.seconds).padStart(2, '0')}<span class="text-[10px] font-normal opacity-70 ml-0.5">s</span>
+          </span>
+        </div>
       </div>
     </div>
   `;

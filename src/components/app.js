@@ -2,6 +2,7 @@ import { Header } from "./header.js";
 import { Content } from "./content.js";
 import { Footer } from "./footer.js";
 import { Sidebar } from "./sidebar.js";
+import { RightSidebar } from "./right-sidebar.js";
 import { SubmitStartupForm } from "./submit-startup-form.js";
 import { StartupDetailPage } from "./startup-detail-page.js";
 import { LoginModal } from "./login-modal.js";
@@ -117,10 +118,10 @@ export const App = () => {
   };
 
   return html`
-    <div class="bg-gray-50 min-h-screen">
+    <div class="min-h-screen" style="background-color: var(--sh-bg);">
       ${isStartupDetailPage
         ? html`
-          <div class="bg-yellow-50 min-h-screen">
+          <div class="min-h-screen" style="background-color: var(--sh-bg);">
             <${Header} user=${user} />
             <${StartupDetailPage} />
             <${Footer} />
@@ -128,7 +129,7 @@ export const App = () => {
         `
         : isBlogPostPage
         ? html`
-          <div class="bg-white min-h-screen">
+          <div class="min-h-screen bg-white">
             <${Header} user=${user} />
             <${BlogPostPage} />
             <${Footer} />
@@ -136,14 +137,14 @@ export const App = () => {
         `
         : isBlogPage
         ? html`
-          <div class="bg-white min-h-screen">
+          <div class="min-h-screen bg-white">
             <${Header} user=${user} />
             <${BlogPage} />
             <${Footer} />
           </div>
         `
         : html`
-          <div class="bg-gray-50 min-h-screen">
+          <div class="min-h-screen" style="background-color: var(--sh-bg);">
             <${Header} 
               user=${user} 
               onMobileMenuToggle=${() => setIsMobileSidebarOpen(!isMobileSidebarOpen)}
@@ -171,12 +172,12 @@ export const App = () => {
               </div>
             `}
             
-            <!-- Main Content Area -->
-            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-              <div class="flex gap-8">
-                <!-- Desktop Sidebar -->
-                <div class="hidden lg:block w-80 flex-shrink-0">
-                  <${Sidebar} 
+            <!-- Main Content Area: full-width 3-column rail layout -->
+            <div class="w-full px-4 sm:px-6 lg:px-8 xl:px-12 py-8">
+              <div class="grid gap-6 lg:gap-8 grid-cols-1 lg:grid-cols-[280px_minmax(0,1fr)] xl:grid-cols-[280px_minmax(0,1fr)_320px]">
+                <!-- Desktop Left Sidebar -->
+                <div class="hidden lg:block">
+                  <${Sidebar}
                     startups=${startups}
                     onCategoryFilter=${handleCategoryFilter}
                     onSortChange=${handleSortChange}
@@ -184,11 +185,11 @@ export const App = () => {
                     selectedCategory=${selectedCategory}
                   />
                 </div>
-                
+
                 <!-- Main Content -->
-                <div class="flex-1 min-w-0">
-                  <${Content} 
-                    user=${user} 
+                <div class="min-w-0">
+                  <${Content}
+                    user=${user}
                     onStartupsChange=${setStartups}
                     selectedCategory=${selectedCategory}
                     sortBy=${sortBy}
@@ -196,6 +197,11 @@ export const App = () => {
                     onCategoryFilter=${handleCategoryFilter}
                     onSortChange=${handleSortChange}
                   />
+                </div>
+
+                <!-- Desktop Right Sidebar -->
+                <div class="hidden xl:block">
+                  <${RightSidebar} startups=${startups} />
                 </div>
               </div>
             </div>
