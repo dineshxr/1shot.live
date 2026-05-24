@@ -9,39 +9,6 @@ import { LaunchCountdown } from "./launch-countdown.js";
 // These are already defined globally in main.js
 // Using the global variables directly
 
-// Return YYYY-MM-DD of the Monday of the ISO week containing dateStr.
-// dateStr may be 'YYYY-MM-DD' or full ISO timestamp.
-const getWeekKey = (dateStr) => {
-  if (!dateStr) return null;
-  const datePart = dateStr.split('T')[0];
-  const [y, m, d] = datePart.split('-').map(Number);
-  // Construct in UTC to avoid DST drift
-  const utc = new Date(Date.UTC(y, m - 1, d));
-  const day = utc.getUTCDay();              // Sun = 0, Mon = 1, ...
-  const diffToMon = day === 0 ? -6 : 1 - day;
-  utc.setUTCDate(utc.getUTCDate() + diffToMon);
-  return `${utc.getUTCFullYear()}-${String(utc.getUTCMonth() + 1).padStart(2, '0')}-${String(utc.getUTCDate()).padStart(2, '0')}`;
-};
-
-// Format a week key (Monday YYYY-MM-DD) as a friendly range like "May 18 – 24, 2026".
-const formatWeekRange = (mondayKey) => {
-  const [y, m, d] = mondayKey.split('-').map(Number);
-  const monday = new Date(Date.UTC(y, m - 1, d));
-  const sunday = new Date(monday);
-  sunday.setUTCDate(monday.getUTCDate() + 6);
-  const monthShort = (date) => date.toLocaleDateString('en-US', { month: 'short', timeZone: 'UTC' });
-  const dayNum = (date) => date.getUTCDate();
-  const sameMonth = monday.getUTCMonth() === sunday.getUTCMonth();
-  const sameYear = monday.getUTCFullYear() === sunday.getUTCFullYear();
-  if (sameMonth) {
-    return `${monthShort(monday)} ${dayNum(monday)} – ${dayNum(sunday)}, ${sunday.getUTCFullYear()}`;
-  }
-  if (sameYear) {
-    return `${monthShort(monday)} ${dayNum(monday)} – ${monthShort(sunday)} ${dayNum(sunday)}, ${sunday.getUTCFullYear()}`;
-  }
-  return `${monthShort(monday)} ${dayNum(monday)}, ${monday.getUTCFullYear()} – ${monthShort(sunday)} ${dayNum(sunday)}, ${sunday.getUTCFullYear()}`;
-};
-
 
 export const Content = ({ user, onStartupsChange, selectedCategory, sortBy, searchQuery = '', onCategoryFilter, onSortChange }) => {
   const [startups, setStartups] = useState([]);
@@ -78,15 +45,15 @@ export const Content = ({ user, onStartupsChange, selectedCategory, sortBy, sear
           setFilteredStartups(filteredData);
           onStartupsChange?.(filteredData);
 
-          // Group startups by ISO week (Monday-anchored)
+          // Group startups by launch date
           const grouped = {};
           filteredData.forEach(startup => {
-            const weekKey = getWeekKey(startup.launch_date);
-            if (!weekKey) return;
-            if (!grouped[weekKey]) {
-              grouped[weekKey] = [];
+            const dateKey = startup.launch_date;
+            if (!dateKey) return;
+            if (!grouped[dateKey]) {
+              grouped[dateKey] = [];
             }
-            grouped[weekKey].push(startup);
+            grouped[dateKey].push(startup);
           });
           setGroupedStartups(grouped);
 
@@ -107,16 +74,15 @@ export const Content = ({ user, onStartupsChange, selectedCategory, sortBy, sear
       setFilteredStartups(placeholderProducts);
       onStartupsChange?.(placeholderProducts);
 
-      // Group placeholder startups by ISO week
+      // Group placeholder startups by launch date
       const grouped = {};
       placeholderProducts.forEach(startup => {
-        const dateStr = startup.launch_date || startup.created_at?.split('T')[0] || new Date().toISOString().split('T')[0];
-        const weekKey = getWeekKey(dateStr);
-        if (!weekKey) return;
-        if (!grouped[weekKey]) {
-          grouped[weekKey] = [];
+        const dateKey = startup.launch_date || startup.created_at?.split('T')[0] || new Date().toISOString().split('T')[0];
+        if (!dateKey) return;
+        if (!grouped[dateKey]) {
+          grouped[dateKey] = [];
         }
-        grouped[weekKey].push(startup);
+        grouped[dateKey].push(startup);
       });
       setGroupedStartups(grouped);
 
@@ -230,16 +196,16 @@ export const Content = ({ user, onStartupsChange, selectedCategory, sortBy, sear
       filtered = filtered.sort((a, b) => (b.upvote_count || 0) - (a.upvote_count || 0));
     }
 
-    // Group startups by ISO week (Monday-anchored)
+    // Group startups by launch date
     const grouped = {};
     filtered.forEach(startup => {
       const launchDate = startup.launch_date || startup.created_at;
-      const weekKey = getWeekKey(launchDate);
-      if (!weekKey) return;
-      if (!grouped[weekKey]) {
-        grouped[weekKey] = [];
+      if (!launchDate) return;
+      const dateKey = launchDate.split('T')[0]; // YYYY-MM-DD
+      if (!grouped[dateKey]) {
+        grouped[dateKey] = [];
       }
-      grouped[weekKey].push(startup);
+      grouped[dateKey].push(startup);
     });
 
     setGroupedStartups(grouped);
@@ -492,9 +458,17 @@ export const Content = ({ user, onStartupsChange, selectedCategory, sortBy, sear
           let totalStartupsRendered = 0;
           let featuredCardShown = false;
 
-          return sortedDateKeys.map((weekKey, index) => {
-            const startups = groupedStartups[weekKey];
-            const formattedRange = formatWeekRange(weekKey);
+          return sortedDateKeys.map((dateKey, index) => {
+            const startups = groupedStartups[dateKey];
+            // Construct date at noon UTC to avoid timezone shifting to previous day
+            const date = new Date(`${dateKey}T12:00:00Z`);
+            const formattedDate = date.toLocaleDateString('en-US', {
+              weekday: 'long',
+              year: 'numeric',
+              month: 'long',
+              day: 'numeric',
+              timeZone: 'America/New_York'
+            });
 
             const shouldShowFeatured = !featuredCardShown && totalStartupsRendered + startups.length >= 6;
             if (shouldShowFeatured) featuredCardShown = true;
@@ -503,8 +477,8 @@ export const Content = ({ user, onStartupsChange, selectedCategory, sortBy, sear
                   <div class="mb-10">
                     <div class="flex items-center gap-4 mb-5">
                       <h2 class="text-sm font-semibold text-gray-900 tracking-tight whitespace-nowrap">
-                        Week of ${formattedRange}
-                        <span class="ml-2 text-gray-400 font-normal">${startups.length} launch${startups.length !== 1 ? 'es' : ''}</span>
+                        Launched on ${formattedDate}
+                        <span class="ml-2 text-gray-400 font-normal">${startups.length} startup${startups.length !== 1 ? 's' : ''}</span>
                       </h2>
                       <div class="flex-1 h-px bg-gray-200"></div>
                     </div>
