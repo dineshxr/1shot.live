@@ -2,8 +2,24 @@ import { supabaseClient } from '../lib/supabase-client.js';
 import { captureScreenshot, uploadScreenshot } from '../lib/screenshot-service.js';
 import { Confetti } from './confetti.js';
 import { createCheckoutSession } from '../lib/stripe.js';
+import { config } from '../config.js';
 
 /* global html, useState, useEffect */
+
+// localStorage key for an unpaid paid-plan submission awaiting Stripe payment.
+// Lets us show a persistent "not submitted yet" state if the user abandons
+// checkout and returns. Cleared on the payment-success page.
+const PENDING_KEY = 'sh_pending_submission';
+
+// localStorage key for the in-progress form. Persisted so an OAuth login (which
+// is a full-page redirect) doesn't make the user re-type everything afterwards.
+const FORMDATA_KEY = 'sh_submit_formdata';
+
+// Supabase Edge Function that verifies a Turnstile token for the free flow.
+const VERIFY_TURNSTILE_URL = `${config.supabase.url}/functions/v1/verify-turnstile`;
+
+// Turnstile explicit-render widget id (module scope — one submit form per page).
+let turnstileWidgetId = null;
 
 export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
   const [formData, setFormData] = useState({
@@ -22,12 +38,15 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
   const [success, setSuccess] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [showSuccessPage, setShowSuccessPage] = useState(false);
-  const [isDuplicate, setIsDuplicate] = useState(false);
   const [availableLaunchDates, setAvailableLaunchDates] = useState([]);
   const [userHasPreviousSubmissions, setUserHasPreviousSubmissions] = useState(false);
   const [checkingPreviousSubmissions, setCheckingPreviousSubmissions] = useState(false);
   const [loadingDates, setLoadingDates] = useState(false);
   const [timeLeft, setTimeLeft] = useState(15 * 60); // Urgency timer: 15 minutes in seconds
+  const [pendingSubmission, setPendingSubmission] = useState(null); // unpaid paid-plan draft awaiting payment
+  const [turnstileToken, setTurnstileToken] = useState(null); // Cloudflare Turnstile token (anti-bot)
+  const [turnstileUnavailable, setTurnstileUnavailable] = useState(false); // widget couldn't load (e.g. blocked)
+  const [freeDomainTaken, setFreeDomainTaken] = useState(false); // this site already submitted on free plan
 
   const getESTDateString = (date) => {
     const estDate = new Date(date.toLocaleString("en-US", { timeZone: "America/New_York" }));
@@ -201,14 +220,103 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
   };
 
 
-  // Check for plan query parameter from URL (e.g., /submit?plan=premium)
+  // On mount, restore any in-progress form data saved before an OAuth login
+  // (a full-page redirect), then let an explicit ?plan= param win — e.g. when
+  // arriving from pricing/featured. This is what lets users pick up exactly
+  // where they left off after signing in instead of re-typing everything.
   useEffect(() => {
-    const urlParams = new URLSearchParams(window.location.search);
-    const planParam = urlParams.get('plan');
-    if (planParam && ['free', 'premium', 'featured'].includes(planParam)) {
-      setFormData(prev => ({ ...prev, plan: planParam }));
+    let restored = null;
+    try {
+      const raw = localStorage.getItem(FORMDATA_KEY);
+      if (raw) {
+        const saved = JSON.parse(raw);
+        if (saved && typeof saved === 'object') {
+          restored = saved.formData || null;
+          if (typeof saved.currentPage === 'number') setCurrentPage(saved.currentPage);
+        }
+      }
+    } catch (e) { /* ignore malformed saved form */ }
+
+    const planParam = new URLSearchParams(window.location.search).get('plan');
+    const validPlan = ['free', 'premium', 'featured'].includes(planParam) ? planParam : null;
+
+    if (restored || validPlan) {
+      setFormData(prev => ({ ...prev, ...(restored || {}), ...(validPlan ? { plan: validPlan } : {}) }));
     }
   }, []);
+
+  // Persist the in-progress form so a full-page OAuth redirect (login) doesn't
+  // wipe what the user typed. Cleared on successful submit / discard.
+  useEffect(() => {
+    try {
+      localStorage.setItem(FORMDATA_KEY, JSON.stringify({ formData, currentPage }));
+    } catch (e) { /* ignore quota errors */ }
+  }, [formData, currentPage]);
+
+  // Restore any unpaid submission left over from an abandoned checkout so we
+  // can clearly tell the user their launch was NOT submitted (and let them
+  // resume payment). Stripe's cancel_url returns here, to /submit.
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(PENDING_KEY);
+      if (!raw) return;
+      const draft = JSON.parse(raw);
+      if (draft && draft.plan && draft.title) {
+        setPendingSubmission(draft);
+      }
+    } catch (e) {
+      /* ignore malformed draft */
+    }
+  }, []);
+
+  // Render the Cloudflare Turnstile widget on the plan/submit step (page 2).
+  // Explicit render so it mounts reliably inside the SPA; the token is captured
+  // via callback and required before a submission can go through.
+  useEffect(() => {
+    if (currentPage !== 2) return undefined;
+    let cancelled = false;
+    let tries = 0;
+
+    const renderWidget = () => {
+      if (cancelled) return;
+      const el = document.getElementById('turnstile-widget');
+      if (!window.turnstile || !el) {
+        tries += 1;
+        if (tries > 16) {
+          // ~4s with no Turnstile: the script was blocked or failed to load.
+          // Mark it unavailable so we don't hard-lock a legitimate user.
+          setTurnstileUnavailable(true);
+          return;
+        }
+        setTimeout(renderWidget, 250); // api.js still loading or element not mounted yet
+        return;
+      }
+      setTurnstileUnavailable(false);
+      if (turnstileWidgetId !== null) return; // already rendered
+      try {
+        turnstileWidgetId = window.turnstile.render(el, {
+          sitekey: config.turnstile?.siteKey || '0x4AAAAAAA_Rl5VDA4u6EMKm',
+          callback: (token) => setTurnstileToken(token),
+          'expired-callback': () => setTurnstileToken(null),
+          'error-callback': () => setTurnstileToken(null),
+        });
+      } catch (e) {
+        /* already-rendered or transient — ignore */
+      }
+    };
+    renderWidget();
+
+    return () => {
+      cancelled = true;
+      try {
+        if (window.turnstile && turnstileWidgetId !== null) {
+          window.turnstile.remove(turnstileWidgetId);
+        }
+      } catch (e) { /* ignore */ }
+      turnstileWidgetId = null;
+      setTurnstileToken(null);
+    };
+  }, [currentPage]);
 
   // Load launch dates and set up refresh interval
   useEffect(() => {
@@ -271,30 +379,18 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
     }
   };
 
+  // Flag whether this site (or a subpage/subdomain of it) is already on the
+  // FREE plan. We don't hard-block here — the user can still pick a paid plan —
+  // we just surface a warning on the plan step and disable the free option.
   const checkDuplicateUrl = async () => {
-    if (!formData.url) return;
-
+    if (!formData.url) { setFreeDomainTaken(false); return; }
     try {
-      const normalizeUrl = (url) => {
-        let normalized = url.trim().replace(/^(https?:\/\/)?(www\.)?/, '');
-        if (normalized.endsWith('/')) {
-          normalized = normalized.slice(0, -1);
-        }
-        return normalized;
-      };
-
-      const normalizedUrl = normalizeUrl(formData.url);
       const supabase = supabaseClient();
-      const { data, error } = await supabase.rpc('check_duplicate_url', { p_url: normalizedUrl });
-
-      if (!error && data) {
-        setError('This URL has already been submitted. If you want to upgrade it, please visit your dashboard.');
-        setIsDuplicate(true);
-      } else {
-        setIsDuplicate(false);
-      }
-    } catch (error) {
-      console.error('Error in checkDuplicateUrl:', error);
+      const { data, error } = await supabase.rpc('check_free_domain_taken', { p_url: formData.url });
+      setFreeDomainTaken(!error && data === true);
+    } catch (e) {
+      console.error('Error in checkDuplicateUrl:', e);
+      setFreeDomainTaken(false);
     }
   };
 
@@ -315,19 +411,22 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
         return;
       }
 
-      if (!formData.slug) {
-        setError("Please enter a slug for your product");
-        return;
-      }
       if (!formData.xProfile) {
         setError("Please enter your X username");
         return;
       }
 
-      await checkDuplicateUrl();
-      if (isDuplicate) {
-        return;
+      // Slug is auto-derived; never block the user on it. Backfill if empty.
+      if (!formData.slug) {
+        const auto = generateSlug(formData.projectName)
+          || generateSlug(formData.url.replace(/^https?:\/\//, ''))
+          || `startup-${Math.floor(Math.random() * 100000)}`;
+        setFormData(prev => ({ ...prev, slug: auto }));
       }
+
+      // Refresh the "already on free plan" flag for the plan-step warning. We do
+      // NOT block here — the user may still choose a paid plan for this site.
+      await checkDuplicateUrl();
 
       setError(null);
       setCurrentPage(2);
@@ -344,11 +443,56 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
     setFormData(prev => ({ ...prev, plan }));
   };
 
+  // Re-launch Stripe checkout for a submission that was started but never paid.
+  const resumePayment = async () => {
+    if (!pendingSubmission) return;
+    setLoading(true);
+    setError(null);
+    window.trackEvent('paid_checkout_resumed', { plan: pendingSubmission.plan });
+    try {
+      const result = await createCheckoutSession(pendingSubmission.plan, {
+        startupTitle: pendingSubmission.title,
+        userEmail: user?.email,
+        submission: pendingSubmission,
+        turnstileToken, // may be null on resume; payment gates the resume flow
+      });
+      // On success the helper navigates away; we only land here on failure.
+      if (!result || result.success === false) {
+        throw new Error(result?.error || 'Could not start payment. Please try again.');
+      }
+    } catch (err) {
+      setError(err.message);
+      setLoading(false);
+    }
+  };
+
+  // User explicitly abandons the unpaid submission — drop the local draft.
+  const discardPending = () => {
+    try { localStorage.removeItem(PENDING_KEY); } catch (e) { /* ignore */ }
+    setPendingSubmission(null);
+    window.trackEvent('paid_checkout_discarded', { plan: pendingSubmission?.plan });
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
 
     if (!user) {
       onLoginRequired();
+      return;
+    }
+
+    // Anti-bot: require a solved Turnstile challenge. If the widget couldn't
+    // load at all (e.g. blocked), don't hard-lock the user — let them through
+    // (server-side verification is best-effort in that case).
+    if (!turnstileToken && !turnstileUnavailable) {
+      setError('Please complete the "I\'m human" verification to continue.');
+      return;
+    }
+
+    // For the free plan, this site (or a subpage/subdomain) is already taken —
+    // steer them to a paid plan instead of failing at insert time.
+    if (formData.plan === 'free' && freeDomainTaken) {
+      setError('This website is already submitted on the free plan. Choose Premium or Featured to launch it again.');
       return;
     }
 
@@ -366,8 +510,15 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
         throw new Error("Please enter a valid URL starting with http:// or https://");
       }
       if (!formData.projectName) throw new Error("Please enter a project name");
-      if (!formData.slug) throw new Error("Please enter a slug for your project");
       if (!formData.category) throw new Error("Please select a category for your startup");
+
+      // Slug is auto-derived and must NEVER block submission or surface as an
+      // error. Backfill from the name/URL if somehow empty; uniqueness is
+      // handled by the insert retry loop / webhook, not by the user.
+      const slug = (formData.slug && formData.slug.trim())
+        || generateSlug(formData.projectName)
+        || generateSlug(formData.url.replace(/^https?:\/\//, ''))
+        || `startup-${Math.floor(Math.random() * 100000)}`;
 
       const supabase = supabaseClient();
 
@@ -387,7 +538,7 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
             waitUntil: 'networkidle2'
           });
           if (capturedScreenshotUrl) {
-            return await uploadScreenshot(supabase, capturedScreenshotUrl, formData.slug);
+            return await uploadScreenshot(supabase, capturedScreenshotUrl, slug);
           }
           return null;
         })();
@@ -419,7 +570,7 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
         }
       }
 
-      console.info('[submit] inserting startup row');
+      console.info('[submit] preparing submission data');
       const authUser = window.auth.getCurrentUser();
       const contactEmail = formData.contactEmail || authUser?.email || '';
       let authorInfo = {
@@ -461,79 +612,50 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
         return nextDate;
       })();
 
-      // Paid plans are inserted as 'pending' so live-publishing crons skip
-      // them until the Stripe webhook flips payment_status to 'paid'.
       const isPaid = formData.plan === 'premium' || formData.plan === 'featured';
-      const paymentStatus = isPaid ? 'pending' : 'paid';
 
-      let { data, error } = await supabase
-        .from('startups')
-        .insert([{
+      // PAID PLANS (premium / featured): do NOT write anything to the database
+      // here. The startup row is created server-side ONLY after Stripe confirms
+      // payment (stripe-webhook Edge Function reads the submission from the
+      // checkout session metadata and inserts it as paid + live). This is what
+      // prevents abandoned checkouts from leaving orphaned 'pending' rows.
+      if (isPaid) {
+        const submission = {
           title: formData.projectName,
           url: formData.url,
-          description: formData.description,
-          slug: formData.slug,
+          description: formData.description || '',
+          slug,
           category: formData.category,
           author: authorInfo,
-          screenshot_url: screenshotUrl,
+          screenshot_url: screenshotUrl || '',
           plan: formData.plan,
-          payment_status: paymentStatus,
-          launch_date: resolvedLaunchDate
-        }])
-        .select('id, title, url, description, slug, author, screenshot_url, plan, launch_date')
-        .single();
+          launch_date: resolvedLaunchDate,
+          contact_email: contactEmail,
+        };
 
-      if (error) {
-        if (error.code === '23505' && error.message?.includes('startups_slug_key')) {
-          const uniqueSlug = makeUniqueSlug(formData.slug);
-          const { data: retryData, error: retryError } = await supabase
-            .from('startups')
-            .insert([{
-              title: formData.projectName,
-              url: formData.url,
-              description: formData.description,
-              slug: uniqueSlug,
-              category: formData.category,
-              author: authorInfo,
-              screenshot_url: screenshotUrl,
-              plan: formData.plan,
-              payment_status: paymentStatus,
-              launch_date: resolvedLaunchDate
-            }])
-            .select('id, title, url, description, slug, author, screenshot_url, plan, launch_date')
-            .single();
+        // Persist a local "not submitted yet" record. If the user abandons the
+        // Stripe page and comes back, we surface a banner making it explicit
+        // the launch was NOT submitted, and let them resume. Cleared on the
+        // payment-success page once payment goes through.
+        const draft = { ...submission, savedAt: Date.now() };
+        try { localStorage.setItem(PENDING_KEY, JSON.stringify(draft)); } catch (e) { /* ignore */ }
+        setPendingSubmission(draft);
 
-          if (retryError) {
-            throw new Error('Unable to generate a unique slug. Please try again.');
-          }
-          data = retryData;
-        } else if (error.code === '23505' && error.message?.includes('startups_url_key')) {
-          throw new Error('This URL has already been submitted.');
-        } else {
-          throw new Error(error.message || 'Failed to submit startup');
-        }
-      }
+        console.info('[submit] paid plan — handing off to Stripe with NO db insert', { plan: formData.plan });
+        window.trackEvent('paid_checkout_started', { plan: formData.plan });
 
-      console.info('[submit] insert ok', { startup_id: data?.id, plan: formData.plan });
-      window.trackEvent('form_submit_success', { plan: formData.plan });
-
-      if (isPaid && data?.id) {
-        console.info('[submit] calling create-checkout for', formData.plan);
-        window.trackEvent('paid_checkout_started', { plan: formData.plan, startup_id: data.id });
-        // Don't show the Congratulations screen yet — the startup isn't
-        // actually live until payment completes. Hand off to Stripe directly.
         const checkoutResult = await createCheckoutSession(formData.plan, {
-          startupId: data.id,
           startupTitle: formData.projectName,
-          userEmail: user?.email
+          userEmail: user?.email,
+          submission,
+          turnstileToken,
         });
         // createCheckoutSession sets window.location.href on success, so we
-        // only get here if it failed. Keep the form mounted with an error so
-        // the user can retry instead of being stranded on a congrats page.
+        // only get here if it failed. Keep the form mounted with an error and
+        // the not-submitted banner so the user can retry.
         if (!checkoutResult || checkoutResult.success === false) {
           window.trackEvent('paid_checkout_blocked', {
             plan: formData.plan,
-            startup_id: data.id,
             error: String(checkoutResult?.error || 'unknown').slice(0, 200),
           });
           throw new Error(checkoutResult?.error || 'Could not start payment. Please try again.');
@@ -541,7 +663,89 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
         return;
       }
 
-      // Free-plan path: the row is live-eligible immediately, so show success.
+      // FREE PLAN: verify the Turnstile token server-side first so a bot that
+      // never solved the challenge can't create a listing. We only treat an
+      // explicit verification failure as fatal — if the endpoint is missing or
+      // down we let a real user through rather than blocking them.
+      if (turnstileToken) {
+        console.info('[submit] verifying turnstile (free)');
+        let verificationFailed = false;
+        try {
+          const vr = await fetch(VERIFY_TURNSTILE_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ turnstileToken }),
+          });
+          if (vr.status === 403) {
+            verificationFailed = true;
+          } else if (vr.ok) {
+            const vj = await vr.json().catch(() => ({}));
+            if (vj && vj.success === false) verificationFailed = true;
+          }
+          // 404 / 5xx / other → endpoint missing or down; don't block a real user.
+        } catch (e) {
+          console.warn('[submit] turnstile verify unreachable — allowing submission', e);
+        }
+        if (verificationFailed) {
+          try { if (window.turnstile && turnstileWidgetId !== null) window.turnstile.reset(turnstileWidgetId); } catch (e) { /* ignore */ }
+          setTurnstileToken(null);
+          throw new Error('Verification failed. Please complete the "I\'m human" check again.');
+        }
+      }
+
+      // Insert, auto-generating a fresh slug on collision. The user NEVER sees a
+      // slug / unique-id error — we just retry with a new suffix.
+      console.info('[submit] inserting free startup row');
+      const baseRow = {
+        title: formData.projectName,
+        url: formData.url,
+        description: formData.description,
+        category: formData.category,
+        author: authorInfo,
+        screenshot_url: screenshotUrl,
+        plan: formData.plan,
+        payment_status: 'paid',
+        launch_date: resolvedLaunchDate,
+      };
+
+      let data = null;
+      let trySlug = slug;
+      for (let attempt = 0; attempt < 6; attempt++) {
+        const res = await supabase
+          .from('startups')
+          .insert([{ ...baseRow, slug: trySlug }])
+          .select('id, title, url, description, slug, author, screenshot_url, plan, launch_date')
+          .single();
+
+        if (!res.error) { data = res.data; break; }
+
+        const msg = res.error.message || '';
+        if (res.error.code === '23505' && /slug/i.test(msg)) {
+          trySlug = makeUniqueSlug(slug); // silently pick a new slug and retry
+          continue;
+        }
+        if (/DUPLICATE_FREE_DOMAIN/i.test(msg)) {
+          throw new Error('This website (or one of its pages or subdomains) is already submitted on the free plan. Choose Premium or Featured to launch it again.');
+        }
+        if (res.error.code === '23505' && /url/i.test(msg)) {
+          throw new Error('This website has already been submitted. To launch it again, choose Premium or Featured.');
+        }
+        // Anything else: don't leak DB internals to the user.
+        console.error('[submit] free insert error', res.error);
+        throw new Error('Something went wrong submitting your startup. Please try again.');
+      }
+
+      if (!data) {
+        throw new Error('Something went wrong submitting your startup. Please try again.');
+      }
+
+      console.info('[submit] free insert ok', { startup_id: data?.id });
+      window.trackEvent('form_submit_success', { plan: formData.plan });
+
+      // Submission complete — clear the saved in-progress form.
+      try { localStorage.removeItem(FORMDATA_KEY); } catch (e) { /* ignore */ }
+
+      // Free row is live-eligible immediately, so show the success screen.
       setSuccess(true);
       setShowSuccessPage(true);
       window.dispatchEvent(new Event("refresh-startups"));
@@ -677,6 +881,30 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
         ${error && html`
           <div class="mb-6 px-4 py-3 bg-red-50 border border-red-200 rounded-xl">
             <p class="text-sm text-red-700">${error}</p>
+          </div>
+        `}
+
+        ${pendingSubmission && html`
+          <div class="mb-6 px-4 py-4 bg-amber-50 border-2 border-amber-300 rounded-xl">
+            <div class="flex items-start gap-3">
+              <i class="fas fa-triangle-exclamation text-amber-600 mt-0.5"></i>
+              <div class="flex-1">
+                <p class="font-semibold text-amber-900">Not submitted yet — payment required</p>
+                <p class="text-sm text-amber-800 mt-0.5">
+                  Your ${pendingSubmission.plan === 'featured' ? 'Featured' : 'Premium'} launch for
+                  "${pendingSubmission.title}" was <strong>not submitted</strong> — the payment wasn't
+                  completed. Nothing is published until you finish payment.
+                </p>
+                <div class="flex flex-wrap gap-2 mt-3">
+                  <button type="button" onClick=${resumePayment} class="sh-btn-accent text-sm disabled:opacity-50" disabled=${loading}>
+                    ${loading ? html`<i class="fas fa-spinner fa-spin text-xs"></i> Redirecting…` : html`<i class="fas fa-credit-card text-xs"></i> Resume payment`}
+                  </button>
+                  <button type="button" onClick=${discardPending} class="sh-btn-ghost text-sm" disabled=${loading}>
+                    Discard
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
         `}
 
@@ -1046,6 +1274,26 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
                 </div>
               ` : ''}
               
+              ${formData.plan === 'free' && freeDomainTaken ? html`
+                <div class="px-4 py-3 bg-amber-50 border border-amber-200 rounded-xl">
+                  <p class="text-amber-800 text-sm">
+                    <strong>This website is already submitted on the free plan.</strong>
+                    A site — including its subpages and subdomains — gets one free launch.
+                    Choose <strong>Premium</strong> or <strong>Featured</strong> above to launch it again.
+                  </p>
+                </div>
+              ` : ''}
+
+              <!-- Cloudflare Turnstile: bot check, required before submitting -->
+              <div class="flex flex-col items-start gap-2 pt-2">
+                <div id="turnstile-widget"></div>
+                ${turnstileUnavailable ? html`
+                  <p class="text-xs text-gray-400">Verification couldn't load — you can still submit.</p>
+                ` : (!turnstileToken ? html`
+                  <p class="text-xs text-gray-500">Complete the verification to enable submission.</p>
+                ` : '')}
+              </div>
+
               <div class="flex justify-between items-center pt-6 border-t border-gray-200 mt-6">
                 <button
                   type="button"
@@ -1056,11 +1304,11 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
                   <i class="fas fa-arrow-left text-xs"></i> Previous
                 </button>
 
-                ${formData.plan === 'free' && availableLaunchDates.filter(d => d.freeAvailable).length > 0 ? html`
+                ${formData.plan === 'free' && !freeDomainTaken && availableLaunchDates.filter(d => d.freeAvailable).length > 0 ? html`
                   <button
                     type="submit"
                     class="sh-btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
-                    disabled=${loading}
+                    disabled=${loading || (!turnstileToken && !turnstileUnavailable)}
                   >
                     ${loading ? html`<i class="fas fa-spinner fa-spin text-xs"></i> Submitting…` : html`Submit free launch <i class="fas fa-arrow-right text-xs"></i>`}
                   </button>
@@ -1070,7 +1318,7 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
                   <button
                     type="submit"
                     class="sh-btn-accent disabled:opacity-50 disabled:cursor-not-allowed"
-                    disabled=${loading}
+                    disabled=${loading || (!turnstileToken && !turnstileUnavailable)}
                   >
                     ${loading ? html`<i class="fas fa-spinner fa-spin text-xs"></i> Redirecting to Stripe…` : html`Continue to payment <i class="fas fa-arrow-right text-xs"></i>`}
                   </button>
@@ -1080,7 +1328,7 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
                   <button
                     type="submit"
                     class="sh-btn-accent disabled:opacity-50 disabled:cursor-not-allowed"
-                    disabled=${loading}
+                    disabled=${loading || (!turnstileToken && !turnstileUnavailable)}
                   >
                     ${loading ? html`<i class="fas fa-spinner fa-spin text-xs"></i> Redirecting to Stripe…` : html`Continue to payment <i class="fas fa-arrow-right text-xs"></i>`}
                   </button>

@@ -112,10 +112,23 @@
 
                     console.log('Authentication successful:', data.session.user);
 
-                    // Redirect to main page after a short delay
+                    // Return the user to wherever they started (e.g. the submit
+                    // form they were filling out), falling back to home. Only
+                    // same-origin relative paths are honored to avoid open
+                    // redirects.
+                    let dest = '/';
+                    try {
+                        const saved = localStorage.getItem('sh_post_login_redirect');
+                        localStorage.removeItem('sh_post_login_redirect');
+                        if (saved && saved.startsWith('/') && !saved.startsWith('//')) {
+                            dest = saved;
+                        }
+                    } catch (e) { /* ignore */ }
+
+                    // Redirect after a short delay
                     setTimeout(() => {
-                        window.location.href = '/';
-                    }, 1500);
+                        window.location.href = dest;
+                    }, 1200);
                 } else {
                     throw new Error('No active session found. The magic link may have expired.');
                 }

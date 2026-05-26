@@ -1,7 +1,7 @@
 // Import Supabase client
 import { supabaseClient } from '../lib/supabase-client.js';
 import { addReferralParam } from '../lib/url-utils.js';
-import { trackEvent, ANALYTICS_EVENTS } from '../lib/analytics.js';
+import { trackEvent, ANALYTICS_EVENTS } from '../lib/events.js';
 
 export const StartupDetailPage = () => {
   const [startup, setStartup] = useState(null);

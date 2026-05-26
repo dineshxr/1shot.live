@@ -63,7 +63,11 @@
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
     />
     <link rel="stylesheet" href="/src/style.css" />
-    
+
+    <!-- Cloudflare Turnstile (bot protection for the submit form). Explicit
+         render so we control when/where the widget mounts in the Preact app. -->
+    <script src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit" async defer></script>
+
     <!-- Analytics: wrapped so adblocker / network failures never break boot -->
     <script>
       window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };

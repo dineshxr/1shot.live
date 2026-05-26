@@ -116,6 +116,41 @@ async function handleCheckoutComplete(session: Stripe.Checkout.Session) {
 
   console.log("Payment completed at:", paymentTimestamp, "PST date:", paymentDate);
 
+  // Idempotency: Stripe can retry or duplicate webhook deliveries. If this
+  // checkout session was already recorded, stop now — otherwise a retry would
+  // insert the same paid startup twice.
+  const { data: existingPayment } = await supabase
+    .from("payments")
+    .select("id")
+    .eq("stripe_session_id", session.id)
+    .maybeSingle();
+  if (existingPayment) {
+    console.log("Checkout session already processed, skipping:", session.id);
+    return;
+  }
+
+  // For NEW paid launches, the client sends the full submission in metadata and
+  // does NOT pre-create a row. Now that payment is confirmed, create it. For
+  // dashboard upgrades, startup_id is present and we fall through to the
+  // existing update paths below.
+  let effectiveStartupId: string | null = startup_id || null;
+  let insertedNewStartup = false;
+  let insertedLaunchDate = paymentDate;
+
+  if (!effectiveStartupId && session.metadata?.sub === "1") {
+    // Throw on failure so Stripe retries — never silently drop a paid launch.
+    const result = await insertPaidStartupFromMetadata(
+      session,
+      product as string,
+      paymentDate,
+      paymentTimestamp
+    );
+    effectiveStartupId = result.id;
+    insertedLaunchDate = result.launchDate;
+    insertedNewStartup = true;
+    console.log("Inserted new paid startup from metadata:", effectiveStartupId, "launch_date:", insertedLaunchDate);
+  }
+
   // Record the payment
   const { error: paymentError } = await supabase.from("payments").insert({
     stripe_session_id: session.id,
@@ -125,7 +160,7 @@ async function handleCheckoutComplete(session: Stripe.Checkout.Session) {
     amount: session.amount_total,
     currency: session.currency,
     status: "completed",
-    startup_id: startup_id || null,
+    startup_id: effectiveStartupId,
     payment_date: paymentTimestamp,
   });
 
@@ -133,6 +168,13 @@ async function handleCheckoutComplete(session: Stripe.Checkout.Session) {
     console.error("Error recording payment:", paymentError);
   } else {
     console.log("Payment recorded successfully");
+  }
+
+  // A freshly inserted row is already paid + live with the correct plan, so
+  // just send the "you're live" notification and finish (skip update paths).
+  if (insertedNewStartup && effectiveStartupId) {
+    await publishPaidStartup(effectiveStartupId, insertedLaunchDate);
+    return;
   }
 
   // Update startup based on product type
@@ -354,5 +396,148 @@ async function handleSubscriptionRenewal(invoice: Stripe.Invoice) {
       status: "completed",
       startup_id: payment.startup_id,
     });
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Deferred-insert helpers
+//
+// New paid launches are NOT written to the DB until Stripe confirms payment.
+// The client passes the full submission in checkout metadata; these helpers
+// materialize it into a paid + live `startups` row inside the webhook.
+// ---------------------------------------------------------------------------
+
+function slugify(s: string): string {
+  return (
+    (s || "")
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "")
+      .slice(0, 50) || "startup"
+  );
+}
+
+// launch_date must be a weekday (Mon–Fri) per the startups CHECK constraint.
+// Bump Sat/Sun forward to Monday. Pure UTC arithmetic — we only classify the
+// day of week, so there is no timezone drift.
+function toWeekday(dateStr: string, fallbackPstDate: string): string {
+  const parse = (s: string) => (s || "").split("-").map((n) => parseInt(n, 10));
+  let [y, mo, da] = parse(dateStr);
+  if (!y || !mo || !da) [y, mo, da] = parse(fallbackPstDate);
+  const d = new Date(Date.UTC(y, mo - 1, da, 12));
+  while (d.getUTCDay() === 0 || d.getUTCDay() === 6) {
+    d.setUTCDate(d.getUTCDate() + 1);
+  }
+  const yyyy = d.getUTCFullYear();
+  const mm = String(d.getUTCMonth() + 1).padStart(2, "0");
+  const dd = String(d.getUTCDate()).padStart(2, "0");
+  return `${yyyy}-${mm}-${dd}`;
+}
+
+async function insertPaidStartupFromMetadata(
+  session: Stripe.Checkout.Session,
+  product: string,
+  paymentDate: string,
+  paymentTimestamp: string,
+): Promise<{ id: string; launchDate: string }> {
+  const m = session.metadata || {};
+  const launchDate = toWeekday(m.sub_launch_date || "", paymentDate);
+
+  let author: Record<string, unknown> = {};
+  try {
+    author = JSON.parse(m.sub_author || "{}");
+  } catch {
+    author = {};
+  }
+  // Guarantee an email so the "you're live" notification can be sent.
+  if (!author.email && m.sub_contact_email) author.email = m.sub_contact_email;
+  if (!author.email && session.customer_email) author.email = session.customer_email;
+
+  const baseRow: Record<string, unknown> = {
+    title: m.sub_title || m.startup_title || "Untitled",
+    url: m.sub_url || "",
+    description: m.sub_description || "",
+    category: m.sub_category || null,
+    author,
+    screenshot_url: m.sub_screenshot || null,
+    plan: product, // 'premium' | 'featured'
+    payment_status: "paid",
+    is_live: true,
+    launch_date: launchDate,
+    notification_sent: false,
+    notification_sent_at: null,
+    updated_at: paymentTimestamp,
+  };
+  if (product === "featured") {
+    const fu = new Date();
+    fu.setDate(fu.getDate() + 7);
+    baseRow.featured_until = fu.toISOString();
+  }
+
+  const baseSlug = (m.sub_slug || slugify(String(baseRow.title))).slice(0, 50);
+  let slug = baseSlug;
+
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const { data, error } = await supabase
+      .from("startups")
+      .insert({ ...baseRow, slug })
+      .select("id")
+      .single();
+
+    if (!error && data) {
+      return { id: data.id, launchDate };
+    }
+
+    const msg = error?.message || "";
+    if (error?.code === "23505" && /slug/i.test(msg)) {
+      slug = `${baseSlug}-${Math.floor(Math.random() * 10000)}`;
+      continue;
+    }
+    if (error?.code === "23505" && /url/i.test(msg)) {
+      // The URL is already listed. The paying user owns this launch, so upgrade
+      // the existing row to paid + live rather than failing (which would mean
+      // they paid and got nothing).
+      const update: Record<string, unknown> = {
+        plan: product,
+        payment_status: "paid",
+        is_live: true,
+        launch_date: launchDate,
+        notification_sent: false,
+        notification_sent_at: null,
+        updated_at: paymentTimestamp,
+      };
+      if (product === "featured") update.featured_until = baseRow.featured_until;
+      const { data: up, error: upErr } = await supabase
+        .from("startups")
+        .update(update)
+        .eq("url", baseRow.url)
+        .select("id")
+        .single();
+      if (!upErr && up) return { id: up.id, launchDate };
+      throw new Error(`URL conflict and update failed: ${upErr?.message || "unknown"}`);
+    }
+
+    throw new Error(`Insert paid startup failed: ${msg || "unknown error"}`);
+  }
+  throw new Error("Could not insert paid startup after slug retries");
+}
+
+async function publishPaidStartup(startupId: string, paymentDate: string): Promise<void> {
+  try {
+    const res = await fetch(`${supabaseUrl}/functions/v1/publish-paid-startup`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${supabaseServiceKey}`,
+      },
+      body: JSON.stringify({ startupId, paymentDate }),
+    });
+    if (res.ok) {
+      console.log("Paid startup published immediately:", await res.json());
+    } else {
+      console.error("Failed to publish paid startup immediately:", await res.text());
+    }
+  } catch (err) {
+    console.error("Error calling publish-paid-startup function:", err);
   }
 }
