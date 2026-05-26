@@ -118,6 +118,16 @@ export const auth = {
   // Sign in with Google OAuth
   async signInWithGoogle() {
     try {
+      // Remember where the user was (e.g. /submit?plan=premium) so the OAuth
+      // callback can return them there instead of always dropping them on the
+      // home page and making them start over.
+      try {
+        const dest = window.location.pathname + window.location.search;
+        if (dest && dest.startsWith('/') && !dest.startsWith('//')) {
+          localStorage.setItem('sh_post_login_redirect', dest);
+        }
+      } catch (e) { /* ignore */ }
+
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {

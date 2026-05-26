@@ -155,6 +155,12 @@
       }
     }
 
+    // Payment succeeded — clear the "not submitted yet" draft and the saved
+    // in-progress form so the not-submitted banner and stale form data don't
+    // resurface if the user returns to /submit.
+    try { localStorage.removeItem('sh_pending_submission'); } catch (e) { /* ignore */ }
+    try { localStorage.removeItem('sh_submit_formdata'); } catch (e) { /* ignore */ }
+
     // Get session ID from URL
     const urlParams = new URLSearchParams(window.location.search);
     const sessionId = urlParams.get('session_id');

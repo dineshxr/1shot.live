@@ -39,9 +39,13 @@ function trackStripeEvent(name, props) {
 
 // Create checkout session and redirect
 export async function createCheckoutSession(product, options = {}) {
-  const { startupId, startupTitle, userEmail, successUrl, cancelUrl } = options;
+  const { startupId, startupTitle, userEmail, successUrl, cancelUrl, submission, turnstileToken } = options;
 
-  trackStripeEvent('stripe_checkout_requested', { product, has_startup_id: Boolean(startupId) });
+  trackStripeEvent('stripe_checkout_requested', {
+    product,
+    has_startup_id: Boolean(startupId),
+    deferred_insert: Boolean(submission && !startupId),
+  });
 
   let response;
   try {
@@ -55,6 +59,13 @@ export async function createCheckoutSession(product, options = {}) {
         startupId,
         startupTitle,
         userEmail,
+        // Full submission payload for NEW paid launches. The row is created by
+        // the stripe-webhook only after payment, so nothing is written to the
+        // database when the user merely reaches the checkout page.
+        submission,
+        // Cloudflare Turnstile token — verified in create-checkout before the
+        // Stripe session is created.
+        turnstileToken,
         successUrl: successUrl || `${window.location.origin}/payment-success`,
         cancelUrl: cancelUrl || window.location.href,
       }),
