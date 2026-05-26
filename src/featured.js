@@ -21,7 +21,7 @@ import { LaunchCountdown } from "./components/launch-countdown.js";
 import { auth } from "./lib/auth.js";
 
 // Import analytics
-import { trackPageView, trackEvent } from './lib/analytics.js';
+import { trackPageView, trackEvent } from './lib/events.js';
 
 // Make Preact and hooks available globally for our components
 window.h = h;

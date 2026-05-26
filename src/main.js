@@ -20,7 +20,7 @@ import { App } from "./components/app.js";
 // ANALYTICS IMPLEMENTATION
 // =========================================
 // Import analytics module
-import { trackPageView, trackEvent, ANALYTICS_EVENTS } from './lib/analytics.js';
+import { trackPageView, trackEvent, ANALYTICS_EVENTS } from './lib/events.js';
 
 // Make analytics available globally
 window.ANALYTICS_EVENTS = ANALYTICS_EVENTS;

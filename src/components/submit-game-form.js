@@ -1,5 +1,5 @@
 import { supabaseClient } from '../lib/supabase-client.js';
-import { trackEvent, ANALYTICS_EVENTS } from '../lib/analytics.js';
+import { trackEvent, ANALYTICS_EVENTS } from '../lib/events.js';
 
 export const SubmitGameForm = ({ isOpen, onClose }) => {
   const [formData, setFormData] = useState({
