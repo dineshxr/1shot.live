@@ -273,7 +273,8 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
   // Explicit render so it mounts reliably inside the SPA; the token is captured
   // via callback and required before a submission can go through.
   useEffect(() => {
-    if (currentPage !== 2) return undefined;
+    // Turnstile is only used on the FREE plan now (paid is gated by payment).
+    if (currentPage !== 2 || formData.plan !== 'free') return undefined;
     let cancelled = false;
     let tries = 0;
 
@@ -316,7 +317,7 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
       turnstileWidgetId = null;
       setTurnstileToken(null);
     };
-  }, [currentPage]);
+  }, [currentPage, formData.plan]);
 
   // Load launch dates and set up refresh interval
   useEffect(() => {
@@ -481,10 +482,10 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
       return;
     }
 
-    // Anti-bot: require a solved Turnstile challenge. If the widget couldn't
-    // load at all (e.g. blocked), don't hard-lock the user — let them through
-    // (server-side verification is best-effort in that case).
-    if (!turnstileToken && !turnstileUnavailable) {
+    // Anti-bot: require a solved Turnstile challenge on the FREE plan only —
+    // paid plans are gated by Stripe payment. If the widget couldn't load
+    // (e.g. blocked), don't hard-lock the user.
+    if (formData.plan === 'free' && !turnstileToken && !turnstileUnavailable) {
       setError('Please complete the "I\'m human" verification to continue.');
       return;
     }
@@ -1284,15 +1285,17 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
                 </div>
               ` : ''}
 
-              <!-- Cloudflare Turnstile: bot check, required before submitting -->
-              <div class="flex flex-col items-start gap-2 pt-2">
-                <div id="turnstile-widget"></div>
-                ${turnstileUnavailable ? html`
-                  <p class="text-xs text-gray-400">Verification couldn't load — you can still submit.</p>
-                ` : (!turnstileToken ? html`
-                  <p class="text-xs text-gray-500">Complete the verification to enable submission.</p>
-                ` : '')}
-              </div>
+              <!-- Cloudflare Turnstile: free-plan bot check only (paid is gated by payment) -->
+              ${formData.plan === 'free' ? html`
+                <div class="flex flex-col items-start gap-2 pt-2">
+                  <div id="turnstile-widget"></div>
+                  ${turnstileUnavailable ? html`
+                    <p class="text-xs text-gray-400">Verification couldn't load — you can still submit.</p>
+                  ` : (!turnstileToken ? html`
+                    <p class="text-xs text-gray-500">Complete the verification to enable submission.</p>
+                  ` : '')}
+                </div>
+              ` : ''}
 
               <div class="flex justify-between items-center pt-6 border-t border-gray-200 mt-6">
                 <button
@@ -1318,7 +1321,7 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
                   <button
                     type="submit"
                     class="sh-btn-accent disabled:opacity-50 disabled:cursor-not-allowed"
-                    disabled=${loading || (!turnstileToken && !turnstileUnavailable)}
+                    disabled=${loading}
                   >
                     ${loading ? html`<i class="fas fa-spinner fa-spin text-xs"></i> Redirecting to Stripe…` : html`Continue to payment <i class="fas fa-arrow-right text-xs"></i>`}
                   </button>
@@ -1328,7 +1331,7 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
                   <button
                     type="submit"
                     class="sh-btn-accent disabled:opacity-50 disabled:cursor-not-allowed"
-                    disabled=${loading || (!turnstileToken && !turnstileUnavailable)}
+                    disabled=${loading}
                   >
                     ${loading ? html`<i class="fas fa-spinner fa-spin text-xs"></i> Redirecting to Stripe…` : html`Continue to payment <i class="fas fa-arrow-right text-xs"></i>`}
                   </button>

@@ -1,6 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@14.14.0?target=deno";
-import { verifyTurnstileToken } from "../_shared/lib/verifyTurnstileToken.ts";
 
 const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") as string, {
   apiVersion: "2023-10-16",
@@ -28,21 +27,10 @@ serve(async (req) => {
   }
 
   try {
-    const { product, startupId, startupTitle, userEmail, successUrl, cancelUrl, submission, turnstileToken } = await req.json();
-
-    // Anti-bot: when the client supplies a Turnstile token (new launches from
-    // the submit form), verify it before creating a paid session. Resume-payment
-    // flows may not carry a fresh token; payment itself gates those, so a
-    // missing token is allowed.
-    if (turnstileToken) {
-      const verify = await verifyTurnstileToken(turnstileToken);
-      if (!verify.success) {
-        return new Response(
-          JSON.stringify({ error: "Verification failed. Please complete the challenge and try again." }),
-          { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-    }
+    // Turnstile is NOT used on the paid flow — payment itself gates spam, and
+    // requiring a challenge here only adds a failure point. (Free submissions
+    // still verify Turnstile via the verify-turnstile function.)
+    const { product, startupId, startupTitle, userEmail, successUrl, cancelUrl, submission } = await req.json();
 
     if (!product || !PRICE_IDS[product as keyof typeof PRICE_IDS]) {
       return new Response(
