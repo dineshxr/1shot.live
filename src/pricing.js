@@ -89,7 +89,7 @@ const PricingPage = () => {
                 </li>
                 <li class="flex items-start gap-2.5">
                   <i class="fas fa-check text-gray-400 mt-1 text-xs"></i>
-                  <span class="text-gray-700">High authority backlink for top 3 ranking products</span>
+                  <span class="text-gray-700">High authority backlink</span>
                 </li>
                 <li class="flex items-start gap-2.5">
                   <i class="fas fa-clock text-amber-500 mt-1 text-xs"></i>
