@@ -207,7 +207,7 @@ class Dashboard {
                    </div>`
                 : `<div class="mt-4 flex flex-wrap items-center gap-2">
                        <a href="/" class="sh-btn-primary text-sm"><i class="fas fa-arrow-up text-xs"></i> Go engage</a>
-                       <span class="text-xs text-gray-400">Only upvotes &amp; comments after your last launch count toward the next one.</span>
+                       <span class="text-xs text-gray-400">Only upvotes & comments after your last launch count toward the next one.</span>
                    </div>`}
         `;
     }

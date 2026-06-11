@@ -131,6 +131,28 @@
             font-size: 0.78rem;
             color: var(--sh-text-subtle);
         }
+        .continue-row {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            margin-top: 20px;
+            font-size: 0.78rem;
+            color: var(--sh-text-subtle);
+        }
+        .skip-btn {
+            font-family: inherit;
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--sh-text);
+            background: var(--sh-surface);
+            border: 1px solid var(--sh-border);
+            border-radius: 10px;
+            padding: 6px 14px;
+            cursor: pointer;
+            transition: background 0.15s ease, border-color 0.15s ease;
+        }
+        .skip-btn:hover { background: #f5f5f5; border-color: #d4d4d8; }
     </style>
 </head>
 
@@ -201,7 +223,10 @@
             </div>
         </div>
 
-        <p class="foot" id="foot-note">Redirecting you automatically…</p>
+        <div class="continue-row">
+            <span id="countdown-note">Redirecting you automatically…</span>
+            <button type="button" id="skip-btn" class="skip-btn" style="display:none;">Skip →</button>
+        </div>
     </div>
 
     <script type="importmap">
@@ -222,7 +247,8 @@
         const iconEl = document.getElementById('status-icon');
         const headingEl = document.getElementById('status-heading');
         const textEl = document.getElementById('status-text');
-        const footEl = document.getElementById('foot-note');
+        const countdownEl = document.getElementById('countdown-note');
+        const skipBtn = document.getElementById('skip-btn');
 
         const CHECK_SVG = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 13l4 4L19 7" stroke-linecap="round" stroke-linejoin="round"/></svg>';
         const X_SVG = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M6 6l12 12M18 6L6 18" stroke-linecap="round"/></svg>';
@@ -250,7 +276,19 @@
                         }
                     } catch (e) { /* ignore */ }
 
-                    setTimeout(() => { window.location.href = dest; }, 1600);
+                    // Keep this success screen up for 10s with a countdown, and
+                    // let the user skip straight through if they want.
+                    const go = () => { window.location.href = dest; };
+                    skipBtn.style.display = '';
+                    skipBtn.addEventListener('click', go);
+                    let remaining = 10;
+                    const renderCount = () => { countdownEl.textContent = `Continuing to your launch in ${remaining}s…`; };
+                    renderCount();
+                    const iv = setInterval(() => {
+                        remaining -= 1;
+                        if (remaining <= 0) { clearInterval(iv); go(); return; }
+                        renderCount();
+                    }, 1000);
                 } else {
                     throw new Error('No active session found. Please try signing in again.');
                 }
@@ -260,7 +298,7 @@
                 iconEl.innerHTML = X_SVG;
                 headingEl.textContent = 'Sign-in problem';
                 textEl.textContent = error.message || 'There was a problem signing you in.';
-                if (footEl) footEl.textContent = 'Taking you back home…';
+                if (countdownEl) countdownEl.textContent = 'Taking you back home…';
                 setTimeout(() => { window.location.href = '/'; }, 5000);
             }
         }

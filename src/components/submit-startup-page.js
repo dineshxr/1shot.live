@@ -1153,7 +1153,7 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
           <div class="flex-1 h-px mx-3 ${currentPage > 1 ? 'bg-gray-900' : 'bg-gray-200'}"></div>
           <div class="flex items-center gap-2 shrink-0">
             <div class="w-7 h-7 rounded-full flex items-center justify-center text-xs font-semibold ${currentPage >= 2 ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-500'}">2</div>
-            <span class="text-sm font-medium ${currentPage >= 2 ? 'text-gray-900' : 'text-gray-400'}">Plan &amp; launch</span>
+            <span class="text-sm font-medium ${currentPage >= 2 ? 'text-gray-900' : 'text-gray-400'}">Plan & launch</span>
           </div>
         </div>
 
@@ -1208,7 +1208,7 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
                   </div>
                   <div>
                     <p class="font-semibold text-gray-900 text-sm">AI-Powered Form Prefill</p>
-                    <p class="text-xs text-gray-600 mt-0.5">Enter your website URL. AI fills almost every field — name, tagline, description, categories, tags, pricing, target audience, tech stack, social links, SEO metadata, FAQ, and more. Logo &amp; cover come from your site icons / structured data; social links are extracted from the page.</p>
+                    <p class="text-xs text-gray-600 mt-0.5">Enter your website URL. AI fills almost every field — name, tagline, description, categories, tags, pricing, target audience, tech stack, social links, SEO metadata, FAQ, and more. Logo & cover come from your site icons / structured data; social links are extracted from the page.</p>
                   </div>
                 </div>
 

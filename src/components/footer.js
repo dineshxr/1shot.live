@@ -9,7 +9,7 @@ export const Footer = () => {
               <span class="text-sm font-semibold text-gray-900">SubmitHunt</span>
             </div>
             <p class="text-sm text-gray-500">
-              A directory for startups and AI projects — launch today, get a DR&nbsp;37+ backlink.
+              A directory for startups and AI projects — launch today, get a DR 37+ backlink.
             </p>
           </div>
 
