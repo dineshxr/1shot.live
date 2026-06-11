@@ -226,7 +226,16 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
   // Unlock state for the free plan. While the status is still loading we show
   // a spinner instead of flashing the unlock panel at already-eligible users.
   const statusLoading = !!user && freeStatus === null;
-  const freeUnlocked = !statusLoading && (!freeStatus || freeStatus.eligible === true);
+  // Engagement (upvote + comment) is what UNLOCKS the form/slot picker. The
+  // do-follow backlink is a separate FINAL step that gates the Submit button —
+  // not the unlock — so the user fills details and picks a slot first.
+  const engagementDone = freeStatus
+    ? (freeStatus.unavailable === true
+        || ((freeStatus.upvotes_done || 0) >= (freeStatus.upvotes_required || 3)
+            && (freeStatus.comments_done || 0) >= (freeStatus.comments_required || 1)))
+    : true;
+  const freeUnlocked = !statusLoading && engagementDone;
+  const backlinkVerified = freeStatus ? (freeStatus.unavailable === true || !!freeStatus.backlink_verified) : true;
 
 
   // On mount, restore any in-progress form data saved before an OAuth login
@@ -1397,8 +1406,7 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
     const cmReq = s.comments_required || 1;
     const upOk = upDone >= upReq;
     const cmOk = cmDone >= cmReq;
-    const blOk = !!s.backlink_verified;
-    const stepsDone = (upOk ? 1 : 0) + (cmOk ? 1 : 0) + (blOk ? 1 : 0);
+    const stepsDone = (upOk ? 1 : 0) + (cmOk ? 1 : 0);
     const counter = (done, ok) => ok
       ? html`<span class="w-7 h-7 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-600 flex items-center justify-center shrink-0 mt-0.5"><i class="fas fa-check text-[11px]"></i></span>`
       : html`<span class="text-xs font-semibold text-gray-500 tabular-nums shrink-0 mt-1.5">${done}</span>`;
@@ -1413,14 +1421,14 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
                       <h3 class="text-lg font-semibold text-gray-900">Unlock product submission</h3>
                       <p class="text-sm text-gray-500 mt-0.5">
                         ${s.is_returning
-                          ? `You've launched here before. Support the community again and re-add your backlink to unlock your next free launch.`
-                          : `Complete the quick steps below so the community knows you — and keep our badge on your site.`}
+                          ? `You've launched here before. Support the community again to unlock your next free launch.`
+                          : `Complete the quick steps below so the community knows you before you launch.`}
                       </p>
                       <div class="flex items-center gap-3 mt-3">
                         <div class="flex-1 h-1.5 rounded-full bg-gray-100 overflow-hidden">
-                          <div class="h-full bg-emerald-500 transition-all" style="width: ${Math.round((stepsDone / 3) * 100)}%"></div>
+                          <div class="h-full bg-emerald-500 transition-all" style="width: ${Math.round((stepsDone / 2) * 100)}%"></div>
                         </div>
-                        <span class="text-sm font-semibold text-gray-700 tabular-nums">${stepsDone}/3</span>
+                        <span class="text-sm font-semibold text-gray-700 tabular-nums">${stepsDone}/2</span>
                       </div>
                     </div>
                     <a
@@ -1461,69 +1469,6 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
                       </div>
                       ${cmOk ? counter(cmDone, true) : html`<span class="text-xs font-semibold text-gray-500 tabular-nums shrink-0 mt-1.5">${cmDone}/${cmReq}</span>`}
                     </div>
-
-                    <!-- 3. Verified do-follow backlink -->
-                    <div class="px-5 sm:px-6 py-4">
-                      <div class="flex items-start gap-4">
-                        <div class="w-10 h-10 rounded-xl border bg-amber-50 border-amber-100 text-amber-600 flex items-center justify-center shrink-0">
-                          <i class="fas fa-link"></i>
-                        </div>
-                        <div class="flex-1 min-w-0">
-                          <p class="font-semibold text-gray-900 text-sm">Add a do-follow backlink</p>
-                          <p class="text-sm text-gray-500 mt-0.5">Place our badge on your homepage or footer, then verify it.</p>
-                        </div>
-                        ${counter('', blOk)}
-                      </div>
-
-                      ${!blOk ? html`
-                        <div class="mt-4 ml-0 sm:ml-14 space-y-3">
-                          <div class="rounded-xl border border-gray-200 bg-gray-50/60 p-4">
-                            <div class="flex items-center justify-between gap-3 mb-3">
-                              <span class="text-xs font-semibold uppercase tracking-wider text-gray-500">Embed this badge</span>
-                              <button
-                                type="button"
-                                onClick=${copyEmbedCode}
-                                class="text-xs font-medium text-indigo-600 hover:text-indigo-700 flex items-center gap-1"
-                              >
-                                ${copiedEmbed ? html`<i class="fas fa-check"></i> Copied` : html`<i class="fas fa-copy"></i> Copy embed code`}
-                              </button>
-                            </div>
-                            <div class="flex flex-col sm:flex-row items-start gap-4">
-                              <img src="/src/submit-hunt-badge.png" alt="Featured on Submit Hunt" class="h-12 w-auto border border-gray-200 rounded bg-white p-1 shrink-0" />
-                              <code class="block w-full text-[11px] font-mono text-gray-600 bg-white border border-gray-200 rounded-lg p-2.5 overflow-x-auto whitespace-pre-wrap break-all">${BADGE_EMBED_CODE}</code>
-                            </div>
-                            <p class="text-[11px] text-gray-400 mt-2">Must stay do-follow — don't add rel="nofollow", "sponsored" or "ugc".</p>
-                          </div>
-
-                          <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1" for="backlinkUrl">Enter the exact URL where you placed our link</label>
-                            <div class="flex flex-col sm:flex-row gap-2">
-                              <input
-                                type="url"
-                                id="backlinkUrl"
-                                value=${backlinkUrl}
-                                onInput=${(e) => setBacklinkUrl(e.target.value)}
-                                placeholder="https://mystartup.com"
-                                class="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400"
-                              />
-                              <button
-                                type="button"
-                                onClick=${handleVerifyBacklink}
-                                disabled=${verifyingBacklink || !backlinkUrl.trim()}
-                                class="shrink-0 px-4 py-2 rounded-lg bg-emerald-600 text-white font-semibold text-sm hover:bg-emerald-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                              >
-                                ${verifyingBacklink ? html`<i class="fas fa-spinner fa-spin text-xs"></i> Verifying…` : html`<i class="fas fa-shield-halved text-xs"></i> Verify Backlink`}
-                              </button>
-                            </div>
-                            ${backlinkError ? html`<p class="text-sm text-red-600 mt-1">${backlinkError}</p>` : ''}
-                          </div>
-                        </div>
-                      ` : html`
-                        <p class="ml-0 sm:ml-14 mt-2 text-sm text-emerald-700 font-medium flex items-center gap-1.5">
-                          <i class="fas fa-check"></i> Backlink verified — thanks for the link!
-                        </p>
-                      `}
-                    </div>
                   </div>
 
                   <!-- Phase 4 upsell: keep the paid option visible -->
@@ -1545,7 +1490,7 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
               ${formData.plan === 'free' && freeUnlocked && wasLocked ? html`
                 <div class="px-4 py-3 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center gap-3">
                   <i class="fas fa-circle-check text-emerald-600"></i>
-                  <p class="text-sm text-emerald-800 font-medium">Submission unlocked — pick your launch date below.</p>
+                  <p class="text-sm text-emerald-800 font-medium">Unlocked — pick your launch date, then add your backlink to finish.</p>
                 </div>
               ` : ''}
 
@@ -1591,6 +1536,57 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
                 </div>
               ` : ''}
               
+              <!-- Final step: do-follow backlink (after slot selection; gates submit, not unlock) -->
+              ${formData.plan === 'free' && freeUnlocked ? html`
+                <div class="border ${backlinkVerified ? 'border-emerald-200' : 'border-gray-200'} rounded-2xl overflow-hidden">
+                  <div class="flex items-start gap-4 px-5 sm:px-6 pt-5 pb-4 ${backlinkVerified ? 'bg-emerald-50/50' : 'bg-gray-50/60'}">
+                    <div class="w-10 h-10 rounded-xl border flex items-center justify-center shrink-0 ${backlinkVerified ? 'bg-emerald-50 border-emerald-100 text-emerald-600' : 'bg-amber-50 border-amber-100 text-amber-600'}">
+                      <i class="fas fa-link"></i>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                      <p class="font-semibold text-gray-900 text-sm">Final step — add a do-follow backlink</p>
+                      <p class="text-sm text-gray-500 mt-0.5">Place our badge on your homepage or footer, then verify it to finish your free launch.</p>
+                    </div>
+                    ${backlinkVerified ? html`<span class="w-7 h-7 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-600 flex items-center justify-center shrink-0 mt-0.5"><i class="fas fa-check text-[11px]"></i></span>` : ''}
+                  </div>
+
+                  <div class="px-5 sm:px-6 pb-5 pt-1">
+                    ${!backlinkVerified ? html`
+                      <div class="space-y-3">
+                        <div class="rounded-xl border border-gray-200 bg-gray-50/60 p-4">
+                          <div class="flex items-center justify-between gap-3 mb-3">
+                            <span class="text-xs font-semibold uppercase tracking-wider text-gray-500">Embed this badge</span>
+                            <button type="button" onClick=${copyEmbedCode} class="text-xs font-medium text-indigo-600 hover:text-indigo-700 flex items-center gap-1">
+                              ${copiedEmbed ? html`<i class="fas fa-check"></i> Copied` : html`<i class="fas fa-copy"></i> Copy embed code`}
+                            </button>
+                          </div>
+                          <div class="flex flex-col sm:flex-row items-start gap-4">
+                            <img src="/src/submit-hunt-badge.png" alt="Featured on Submit Hunt" class="h-12 w-auto border border-gray-200 rounded bg-white p-1 shrink-0" />
+                            <code class="block w-full text-[11px] font-mono text-gray-600 bg-white border border-gray-200 rounded-lg p-2.5 overflow-x-auto whitespace-pre-wrap break-all">${BADGE_EMBED_CODE}</code>
+                          </div>
+                          <p class="text-[11px] text-gray-400 mt-2">Must stay do-follow — don't add rel="nofollow", "sponsored" or "ugc".</p>
+                        </div>
+
+                        <div>
+                          <label class="block text-sm font-medium text-gray-700 mb-1" for="backlinkUrl">Enter the exact URL where you placed our link</label>
+                          <div class="flex flex-col sm:flex-row gap-2">
+                            <input type="url" id="backlinkUrl" value=${backlinkUrl} onInput=${(e) => setBacklinkUrl(e.target.value)} placeholder="https://mystartup.com" class="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400" />
+                            <button type="button" onClick=${handleVerifyBacklink} disabled=${verifyingBacklink || !backlinkUrl.trim()} class="shrink-0 px-4 py-2 rounded-lg bg-emerald-600 text-white font-semibold text-sm hover:bg-emerald-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2">
+                              ${verifyingBacklink ? html`<i class="fas fa-spinner fa-spin text-xs"></i> Verifying…` : html`<i class="fas fa-shield-halved text-xs"></i> Verify Backlink`}
+                            </button>
+                          </div>
+                          ${backlinkError ? html`<p class="text-sm text-red-600 mt-1">${backlinkError}</p>` : ''}
+                        </div>
+                      </div>
+                    ` : html`
+                      <p class="text-sm text-emerald-700 font-medium flex items-center gap-1.5">
+                        <i class="fas fa-check"></i> Backlink verified — you're ready to submit.
+                      </p>
+                    `}
+                  </div>
+                </div>
+              ` : ''}
+
               ${formData.plan === 'free' && freeDomainTaken ? html`
                 <div class="px-4 py-3 bg-amber-50 border border-amber-200 rounded-xl">
                   <p class="text-amber-800 text-sm">
@@ -1624,13 +1620,17 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
                 </button>
 
                 ${formData.plan === 'free' && freeUnlocked && !freeDomainTaken && availableLaunchDates.filter(d => d.freeAvailable).length > 0 ? html`
-                  <button
-                    type="submit"
-                    class="sh-btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
-                    disabled=${loading || (!turnstileToken && !turnstileUnavailable)}
-                  >
-                    ${loading ? html`<i class="fas fa-spinner fa-spin text-xs"></i> Submitting…` : html`Submit free launch <i class="fas fa-arrow-right text-xs"></i>`}
-                  </button>
+                  <div class="flex flex-col items-end gap-1">
+                    <button
+                      type="submit"
+                      class="sh-btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
+                      disabled=${loading || !backlinkVerified || (!turnstileToken && !turnstileUnavailable)}
+                      title=${!backlinkVerified ? 'Verify your backlink above to enable submission' : ''}
+                    >
+                      ${loading ? html`<i class="fas fa-spinner fa-spin text-xs"></i> Submitting…` : html`Submit free launch <i class="fas fa-arrow-right text-xs"></i>`}
+                    </button>
+                    ${!backlinkVerified ? html`<p class="text-xs text-gray-400">Verify your backlink above to enable submission.</p>` : ''}
+                  </div>
                 ` : ''}
 
                 ${formData.plan === 'free' && freeUnlocked && !freeDomainTaken && !loadingDates && availableLaunchDates.length > 0 && availableLaunchDates.filter(d => d.freeAvailable).length === 0 ? html`
