@@ -6,6 +6,7 @@ class Dashboard {
         this.currentUser = null;
         this.listings = [];
         this.upvotedStartups = [];
+        this.unlockStatus = null;
         this.editingListing = null;
         this.init();
     }
@@ -88,10 +89,13 @@ class Dashboard {
             
             // Also load upvoted startups
             await this.loadUpvotedStartups();
-            
+
             this.updateStats();
             this.renderListings();
             this.renderUpvotedStartups();
+
+            // Free-launch unlock progress (engagement resets after each launch)
+            await this.loadUnlockStatus();
 
         } catch (error) {
             console.error('Failed to load listings:', error);
@@ -123,6 +127,89 @@ class Dashboard {
         if (upvotedElement) {
             upvotedElement.textContent = upvotedCount;
         }
+    }
+
+    // Engagement progress toward the user's NEXT free launch. Uses an empty
+    // product URL so the RPC returns just the upvote/comment counts (which reset
+    // after each free submission); the per-product backlink is verified at
+    // submit time, so it's only noted here.
+    async loadUnlockStatus() {
+        try {
+            const supabase = supabaseClient();
+            const { data, error } = await supabase.rpc('get_free_submission_status', { p_product_url: '' });
+            this.unlockStatus = (!error && data) ? data : null;
+            if (error) console.warn('Unlock status error:', error);
+        } catch (e) {
+            console.warn('Failed to load unlock status:', e);
+            this.unlockStatus = null;
+        }
+        this.renderUnlockStatus();
+    }
+
+    renderUnlockStatus() {
+        const body = document.getElementById('unlock-status-body');
+        const section = document.getElementById('unlock-status-section');
+        if (!body) return;
+
+        const s = this.unlockStatus;
+        // Hide the card entirely if the RPC isn't available (fail soft).
+        if (!s) {
+            if (section) section.classList.add('hidden');
+            return;
+        }
+        if (section) section.classList.remove('hidden');
+
+        const upReq = s.upvotes_required || 3;
+        const cmReq = s.comments_required || 1;
+        const upDone = Math.min(s.upvotes_done || 0, upReq);
+        const cmDone = Math.min(s.comments_done || 0, cmReq);
+        const upOk = upDone >= upReq;
+        const cmOk = cmDone >= cmReq;
+        const engagementReady = upOk && cmOk;
+
+        const row = (ok, done, req, icon, title, hint) => `
+            <div class="flex items-center gap-3 p-3 rounded-xl border ${ok ? 'border-emerald-200 bg-emerald-50/50' : 'border-gray-200'}">
+                <div class="w-9 h-9 rounded-lg flex items-center justify-center ${ok ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-500'}">
+                    <i class="fas ${icon} text-sm"></i>
+                </div>
+                <div class="flex-1 min-w-0">
+                    <p class="text-sm font-semibold text-gray-900">${title}</p>
+                    <p class="text-xs text-gray-500">${ok ? 'Done' : hint}</p>
+                </div>
+                ${ok
+                    ? '<span class="w-6 h-6 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0"><i class="fas fa-check text-[10px]"></i></span>'
+                    : `<span class="text-sm font-semibold tabular-nums text-gray-500 shrink-0">${done}/${req}</span>`}
+            </div>`;
+
+        body.innerHTML = `
+            <div class="flex flex-wrap items-start justify-between gap-3 mb-1">
+                <div>
+                    <h2 class="text-lg sm:text-xl font-semibold tracking-tight text-gray-900">Unlock your next free launch</h2>
+                    <p class="text-sm text-gray-500 mt-0.5">Each new free product needs a fresh set of community engagement${s.is_returning ? ' — progress resets after every launch' : ''}.</p>
+                </div>
+                <a href="/" class="sh-btn-ghost text-sm shrink-0"><i class="fas fa-arrow-up-right-from-square text-xs"></i> Browse products</a>
+            </div>
+
+            <div class="mt-4 grid gap-3 sm:grid-cols-2">
+                ${row(upOk, upDone, upReq, 'fa-arrow-up', `Upvote ${upReq} products`, 'Discover and support products you love')}
+                ${row(cmOk, cmDone, cmReq, 'fa-comment', `Comment on ${cmReq} product${cmReq > 1 ? 's' : ''}`, 'Share your thoughts with the community')}
+            </div>
+
+            <div class="mt-3 flex items-start gap-2 text-xs text-gray-500">
+                <i class="fas fa-link mt-0.5"></i>
+                <span>Plus a do-follow SubmitHunt backlink on each product's own site — verified when you submit it.</span>
+            </div>
+
+            ${engagementReady
+                ? `<div class="mt-4 px-4 py-3 bg-emerald-50 border border-emerald-200 rounded-xl text-sm text-emerald-800 font-medium flex items-center gap-2">
+                       <i class="fas fa-circle-check"></i> Engagement complete — add your backlink at submission to launch free.
+                       <a href="/submit" class="ml-auto underline underline-offset-2 whitespace-nowrap">Submit a product</a>
+                   </div>`
+                : `<div class="mt-4 flex flex-wrap items-center gap-2">
+                       <a href="/" class="sh-btn-primary text-sm"><i class="fas fa-arrow-up text-xs"></i> Go engage</a>
+                       <span class="text-xs text-gray-400">Only upvotes &amp; comments after your last launch count toward the next one.</span>
+                   </div>`}
+        `;
     }
 
     async loadUpvotedStartups() {
