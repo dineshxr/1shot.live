@@ -1231,8 +1231,8 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
                         <span class="text-gray-700 text-sm">Badge for top 3 ranking</span>
                       </div>
                       <div class="flex items-start gap-2.5">
-                        <i class="fas fa-check text-gray-400 mt-1 text-xs"></i>
-                        <span class="text-gray-700 text-sm">Backlink for top 3 ranking</span>
+                        <i class="fas fa-circle-check text-green-600 mt-1 text-xs"></i>
+                        <span class="text-green-700 text-sm font-semibold">Guaranteed dofollow backlink</span>
                       </div>
                       <div class="flex items-start gap-2.5 mt-3 pt-3 border-t border-gray-200">
                         <i class="fas fa-clock text-amber-500 mt-1 text-xs"></i>
@@ -1315,12 +1315,12 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
                         <span class="text-gray-700 text-sm">Badge for top 3 ranking</span>
                       </div>
                       <div class="flex items-start gap-2.5">
-                        <i class="fas fa-check text-orange-600 mt-1 text-xs"></i>
-                        <span class="text-gray-900 text-sm font-medium">Guaranteed backlink (37+ DR)</span>
+                        <i class="fas fa-circle-check text-green-600 mt-1 text-xs"></i>
+                        <span class="text-green-700 text-sm font-semibold">Guaranteed dofollow backlink</span>
                       </div>
                       <div class="flex items-start gap-2.5">
                         <i class="fas fa-bolt text-orange-600 mt-1 text-xs"></i>
-                        <span class="text-gray-700 text-sm">Skip queue — launch immediately</span>
+                        <span class="text-gray-900 text-sm font-bold">Skip queue — launch immediately</span>
                       </div>
                       <div class="flex items-start gap-2.5">
                         <i class="fas fa-envelope text-orange-600 mt-1 text-xs"></i>
@@ -1364,6 +1364,10 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
                       <div class="flex items-start gap-2.5">
                         <i class="fas fa-check text-gray-400 mt-1 text-xs"></i>
                         <span class="text-gray-700 text-sm">High visibility to daily visitors</span>
+                      </div>
+                      <div class="flex items-start gap-2.5">
+                        <i class="fas fa-circle-check text-green-600 mt-1 text-xs"></i>
+                        <span class="text-green-700 text-sm font-semibold">Guaranteed dofollow backlink</span>
                       </div>
                       <div class="flex items-start gap-2.5">
                         <i class="fas fa-check text-gray-400 mt-1 text-xs"></i>
