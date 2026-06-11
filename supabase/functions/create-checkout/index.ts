@@ -85,6 +85,8 @@ serve(async (req) => {
         },
       ],
       mode: mode,
+      // Let customers enter a promo code at checkout (e.g. HACK = 50% off).
+      allow_promotion_codes: true,
       success_url: successUrl || "https://submithunt.com/payment-success?session_id={CHECKOUT_SESSION_ID}",
       cancel_url: cancelUrl || "https://submithunt.com/submit",
       metadata,

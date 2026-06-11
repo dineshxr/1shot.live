@@ -74,6 +74,8 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
   const [turnstileToken, setTurnstileToken] = useState(null); // Cloudflare Turnstile token (anti-bot)
   const [turnstileUnavailable, setTurnstileUnavailable] = useState(false); // widget couldn't load (e.g. blocked)
   const [freeDomainTaken, setFreeDomainTaken] = useState(false); // this site already submitted on free plan
+  const [showScheduleConfirm, setShowScheduleConfirm] = useState(false); // free-launch confirmation modal
+  const [couponCopied, setCouponCopied] = useState(false);
 
   const getESTDateString = (date) => {
     const estDate = new Date(date.toLocaleString("en-US", { timeZone: "America/New_York" }));
@@ -570,6 +572,34 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
     } catch (e) { /* clipboard blocked — the badge is shown so it can be copied manually */ }
   };
 
+  // "Week NN — Mon D – Mon D, YYYY" for the Mon–Sun week containing a launch
+  // date — used in the schedule-confirmation modal.
+  const getLaunchWeek = (dateStr) => {
+    if (!dateStr) return null;
+    const d = new Date(dateStr + 'T12:00:00');
+    if (isNaN(d.getTime())) return null;
+    const monday = new Date(d);
+    monday.setDate(d.getDate() - ((d.getDay() + 6) % 7));
+    const sunday = new Date(monday);
+    sunday.setDate(monday.getDate() + 6);
+    const t = new Date(d);
+    t.setHours(0, 0, 0, 0);
+    t.setDate(t.getDate() + 3 - ((t.getDay() + 6) % 7));
+    const week1 = new Date(t.getFullYear(), 0, 4);
+    const weekNum = 1 + Math.round(((t - week1) / 86400000 - 3 + ((week1.getDay() + 6) % 7)) / 7);
+    const left = monday.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    const right = sunday.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    return { weekNum, label: `${left} – ${right}` };
+  };
+
+  const copyCoupon = async () => {
+    try {
+      await navigator.clipboard.writeText('HACK');
+      setCouponCopied(true);
+      setTimeout(() => setCouponCopied(false), 2000);
+    } catch (e) { /* clipboard blocked — code is visible to copy manually */ }
+  };
+
   // Flag whether this site (or a subpage/subdomain of it) is already on the
   // FREE plan. We don't hard-block here — the user can still pick a paid plan —
   // we just surface a warning on the plan step and disable the free option.
@@ -665,7 +695,7 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
   };
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
+    if (e && e.preventDefault) e.preventDefault();
 
     if (!user) {
       onLoginRequired();
@@ -1753,9 +1783,22 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
   })}
                     </div>
                   `}
+
+                  ${availableLaunchDates.some(d => !d.freeAvailable) ? html`
+                    <div class="mt-3 rounded-xl border border-orange-200 bg-gradient-to-r from-orange-50 to-amber-50 p-3 flex flex-wrap items-center justify-between gap-3">
+                      <p class="text-sm text-orange-900"><strong>Some days are sold out.</strong> Don't wait in the free queue.</p>
+                      <button
+                        type="button"
+                        onClick=${() => selectPlan('premium')}
+                        class="sh-shine shrink-0 px-4 py-2 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 text-white font-bold text-sm shadow-md hover:from-orange-600 hover:to-amber-600 transition-colors flex items-center gap-2"
+                      >
+                        <i class="fas fa-bolt text-xs"></i> Skip the queue — launch today
+                      </button>
+                    </div>
+                  ` : ''}
                 </div>
               ` : ''}
-              
+
               <!-- Final step: do-follow backlink (after slot selection; gates submit, not unlock) -->
               ${formData.plan === 'free' && freeUnlocked ? html`
                 <div class="border ${backlinkVerified ? 'border-emerald-200' : 'border-gray-200'} rounded-2xl overflow-hidden">
@@ -1847,12 +1890,20 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
                 ${formData.plan === 'free' && freeUnlocked && !freeDomainTaken && availableLaunchDates.filter(d => d.freeAvailable).length > 0 ? html`
                   <div class="flex flex-col items-end gap-1">
                     <button
-                      type="submit"
+                      type="button"
+                      onClick=${() => {
+        if (!formData.projectName) { setError('Please enter a startup name.'); return; }
+        if (!formData.category) { setError('Please select a category.'); return; }
+        setError(null);
+        setShowScheduleConfirm(true);
+      }}
                       class="sh-btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
                       disabled=${loading || !backlinkVerified || (!turnstileToken && !turnstileUnavailable)}
                       title=${!backlinkVerified ? 'Verify your backlink above to enable submission' : ''}
                     >
-                      ${loading ? html`<i class="fas fa-spinner fa-spin text-xs"></i> Submitting…` : html`Submit free launch <i class="fas fa-arrow-right text-xs"></i>`}
+                      ${loading
+                        ? html`<i class="fas fa-spinner fa-spin text-xs"></i> Submitting…`
+                        : html`${formData.launchDate ? 'Schedule free launch' : 'Submit free launch'} <i class="fas fa-arrow-right text-xs"></i>`}
                     </button>
                     ${!backlinkVerified ? html`<p class="text-xs text-gray-400">Verify your backlink above to enable submission.</p>` : ''}
                   </div>
@@ -1889,6 +1940,62 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
           `}
         </form>
       </div>
+
+      ${showScheduleConfirm ? html`
+        <div class="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/50" onClick=${(e) => { if (e.target === e.currentTarget) setShowScheduleConfirm(false); }}>
+          <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
+            <div class="flex items-start gap-4 px-6 pt-6 pb-5">
+              <div class="w-11 h-11 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 shrink-0">
+                <i class="fas fa-bell"></i>
+              </div>
+              <div class="flex-1 min-w-0">
+                <h3 class="text-lg font-semibold text-gray-900">Schedule this product?</h3>
+                <p class="text-sm text-gray-500 mt-0.5">Double-check your listing and launch week before you continue.</p>
+              </div>
+              <button type="button" onClick=${() => setShowScheduleConfirm(false)} class="text-gray-400 hover:text-gray-600 p-1 -mr-1" aria-label="Close">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+              </button>
+            </div>
+
+            <div class="px-6 pb-5 space-y-3 border-t border-gray-100 pt-4">
+              <div class="rounded-xl border border-gray-200 bg-gray-50/60 px-4 py-3">
+                <p class="font-semibold text-gray-900 text-sm">${formData.projectName || 'Your product'}</p>
+                ${(() => {
+        const w = getLaunchWeek(formData.launchDate);
+        return w
+          ? html`<p class="text-sm text-gray-500 mt-0.5">Launch week: <span class="text-gray-700 font-medium">Week ${w.weekNum} — ${w.label}</span></p>`
+          : html`<p class="text-sm text-gray-500 mt-0.5">Launches on the next available free date.</p>`;
+      })()}
+              </div>
+
+              <div class="rounded-xl border border-gray-200 px-4 py-4">
+                <p class="font-semibold text-gray-900 text-sm">Launch without Premium?</p>
+                <p class="text-sm text-gray-500 mt-1">Free listings wait in the queue and compete for limited daily slots. Premium launches immediately with prominent placement and a guaranteed do-follow backlink — $20 one-time.</p>
+                <button type="button" onClick=${() => { setShowScheduleConfirm(false); selectPlan('premium'); }} class="mt-3 w-full sh-btn-primary justify-center">
+                  <i class="fas fa-arrow-up text-xs"></i> Review Premium before launch
+                </button>
+              </div>
+
+              <div class="rounded-xl border border-dashed border-orange-300 bg-orange-50/60 px-4 py-3 flex items-center justify-between gap-3">
+                <div class="min-w-0">
+                  <p class="text-sm font-semibold text-orange-900">🎉 50% off Premium or Featured</p>
+                  <p class="text-xs text-orange-700 mt-0.5">Apply the code at checkout</p>
+                </div>
+                <button type="button" onClick=${copyCoupon} class="shrink-0 px-3 py-1.5 rounded-lg border border-orange-300 bg-white font-mono font-bold text-sm text-orange-700 hover:bg-orange-50 flex items-center gap-1.5">
+                  ${couponCopied ? html`<i class="fas fa-check text-green-600"></i> Copied` : html`HACK <i class="fas fa-copy text-xs"></i>`}
+                </button>
+              </div>
+            </div>
+
+            <div class="flex items-center justify-end gap-2 px-6 py-4 border-t border-gray-100">
+              <button type="button" onClick=${() => setShowScheduleConfirm(false)} class="sh-btn-ghost" disabled=${loading}>Cancel</button>
+              <button type="button" onClick=${() => { setShowScheduleConfirm(false); handleSubmit(); }} class="sh-btn-primary" disabled=${loading}>
+                ${loading ? html`<i class="fas fa-spinner fa-spin text-xs"></i> Scheduling…` : html`Schedule product <i class="fas fa-arrow-right text-xs"></i>`}
+              </button>
+            </div>
+          </div>
+        </div>
+      ` : ''}
     </div>
   `;
 };

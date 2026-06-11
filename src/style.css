@@ -198,6 +198,26 @@ html, body {
   100% { background-position: 0% 50%; }
 }
 
+/* Shiny sweep for upsell/CTA buttons */
+.sh-shine { position: relative; overflow: hidden; }
+.sh-shine::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -150%;
+  width: 60%;
+  height: 100%;
+  background: linear-gradient(120deg, transparent, rgba(255, 255, 255, 0.55), transparent);
+  transform: skewX(-20deg);
+  animation: sh-shine 2.6s infinite;
+  pointer-events: none;
+}
+@keyframes sh-shine {
+  0% { left: -150%; }
+  55% { left: 160%; }
+  100% { left: 160%; }
+}
+
 /* Deprecated; kept for compat */
 .featured-badge { display: none; }
 
