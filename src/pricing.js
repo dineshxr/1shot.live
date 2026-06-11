@@ -3,6 +3,7 @@ import { render } from 'preact';
 import { useState, useEffect } from 'preact/hooks';
 import { auth } from './lib/auth.js';
 import { Footer } from './components/footer.js';
+import { DrComparison } from './components/dr-comparison.js';
 
 // Make hooks available globally
 window.useState = useState;
@@ -188,6 +189,9 @@ const PricingPage = () => {
               </a>
             </div>
           </div>
+
+          <!-- DR before/after -->
+          <${DrComparison} />
 
           <!-- FAQ Section -->
           <div class="mt-20 max-w-3xl mx-auto">

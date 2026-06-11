@@ -572,26 +572,6 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
     } catch (e) { /* clipboard blocked — the badge is shown so it can be copied manually */ }
   };
 
-  // "Week NN — Mon D – Mon D, YYYY" for the Mon–Sun week containing a launch
-  // date — used in the schedule-confirmation modal.
-  const getLaunchWeek = (dateStr) => {
-    if (!dateStr) return null;
-    const d = new Date(dateStr + 'T12:00:00');
-    if (isNaN(d.getTime())) return null;
-    const monday = new Date(d);
-    monday.setDate(d.getDate() - ((d.getDay() + 6) % 7));
-    const sunday = new Date(monday);
-    sunday.setDate(monday.getDate() + 6);
-    const t = new Date(d);
-    t.setHours(0, 0, 0, 0);
-    t.setDate(t.getDate() + 3 - ((t.getDay() + 6) % 7));
-    const week1 = new Date(t.getFullYear(), 0, 4);
-    const weekNum = 1 + Math.round(((t - week1) / 86400000 - 3 + ((week1.getDay() + 6) % 7)) / 7);
-    const left = monday.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-    const right = sunday.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-    return { weekNum, label: `${left} – ${right}` };
-  };
-
   const copyCoupon = async () => {
     try {
       await navigator.clipboard.writeText('HACK');
@@ -1960,12 +1940,9 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
             <div class="px-6 pb-5 space-y-3 border-t border-gray-100 pt-4">
               <div class="rounded-xl border border-gray-200 bg-gray-50/60 px-4 py-3">
                 <p class="font-semibold text-gray-900 text-sm">${formData.projectName || 'Your product'}</p>
-                ${(() => {
-        const w = getLaunchWeek(formData.launchDate);
-        return w
-          ? html`<p class="text-sm text-gray-500 mt-0.5">Launch week: <span class="text-gray-700 font-medium">Week ${w.weekNum} — ${w.label}</span></p>`
-          : html`<p class="text-sm text-gray-500 mt-0.5">Launches on the next available free date.</p>`;
-      })()}
+                ${formData.launchDate
+        ? html`<p class="text-sm text-gray-500 mt-0.5">Launch date: <span class="text-gray-700 font-medium">${new Date(formData.launchDate + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}</span></p>`
+        : html`<p class="text-sm text-gray-500 mt-0.5">Launches on the next available free date.</p>`}
               </div>
 
               <div class="rounded-xl border border-gray-200 px-4 py-4">
