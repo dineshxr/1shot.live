@@ -3,6 +3,7 @@
 
 import { trackEvent, ANALYTICS_EVENTS } from '../lib/events.js';
 import { addReferralParam } from '../lib/url-utils.js';
+import { markVisited } from '../lib/engagement.js';
 
 export const StartupModal = ({ startup, onClose }) => {
   // Track modal view when opened
@@ -190,9 +191,10 @@ export const StartupModal = ({ startup, onClose }) => {
             <a
               href=${addReferralParam(startup.url)}
               target="_blank"
+              onClick=${() => markVisited(startup.id)}
               class="neo-button px-4 py-2 bg-green-400 border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:bg-green-500 font-bold"
             >
-              Vist
+              Visit
             </a>
           </div>
         </div>

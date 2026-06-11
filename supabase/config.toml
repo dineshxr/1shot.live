@@ -106,6 +106,12 @@ file_size_limit = "50MiB"
 [functions.verify-turnstile]
 verify_jwt = false
 
+# verify-backlink resolves the user from the access token itself (so it can
+# record the verification under the authenticated email), so it handles its own
+# auth rather than relying on the gateway's verify_jwt.
+[functions.verify-backlink]
+verify_jwt = false
+
 [auth]
 enabled = true
 # The base URL of your website. Used as an allow-list for redirects and for constructing URLs used

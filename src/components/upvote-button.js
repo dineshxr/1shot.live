@@ -1,10 +1,18 @@
 /* global html, useState, useEffect */
-import { supabaseClient } from "../lib/supabase-client.js";
+import { castUpvote, hasVisited } from "../lib/engagement.js";
 
 export const UpvoteButton = ({ startup, user, onUpvoteChange }) => {
   const [isVoting, setIsVoting] = useState(false);
   const [upvoteCount, setUpvoteCount] = useState(startup.upvote_count || 0);
   const [userVoted, setUserVoted] = useState(startup.user_voted || false);
+
+  const applyVoteResult = (data) => {
+    setUpvoteCount(data.upvote_count);
+    setUserVoted(data.user_voted);
+    if (onUpvoteChange) {
+      onUpvoteChange(startup.id, data.upvote_count, data.user_voted);
+    }
+  };
 
   const handleUpvote = async (e) => {
     // Prevent event propagation to avoid navigation
@@ -20,46 +28,23 @@ export const UpvoteButton = ({ startup, user, onUpvoteChange }) => {
 
     if (isVoting) return;
 
+    // First-time upvotes go through the "visit the product first" guide
+    // (HowToUpvoteModal, mounted globally in app.js). Removing a vote, or
+    // voting after the site was already visited this session, is direct.
+    if (!userVoted && !hasVisited(startup.id)) {
+      window.dispatchEvent(new CustomEvent('open-upvote-guide', {
+        detail: { startup, onUpvoteChange: applyVoteResult }
+      }));
+      return;
+    }
+
     setIsVoting(true);
-    
+
     try {
-      const supabase = supabaseClient();
-      
-      // Check if we have a user session
-      const { data: { session } } = await supabase.auth.getSession();
-      console.log('Current session:', session);
-      
-      if (!session || !session.user) {
-        alert('Please log in to upvote');
-        return;
-      }
-      
-      const { data, error } = await supabase.rpc('upvote_startup', {
-        startup_id_param: startup.id,
-        user_email_param: session.user.email
-      });
-
-      if (error) throw error;
-
-      // Check for daily limit error
-      if (data.error) {
-        alert(data.error);
-        return;
-      }
-
-      setUpvoteCount(data.upvote_count);
-      setUserVoted(data.user_voted);
-      
-      // Notify parent component of the change
-      if (onUpvoteChange) {
-        onUpvoteChange(startup.id, data.upvote_count, data.user_voted);
-      }
-
+      const data = await castUpvote(startup);
+      applyVoteResult(data);
     } catch (error) {
       console.error('Error upvoting:', error);
-      console.error('Error details:', JSON.stringify(error, null, 2));
-      console.error('Startup ID:', startup.id);
-      console.error('User:', user);
       alert(`Failed to upvote: ${error.message || 'Unknown error'}. Please try again.`);
     } finally {
       setIsVoting(false);

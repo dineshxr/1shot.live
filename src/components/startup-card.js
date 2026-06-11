@@ -1,6 +1,7 @@
 // Import analytics functions and constants
 import { trackEvent, ANALYTICS_EVENTS } from '../lib/events.js';
 import { addReferralParam } from '../lib/url-utils.js';
+import { markVisited } from '../lib/engagement.js';
 import { UpvoteButton } from './upvote-button.js';
 import { RankingBadge } from './ranking-badge.js';
 
@@ -337,6 +338,7 @@ export const StartupCard = ({ startup, user, onUpvoteChange, allStartups }) => {
       e.preventDefault();
       e.stopPropagation();
 
+      markVisited(startup.id);
       trackEvent(ANALYTICS_EVENTS.STARTUP_VIEW, {
         startupId: startup.id,
         startupName: startup.title,

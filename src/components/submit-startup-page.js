@@ -3,8 +3,10 @@ import { captureScreenshot, uploadScreenshot } from '../lib/screenshot-service.j
 import { Confetti } from './confetti.js';
 import { createCheckoutSession } from '../lib/stripe.js';
 import { config } from '../config.js';
+import { getFreeSubmissionStatus, verifyBacklink, BADGE_EMBED_CODE, BADGE_IMG_URL } from '../lib/backlink.js';
+import { fetchSiteMetadata } from '../lib/metadata.js';
 
-/* global html, useState, useEffect */
+/* global html, useState, useEffect, useRef */
 
 // localStorage key for an unpaid paid-plan submission awaiting Stripe payment.
 // Lets us show a persistent "not submitted yet" state if the user abandons
@@ -39,8 +41,20 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
   const [currentPage, setCurrentPage] = useState(1);
   const [showSuccessPage, setShowSuccessPage] = useState(false);
   const [availableLaunchDates, setAvailableLaunchDates] = useState([]);
-  const [userHasPreviousSubmissions, setUserHasPreviousSubmissions] = useState(false);
-  const [checkingPreviousSubmissions, setCheckingPreviousSubmissions] = useState(false);
+  // Combined free-plan unlock status from get_free_submission_status — null
+  // until loaded. Shape: {eligible, upvotes_done, upvotes_required,
+  // comments_done, comments_required, backlink_verified, is_returning}.
+  const [freeStatus, setFreeStatus] = useState(null);
+  const [checkingStatus, setCheckingStatus] = useState(false);
+  const [wasLocked, setWasLocked] = useState(false); // saw the unlock panel this visit
+  // Backlink verification (requirement #3)
+  const [backlinkUrl, setBacklinkUrl] = useState('');
+  const [verifyingBacklink, setVerifyingBacklink] = useState(false);
+  const [backlinkError, setBacklinkError] = useState(null);
+  const [copiedEmbed, setCopiedEmbed] = useState(false);
+  // Phase 1 auto-fill (scrape metadata from the URL)
+  const [autoFilling, setAutoFilling] = useState(false);
+  const [autoFilled, setAutoFilled] = useState(false);
   const [loadingDates, setLoadingDates] = useState(false);
   const [timeLeft, setTimeLeft] = useState(15 * 60); // Urgency timer: 15 minutes in seconds
   const [pendingSubmission, setPendingSubmission] = useState(null); // unpaid paid-plan draft awaiting payment
@@ -181,43 +195,38 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
     return `${Math.ceil(diffDays / 7)} weeks`;
   };
 
-  const checkUserPreviousSubmissions = async () => {
+  // Latest product URL + a request-id, so the status check (which can be fired
+  // from several places) reads the current URL and ignores out-of-order
+  // responses instead of letting a slow earlier request clobber a newer one.
+  const urlRef = useRef(formData.url);
+  urlRef.current = formData.url;
+  const statusReqRef = useRef(0);
+
+  // Combined free-plan unlock status: upvote 3 + comment 1 (fresh since the
+  // user's last free launch) + a verified do-follow backlink for this product.
+  // Returning users can resubmit free once they re-clear the gate. The check
+  // fails open client-side; the DB trigger is the real enforcement.
+  const checkFreeStatus = async (productUrl) => {
     if (!window.auth || !window.auth.isAuthenticated()) {
-      setUserHasPreviousSubmissions(false);
+      setFreeStatus(null);
       return;
     }
-
-    const authUser = window.auth.getCurrentUser();
-    if (!authUser || !authUser.email) {
-      setUserHasPreviousSubmissions(false);
-      return;
-    }
-
-    setCheckingPreviousSubmissions(true);
+    const url = productUrl !== undefined ? productUrl : urlRef.current;
+    const myReq = ++statusReqRef.current;
+    setCheckingStatus(true);
     try {
-      const supabase = supabaseClient();
-      const { data, error } = await supabase
-        .from('startups')
-        .select('id')
-        .eq('author->>email', authUser.email)
-        .limit(1);
-
-      if (error) {
-        setUserHasPreviousSubmissions(false);
-      } else {
-        setUserHasPreviousSubmissions(data && data.length > 0);
-        if (data && data.length > 0) {
-          // Only force-upgrade to premium when the user is still on the free
-          // plan (e.g. they didn't arrive via /submit?plan=premium|featured).
-          setFormData(prev => prev.plan === 'free' ? { ...prev, plan: 'premium' } : prev);
-        }
-      }
-    } catch (err) {
-      setUserHasPreviousSubmissions(false);
+      const status = await getFreeSubmissionStatus(url);
+      if (myReq !== statusReqRef.current) return; // a newer check superseded this one
+      setFreeStatus(status);
     } finally {
-      setCheckingPreviousSubmissions(false);
+      if (myReq === statusReqRef.current) setCheckingStatus(false);
     }
   };
+
+  // Unlock state for the free plan. While the status is still loading we show
+  // a spinner instead of flashing the unlock panel at already-eligible users.
+  const statusLoading = !!user && freeStatus === null;
+  const freeUnlocked = !statusLoading && (!freeStatus || freeStatus.eligible === true);
 
 
   // On mount, restore any in-progress form data saved before an OAuth login
@@ -274,7 +283,10 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
   // via callback and required before a submission can go through.
   useEffect(() => {
     // Turnstile is only used on the FREE plan now (paid is gated by payment).
-    if (currentPage !== 2 || formData.plan !== 'free') return undefined;
+    // While the unlock checklist is shown there's no widget container mounted at
+    // all — skip, or the retry loop would wrongly conclude the script is blocked
+    // and fail open via turnstileUnavailable.
+    if (currentPage !== 2 || formData.plan !== 'free' || !freeUnlocked) return undefined;
     let cancelled = false;
     let tries = 0;
 
@@ -317,7 +329,7 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
       turnstileWidgetId = null;
       setTurnstileToken(null);
     };
-  }, [currentPage, formData.plan]);
+  }, [currentPage, formData.plan, freeUnlocked]);
 
   // Load launch dates and set up refresh interval
   useEffect(() => {
@@ -337,12 +349,35 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
     };
   }, []);
 
-  // Check user previous submissions when user changes
+  // Fetch the unlock status when the user lands on the plan step (page 2), and
+  // reset it to null first so a freshly-edited URL can't briefly show the
+  // previous URL's "unlocked" state. Keyed on currentPage (not formData.url) so
+  // typing the URL on page 1 doesn't fire an RPC per keystroke — the URL can't
+  // change while page 2 is shown.
   useEffect(() => {
-    if (user) {
-      checkUserPreviousSubmissions();
+    if (!user) { setFreeStatus(null); return; }
+    if (currentPage === 2) {
+      setFreeStatus(null);
+      checkFreeStatus(formData.url);
     }
+  }, [user, currentPage]);
+
+  // Re-check whenever the tab regains focus — the upvote/comment steps happen on
+  // the homepage in another tab, so this is what ticks the checklist off when
+  // the user comes back. Reads the latest URL via urlRef (no per-keystroke
+  // listener churn).
+  useEffect(() => {
+    if (!user) return undefined;
+    const onFocus = () => checkFreeStatus(urlRef.current);
+    window.addEventListener('focus', onFocus);
+    return () => window.removeEventListener('focus', onFocus);
   }, [user]);
+
+  // Remember that the unlock panel was shown, so we can confirm visibly once
+  // every step is completed (instead of the panel silently vanishing).
+  useEffect(() => {
+    if (freeStatus && !freeStatus.eligible) setWasLocked(true);
+  }, [freeStatus]);
 
   // Countdown timer effect for urgency
   useEffect(() => {
@@ -378,6 +413,69 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
     } else {
       setFormData((prev) => ({ ...prev, [name]: value }));
     }
+  };
+
+  // Phase 1 (low-friction ingestion): scrape the target URL's metadata and
+  // pre-fill the form. Best-effort — never blocks, only fills empty-ish fields
+  // so it can't clobber something the user already typed.
+  const handleAutoFill = async () => {
+    if (!formData.url || autoFilling) return;
+    setAutoFilling(true);
+    setAutoFilled(false);
+    setError(null);
+    window.trackEvent('submit_autofill_requested', { url: formData.url });
+    try {
+      const meta = await fetchSiteMetadata(formData.url);
+      if (!meta) {
+        setError("Couldn't auto-fill from that URL — please fill the details in manually.");
+        return;
+      }
+      setFormData((prev) => {
+        const next = { ...prev };
+        if (meta.title && !prev.projectName) next.projectName = meta.title.slice(0, 80);
+        if (meta.description && !prev.description) next.description = meta.description.slice(0, 280);
+        if (!prev.slug && (meta.title || prev.projectName)) {
+          next.slug = generateSlug(meta.title || prev.projectName);
+        }
+        return next;
+      });
+      setAutoFilled(true);
+      window.trackEvent('submit_autofill_success', {});
+    } catch (e) {
+      setError("Couldn't auto-fill from that URL — please fill the details in manually.");
+    } finally {
+      setAutoFilling(false);
+    }
+  };
+
+  // Requirement #3: verify the do-follow backlink the user placed on their site.
+  const handleVerifyBacklink = async () => {
+    const link = backlinkUrl.trim();
+    if (!link) { setBacklinkError('Enter the URL where you placed our link.'); return; }
+    setVerifyingBacklink(true);
+    setBacklinkError(null);
+    window.trackEvent('backlink_verify_requested', { product: formData.url });
+    try {
+      const result = await verifyBacklink(link, formData.url);
+      if (result.verified) {
+        window.trackEvent('backlink_verify_success', {});
+        // Re-pull the combined status so the checklist + Submit unlock together.
+        await checkFreeStatus();
+      } else {
+        setBacklinkError(result.error || 'Could not verify the backlink. Please try again.');
+        window.trackEvent('backlink_verify_failed', { error: String(result.error || '').slice(0, 120) });
+      }
+    } finally {
+      setVerifyingBacklink(false);
+    }
+  };
+
+  const copyEmbedCode = async () => {
+    try {
+      await navigator.clipboard.writeText(BADGE_EMBED_CODE);
+      setCopiedEmbed(true);
+      setTimeout(() => setCopiedEmbed(false), 2000);
+    } catch (e) { /* clipboard blocked — the code is visible to copy manually */ }
   };
 
   // Flag whether this site (or a subpage/subdomain of it) is already on the
@@ -494,6 +592,14 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
     // steer them to a paid plan instead of failing at insert time.
     if (formData.plan === 'free' && freeDomainTaken) {
       setError('This website is already submitted on the free plan. Choose Premium or Featured to launch it again.');
+      return;
+    }
+
+    // Free launches must be unlocked first: upvote 3 + comment 1 + a verified
+    // do-follow backlink. The DB trigger enforces this regardless; this just
+    // catches it early with a friendlier message.
+    if (formData.plan === 'free' && freeStatus && !freeStatus.eligible) {
+      setError('Complete the unlock steps first — upvote 3 products, comment on 1, and verify your backlink.');
       return;
     }
 
@@ -707,6 +813,10 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
         plan: formData.plan,
         payment_status: 'paid',
         launch_date: resolvedLaunchDate,
+        // Record the verified backlink for ops/audit (the gate itself is the
+        // DB trigger checking backlink_verifications).
+        backlink_url: backlinkUrl.trim() || null,
+        backlink_verified_at: freeStatus && freeStatus.backlink_verified ? new Date().toISOString() : null,
       };
 
       let data = null;
@@ -727,6 +837,15 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
         }
         if (/DUPLICATE_FREE_DOMAIN/i.test(msg)) {
           throw new Error('This website (or one of its pages or subdomains) is already submitted on the free plan. Choose Premium or Featured to launch it again.');
+        }
+        if (/FREE_UNLOCK_REQUIRED/i.test(msg)) {
+          checkFreeStatus(); // re-sync the unlock checklist
+          throw new Error('Almost there — finish the unlock steps (upvote 3, comment 1, verify your backlink), then try again.');
+        }
+        if (res.error.code === '23505' && /email/i.test(msg)) {
+          // Transitional: the one-active-free-launch-per-email unique index
+          // still exists until the unlock migration is applied.
+          throw new Error('You already have an active free launch. Choose Premium or Featured for additional launches.');
         }
         if (res.error.code === '23505' && /url/i.test(msg)) {
           throw new Error('This website has already been submitted. To launch it again, choose Premium or Featured.');
@@ -804,7 +923,18 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
             </div>
           ` : html`
             <div class="mb-6 px-4 py-3 bg-blue-50 border border-blue-200 rounded-xl text-sm text-blue-900">
-              Your submission has been added to the queue and will be featured soon.
+              Your submission has been added to the queue and will be featured on your selected launch date.
+            </div>
+
+            <!-- Phase 4 upsell: keep the paid option visible after the free launch is queued -->
+            <div class="mb-6 px-4 py-4 bg-orange-50 border border-orange-200 rounded-xl flex flex-wrap items-center justify-between gap-3">
+              <div class="text-sm">
+                <p class="font-semibold text-orange-900">Don't want to wait in the queue?</p>
+                <p class="text-orange-800 mt-0.5">Upgrade to Priority and launch immediately with prominent placement — no backlink required.</p>
+              </div>
+              <a href="/submit?plan=premium" class="sh-btn-accent text-sm shrink-0">
+                <i class="fas fa-bolt text-xs"></i> Go Priority
+              </a>
             </div>
           `}
 
@@ -912,6 +1042,47 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
         <form onSubmit=${handleSubmit}>
           ${currentPage === 1 ? html`
             <div class="max-w-2xl mx-auto space-y-4">
+              <div class="flex items-start gap-3 p-4 bg-blue-50/70 border border-blue-200 rounded-xl">
+                <div class="w-8 h-8 rounded-lg bg-white border border-blue-200 flex items-center justify-center text-blue-600 shrink-0">
+                  <i class="fas fa-wand-magic-sparkles text-sm"></i>
+                </div>
+                <div class="text-sm">
+                  <p class="font-medium text-gray-900">Start with your URL</p>
+                  <p class="text-gray-600 mt-0.5">Paste your product link and hit <strong>Auto-fill</strong> — we'll pull in the name, description and details for you to review.</p>
+                </div>
+              </div>
+
+              <div>
+                <label class="block text-black font-bold mb-2" for="url">Startup URL</label>
+                <div class="flex flex-col sm:flex-row gap-2">
+                  <input
+                    type="url"
+                    id="url"
+                    name="url"
+                    value=${formData.url}
+                    onInput=${handleChange}
+                    class="flex-1 px-3 py-2 border-2 border-black focus:outline-none focus:ring-2 focus:ring-blue-400"
+                    placeholder="https://mystartup.com"
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick=${handleAutoFill}
+                    disabled=${autoFilling || !formData.url}
+                    class="shrink-0 px-4 py-2 rounded-lg bg-indigo-600 text-white font-semibold text-sm hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  >
+                    ${autoFilling
+                      ? html`<i class="fas fa-spinner fa-spin text-xs"></i> Auto-filling…`
+                      : html`<i class="fas fa-wand-magic-sparkles text-xs"></i> Auto-fill`}
+                  </button>
+                </div>
+                ${autoFilled ? html`
+                  <p class="text-xs text-emerald-600 mt-1 flex items-center gap-1">
+                    <i class="fas fa-check"></i> Pulled from your site — review and edit below.
+                  </p>
+                ` : ''}
+              </div>
+
               <div>
                 <label class="block text-black font-bold mb-2" for="projectName">Startup Name</label>
                 <input
@@ -922,20 +1093,6 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
                   value=${formData.projectName}
                   onInput=${handleChange}
                   class="w-full px-3 py-2 border-2 border-black focus:outline-none focus:ring-2 focus:ring-blue-400"
-                  required
-                />
-              </div>
-
-              <div>
-                <label class="block text-black font-bold mb-2" for="url">Startup URL</label>
-                <input
-                  type="url"
-                  id="url"
-                  name="url"
-                  value=${formData.url}
-                  onInput=${handleChange}
-                  class="w-full px-3 py-2 border-2 border-black focus:outline-none focus:ring-2 focus:ring-blue-400"
-                  placeholder="https://mystartup.com"
                   required
                 />
               </div>
@@ -1021,7 +1178,7 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
                   class="sh-btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
                   disabled=${loading}
                 >
-                  Next <i class="fas fa-arrow-right text-xs"></i>
+                  Continue to Publication <i class="fas fa-arrow-right text-xs"></i>
                 </button>
               </div>
             </div>
@@ -1033,69 +1190,57 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
                 <p class="text-sm text-gray-500 mt-1">Every plan comes with a high-authority dofollow backlink.</p>
               </div>
 
-              ${checkingPreviousSubmissions ? html`
-                <div class="text-center py-4">
-                  <div class="inline-block animate-spin rounded-full h-6 w-6 border-2 border-gray-300 border-t-gray-900"></div>
-                  <p class="text-sm text-gray-500 mt-2">Checking submission history…</p>
-                </div>
-              ` : ''}
-
-              ${userHasPreviousSubmissions && formData.plan === 'free' ? html`
-                <div class="px-4 py-3 bg-amber-50 border border-amber-200 rounded-xl">
-                  <p class="text-amber-800 text-sm">
-                    You have already submitted a startup for free. Please choose the Premium plan for additional submissions.
-                  </p>
-                </div>
-              ` : ''}
-
-              <div class="grid grid-cols-1 md:grid-cols-${userHasPreviousSubmissions ? '2' : '3'} gap-4">
+              <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <!-- Free Plan -->
-                ${!userHasPreviousSubmissions ? html`
-                  <div
-                    class="bg-white rounded-2xl border ${formData.plan === 'free' ? 'border-gray-900 ring-2 ring-gray-900/10' : 'border-gray-200 hover:border-gray-300'} transition-all flex flex-col overflow-hidden"
-                  >
-                    <div class="px-5 pt-5 pb-4">
-                      <span class="inline-flex items-center text-[10px] font-semibold uppercase tracking-wider text-gray-600 bg-gray-50 border border-gray-200 px-2 py-0.5 rounded-full">
-                        Free
+                <div
+                  class="bg-white rounded-2xl border ${formData.plan === 'free' ? 'border-gray-900 ring-2 ring-gray-900/10' : 'border-gray-200 hover:border-gray-300'} transition-all flex flex-col overflow-hidden"
+                >
+                  <div class="px-5 pt-5 pb-4 flex items-center gap-2">
+                    <span class="inline-flex items-center text-[10px] font-semibold uppercase tracking-wider text-gray-600 bg-gray-50 border border-gray-200 px-2 py-0.5 rounded-full">
+                      Free
+                    </span>
+                    ${user && !statusLoading && !freeUnlocked ? html`
+                      <span class="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
+                        <i class="fas fa-lock text-[9px]"></i> Unlock below
                       </span>
+                    ` : ''}
+                  </div>
+
+                  <div class="px-5 pb-5 flex-1 flex flex-col">
+                    <div class="text-sm text-gray-500 mb-1">Standard Launch</div>
+                    <div class="flex items-baseline mb-1">
+                      <span class="text-3xl font-semibold tracking-tight text-gray-900">Free</span>
                     </div>
+                    <div class="text-xs text-gray-500 mb-5">No payment method needed</div>
 
-                    <div class="px-5 pb-5 flex-1 flex flex-col">
-                      <div class="text-sm text-gray-500 mb-1">Standard Launch</div>
-                      <div class="flex items-baseline mb-1">
-                        <span class="text-3xl font-semibold tracking-tight text-gray-900">Free</span>
+                    <button
+                      type="button"
+                      class="w-full py-2.5 px-4 rounded-xl font-medium text-sm mb-5 flex items-center justify-center gap-2 transition-colors ${formData.plan === 'free' ? 'bg-gray-900 text-white' : 'bg-white text-gray-900 border border-gray-200 hover:bg-gray-50 hover:border-gray-300'}"
+                      onClick=${() => selectPlan('free')}
+                    >
+                      ${formData.plan === 'free' ? html`<i class="fas fa-check text-xs"></i> Selected` : html`Start with Free <i class="fas fa-arrow-right text-xs"></i>`}
+                    </button>
+
+                    <div class="space-y-2.5 flex-1">
+                      <div class="flex items-start gap-2.5">
+                        <i class="fas fa-check text-gray-400 mt-1 text-xs"></i>
+                        <span class="text-gray-700 text-sm">Live on homepage for 7 days</span>
                       </div>
-                      <div class="text-xs text-gray-500 mb-5">No payment method needed</div>
-
-                      <button
-                        type="button"
-                        class="w-full py-2.5 px-4 rounded-xl font-medium text-sm mb-5 flex items-center justify-center gap-2 transition-colors ${formData.plan === 'free' ? 'bg-gray-900 text-white' : 'bg-white text-gray-900 border border-gray-200 hover:bg-gray-50 hover:border-gray-300'}"
-                        onClick=${() => selectPlan('free')}
-                      >
-                        ${formData.plan === 'free' ? html`<i class="fas fa-check text-xs"></i> Selected` : html`Start with Free <i class="fas fa-arrow-right text-xs"></i>`}
-                      </button>
-
-                      <div class="space-y-2.5 flex-1">
-                        <div class="flex items-start gap-2.5">
-                          <i class="fas fa-check text-gray-400 mt-1 text-xs"></i>
-                          <span class="text-gray-700 text-sm">Live on homepage for 7 days</span>
-                        </div>
-                        <div class="flex items-start gap-2.5">
-                          <i class="fas fa-check text-gray-400 mt-1 text-xs"></i>
-                          <span class="text-gray-700 text-sm">Badge for top 3 ranking</span>
-                        </div>
-                        <div class="flex items-start gap-2.5">
-                          <i class="fas fa-check text-gray-400 mt-1 text-xs"></i>
-                          <span class="text-gray-700 text-sm">Backlink for top 3 ranking</span>
-                        </div>
-                        <div class="flex items-start gap-2.5 mt-3 pt-3 border-t border-gray-200">
-                          <i class="fas fa-clock text-amber-500 mt-1 text-xs"></i>
-                          <span class="text-amber-700 text-sm font-medium">Launch in ${getDelayText()}</span>
-                        </div>
+                      <div class="flex items-start gap-2.5">
+                        <i class="fas fa-check text-gray-400 mt-1 text-xs"></i>
+                        <span class="text-gray-700 text-sm">Badge for top 3 ranking</span>
+                      </div>
+                      <div class="flex items-start gap-2.5">
+                        <i class="fas fa-check text-gray-400 mt-1 text-xs"></i>
+                        <span class="text-gray-700 text-sm">Backlink for top 3 ranking</span>
+                      </div>
+                      <div class="flex items-start gap-2.5 mt-3 pt-3 border-t border-gray-200">
+                        <i class="fas fa-clock text-amber-500 mt-1 text-xs"></i>
+                        <span class="text-amber-700 text-sm font-medium">Launch in ${getDelayText()}</span>
                       </div>
                     </div>
                   </div>
-                ` : ''}
+                </div>
 
                 <!-- Premium Plan -->
                 <div
@@ -1233,7 +1378,174 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
                 </div>
               </div>
               
-              ${formData.plan === 'free' ? html`
+              ${formData.plan === 'free' && statusLoading ? html`
+                <div class="text-center py-6">
+                  <div class="inline-block animate-spin rounded-full h-6 w-6 border-2 border-gray-300 border-t-gray-900"></div>
+                  <p class="text-sm text-gray-500 mt-2">Checking your unlock status…</p>
+                </div>
+              ` : ''}
+
+              ${formData.plan === 'free' && !statusLoading && !freeUnlocked ? (() => {
+    const s = freeStatus || {};
+    const upDone = Math.min(s.upvotes_done || 0, s.upvotes_required || 3);
+    const upReq = s.upvotes_required || 3;
+    const cmDone = Math.min(s.comments_done || 0, s.comments_required || 1);
+    const cmReq = s.comments_required || 1;
+    const upOk = upDone >= upReq;
+    const cmOk = cmDone >= cmReq;
+    const blOk = !!s.backlink_verified;
+    const stepsDone = (upOk ? 1 : 0) + (cmOk ? 1 : 0) + (blOk ? 1 : 0);
+    const counter = (done, ok) => ok
+      ? html`<span class="w-7 h-7 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-600 flex items-center justify-center shrink-0 mt-0.5"><i class="fas fa-check text-[11px]"></i></span>`
+      : html`<span class="text-xs font-semibold text-gray-500 tabular-nums shrink-0 mt-1.5">${done}</span>`;
+    return html`
+                <!-- Unlock product submission: upvote 3 + comment 1 + verified backlink -->
+                <div class="border border-gray-200 rounded-2xl overflow-hidden">
+                  <div class="flex items-start gap-4 px-5 sm:px-6 pt-6 pb-5 bg-gradient-to-b from-emerald-50/70 to-white">
+                    <div class="w-11 h-11 rounded-xl bg-white border border-emerald-200 flex items-center justify-center text-emerald-600 shrink-0">
+                      <i class="fas fa-bell"></i>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                      <h3 class="text-lg font-semibold text-gray-900">Unlock product submission</h3>
+                      <p class="text-sm text-gray-500 mt-0.5">
+                        ${s.is_returning
+                          ? `You've launched here before. Support the community again and re-add your backlink to unlock your next free launch.`
+                          : `Complete the quick steps below so the community knows you — and keep our badge on your site.`}
+                      </p>
+                      <div class="flex items-center gap-3 mt-3">
+                        <div class="flex-1 h-1.5 rounded-full bg-gray-100 overflow-hidden">
+                          <div class="h-full bg-emerald-500 transition-all" style="width: ${Math.round((stepsDone / 3) * 100)}%"></div>
+                        </div>
+                        <span class="text-sm font-semibold text-gray-700 tabular-nums">${stepsDone}/3</span>
+                      </div>
+                    </div>
+                    <a
+                      href="/"
+                      target="_blank"
+                      rel="noopener"
+                      class="hidden sm:flex px-4 py-2 rounded-xl bg-gray-900 text-white text-sm font-medium hover:bg-gray-800 transition-colors items-center gap-2 shrink-0"
+                    >
+                      Browse Products <i class="fas fa-arrow-right text-xs"></i>
+                    </a>
+                  </div>
+
+                  <div class="px-5 sm:px-6 pt-4 pb-1">
+                    <span class="text-xs font-semibold uppercase tracking-wider text-emerald-600">Requirements</span>
+                  </div>
+
+                  <div class="divide-y divide-gray-100">
+                    <!-- 1. Upvote 3 products -->
+                    <div class="flex items-start gap-4 px-5 sm:px-6 py-4">
+                      <div class="w-10 h-10 rounded-xl border bg-emerald-50 border-emerald-100 text-emerald-600 flex items-center justify-center shrink-0">
+                        <i class="fas fa-arrow-up"></i>
+                      </div>
+                      <div class="flex-1 min-w-0">
+                        <p class="font-semibold text-gray-900 text-sm">Upvote ${upReq} products</p>
+                        <p class="text-sm text-gray-500 mt-0.5">Discover and support products you love.</p>
+                      </div>
+                      ${upOk ? counter(upDone, true) : html`<span class="text-xs font-semibold text-gray-500 tabular-nums shrink-0 mt-1.5">${upDone}/${upReq}</span>`}
+                    </div>
+
+                    <!-- 2. Comment on 1 product -->
+                    <div class="flex items-start gap-4 px-5 sm:px-6 py-4">
+                      <div class="w-10 h-10 rounded-xl border bg-blue-50 border-blue-100 text-blue-600 flex items-center justify-center shrink-0">
+                        <i class="fas fa-comment"></i>
+                      </div>
+                      <div class="flex-1 min-w-0">
+                        <p class="font-semibold text-gray-900 text-sm">Comment on ${cmReq} product${cmReq > 1 ? 's' : ''}</p>
+                        <p class="text-sm text-gray-500 mt-0.5">Share your thoughts with the community.</p>
+                      </div>
+                      ${cmOk ? counter(cmDone, true) : html`<span class="text-xs font-semibold text-gray-500 tabular-nums shrink-0 mt-1.5">${cmDone}/${cmReq}</span>`}
+                    </div>
+
+                    <!-- 3. Verified do-follow backlink -->
+                    <div class="px-5 sm:px-6 py-4">
+                      <div class="flex items-start gap-4">
+                        <div class="w-10 h-10 rounded-xl border bg-amber-50 border-amber-100 text-amber-600 flex items-center justify-center shrink-0">
+                          <i class="fas fa-link"></i>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                          <p class="font-semibold text-gray-900 text-sm">Add a do-follow backlink</p>
+                          <p class="text-sm text-gray-500 mt-0.5">Place our badge on your homepage or footer, then verify it.</p>
+                        </div>
+                        ${counter('', blOk)}
+                      </div>
+
+                      ${!blOk ? html`
+                        <div class="mt-4 ml-0 sm:ml-14 space-y-3">
+                          <div class="rounded-xl border border-gray-200 bg-gray-50/60 p-4">
+                            <div class="flex items-center justify-between gap-3 mb-3">
+                              <span class="text-xs font-semibold uppercase tracking-wider text-gray-500">Embed this badge</span>
+                              <button
+                                type="button"
+                                onClick=${copyEmbedCode}
+                                class="text-xs font-medium text-indigo-600 hover:text-indigo-700 flex items-center gap-1"
+                              >
+                                ${copiedEmbed ? html`<i class="fas fa-check"></i> Copied` : html`<i class="fas fa-copy"></i> Copy embed code`}
+                              </button>
+                            </div>
+                            <div class="flex flex-col sm:flex-row items-start gap-4">
+                              <img src="/src/submit-hunt-badge.png" alt="Featured on Submit Hunt" class="h-12 w-auto border border-gray-200 rounded bg-white p-1 shrink-0" />
+                              <code class="block w-full text-[11px] font-mono text-gray-600 bg-white border border-gray-200 rounded-lg p-2.5 overflow-x-auto whitespace-pre-wrap break-all">${BADGE_EMBED_CODE}</code>
+                            </div>
+                            <p class="text-[11px] text-gray-400 mt-2">Must stay do-follow — don't add rel="nofollow", "sponsored" or "ugc".</p>
+                          </div>
+
+                          <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1" for="backlinkUrl">Enter the exact URL where you placed our link</label>
+                            <div class="flex flex-col sm:flex-row gap-2">
+                              <input
+                                type="url"
+                                id="backlinkUrl"
+                                value=${backlinkUrl}
+                                onInput=${(e) => setBacklinkUrl(e.target.value)}
+                                placeholder="https://mystartup.com"
+                                class="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400"
+                              />
+                              <button
+                                type="button"
+                                onClick=${handleVerifyBacklink}
+                                disabled=${verifyingBacklink || !backlinkUrl.trim()}
+                                class="shrink-0 px-4 py-2 rounded-lg bg-emerald-600 text-white font-semibold text-sm hover:bg-emerald-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                              >
+                                ${verifyingBacklink ? html`<i class="fas fa-spinner fa-spin text-xs"></i> Verifying…` : html`<i class="fas fa-shield-halved text-xs"></i> Verify Backlink`}
+                              </button>
+                            </div>
+                            ${backlinkError ? html`<p class="text-sm text-red-600 mt-1">${backlinkError}</p>` : ''}
+                          </div>
+                        </div>
+                      ` : html`
+                        <p class="ml-0 sm:ml-14 mt-2 text-sm text-emerald-700 font-medium flex items-center gap-1.5">
+                          <i class="fas fa-check"></i> Backlink verified — thanks for the link!
+                        </p>
+                      `}
+                    </div>
+                  </div>
+
+                  <!-- Phase 4 upsell: keep the paid option visible -->
+                  <div class="flex flex-wrap items-center justify-between gap-3 px-5 sm:px-6 py-4 border-t border-gray-100 bg-gray-50/60">
+                    <p class="text-xs text-gray-500">Not into the steps? <button type="button" onClick=${() => selectPlan('premium')} class="font-semibold text-orange-600 hover:text-orange-700 underline underline-offset-2">Skip the wait with Priority Launch →</button></p>
+                    <button
+                      type="button"
+                      onClick=${() => checkFreeStatus()}
+                      disabled=${checkingStatus}
+                      class="px-4 py-2 rounded-xl border border-gray-200 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50"
+                    >
+                      ${checkingStatus ? html`<i class="fas fa-spinner fa-spin text-xs"></i> Checking…` : html`<i class="fas fa-rotate-right text-xs"></i> Refresh status`}
+                    </button>
+                  </div>
+                </div>
+    `;
+  })() : ''}
+
+              ${formData.plan === 'free' && freeUnlocked && wasLocked ? html`
+                <div class="px-4 py-3 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center gap-3">
+                  <i class="fas fa-circle-check text-emerald-600"></i>
+                  <p class="text-sm text-emerald-800 font-medium">Submission unlocked — pick your launch date below.</p>
+                </div>
+              ` : ''}
+
+              ${formData.plan === 'free' && freeUnlocked ? html`
                 <div>
                   <h3 class="text-xl font-bold text-black mb-2">📅 Choose Your Launch Date</h3>
                   <p class="text-gray-600 text-sm mb-4">Startups launch at 8 AM EST, Monday-Friday. Max 6 free slots per day.</p>
@@ -1286,7 +1598,7 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
               ` : ''}
 
               <!-- Cloudflare Turnstile: free-plan bot check only (paid is gated by payment) -->
-              ${formData.plan === 'free' ? html`
+              ${formData.plan === 'free' && freeUnlocked ? html`
                 <div class="flex flex-col items-start gap-2 pt-2">
                   <div id="turnstile-widget"></div>
                   ${turnstileUnavailable ? html`
@@ -1307,7 +1619,7 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
                   <i class="fas fa-arrow-left text-xs"></i> Previous
                 </button>
 
-                ${formData.plan === 'free' && !freeDomainTaken && availableLaunchDates.filter(d => d.freeAvailable).length > 0 ? html`
+                ${formData.plan === 'free' && freeUnlocked && !freeDomainTaken && availableLaunchDates.filter(d => d.freeAvailable).length > 0 ? html`
                   <button
                     type="submit"
                     class="sh-btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
@@ -1315,6 +1627,13 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
                   >
                     ${loading ? html`<i class="fas fa-spinner fa-spin text-xs"></i> Submitting…` : html`Submit free launch <i class="fas fa-arrow-right text-xs"></i>`}
                   </button>
+                ` : ''}
+
+                ${formData.plan === 'free' && freeUnlocked && !freeDomainTaken && !loadingDates && availableLaunchDates.length > 0 && availableLaunchDates.filter(d => d.freeAvailable).length === 0 ? html`
+                  <div class="px-4 py-3 bg-amber-50 border border-amber-200 rounded-xl text-sm text-amber-800">
+                    All upcoming free slots are full — check back soon, or
+                    <button type="button" onClick=${() => selectPlan('premium')} class="font-semibold text-orange-600 hover:text-orange-700 underline underline-offset-2">skip the wait with Priority Launch</button>.
+                  </div>
                 ` : ''}
 
                 ${formData.plan === 'featured' ? html`
