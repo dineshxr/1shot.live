@@ -4,7 +4,7 @@ import { Confetti } from './confetti.js';
 import { createCheckoutSession } from '../lib/stripe.js';
 import { config } from '../config.js';
 import { getFreeSubmissionStatus, verifyBacklink, BADGE_LIGHT_EMBED, BADGE_DARK_EMBED } from '../lib/backlink.js';
-import { fetchSiteMetadata } from '../lib/metadata.js';
+import { aiPrefill, fetchDomainRating, uploadAsset } from '../lib/prefill.js';
 
 /* global html, useState, useEffect, useRef */
 
@@ -29,12 +29,25 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
     xProfile: "",
     contactEmail: "",
     projectName: "",
+    tagline: "",
     description: "",
     slug: "",
     category: "",
+    tags: "",        // comma-separated in the form, split to array on insert
+    linkedin: "",
+    github: "",
+    logoUrl: "",     // public URL (AI-extracted or uploaded)
+    coverUrl: "",    // cover/screenshot public URL
     plan: "free",
     launchDate: ""
   });
+  const [aiDetails, setAiDetails] = useState(null); // extra AI fields (pricing, audience, tech stack, faq, seo)
+  const [prefillError, setPrefillError] = useState(null);
+  const [drValue, setDrValue] = useState(null);     // Ahrefs Domain Rating
+  const [drLoading, setDrLoading] = useState(false);
+  const [drAnim, setDrAnim] = useState(0);          // 0..1 count-up progress
+  const [uploadingLogo, setUploadingLogo] = useState(false);
+  const [uploadingCover, setUploadingCover] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(false);
@@ -424,38 +437,107 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
     }
   };
 
-  // Phase 1 (low-friction ingestion): scrape the target URL's metadata and
-  // pre-fill the form. Best-effort — never blocks, only fills empty-ish fields
-  // so it can't clobber something the user already typed.
+  // AI-Powered Form Prefill: send the URL to the ai-prefill Edge Function
+  // (OpenRouter) and fill the form from the structured result. Fills empty-ish
+  // fields so it never clobbers what the user already typed.
   const handleAutoFill = async () => {
-    if (!formData.url || autoFilling) return;
+    const url = formData.url.trim();
+    if (!url || autoFilling) return;
     setAutoFilling(true);
     setAutoFilled(false);
+    setPrefillError(null);
     setError(null);
-    window.trackEvent('submit_autofill_requested', { url: formData.url });
+    window.trackEvent('ai_prefill_requested', { url });
     try {
-      const meta = await fetchSiteMetadata(formData.url);
-      if (!meta) {
-        setError("Couldn't auto-fill from that URL — please fill the details in manually.");
+      const data = await aiPrefill(url);
+      if (data.error) {
+        setPrefillError(data.error);
         return;
       }
       setFormData((prev) => {
         const next = { ...prev };
-        if (meta.title && !prev.projectName) next.projectName = meta.title.slice(0, 80);
-        if (meta.description && !prev.description) next.description = meta.description.slice(0, 280);
-        if (!prev.slug && (meta.title || prev.projectName)) {
-          next.slug = generateSlug(meta.title || prev.projectName);
+        if (data.name && !prev.projectName) next.projectName = String(data.name).slice(0, 80);
+        if (data.tagline && !prev.tagline) next.tagline = String(data.tagline).slice(0, 80);
+        if (data.description && !prev.description) next.description = String(data.description).slice(0, 280);
+        if (data.category && !prev.category) next.category = data.category;
+        if (Array.isArray(data.tags) && data.tags.length && !prev.tags) next.tags = data.tags.slice(0, 5).join(', ');
+        if (data.logo && !prev.logoUrl) next.logoUrl = data.logo;
+        if (data.cover && !prev.coverUrl) next.coverUrl = data.cover;
+        const s = data.socialLinks || {};
+        if (s.x && !prev.xProfile) {
+          const handle = String(s.x).replace(/\/+$/, '').split('/').pop();
+          if (handle) next.xProfile = handle;
+        }
+        if (s.linkedin && !prev.linkedin) next.linkedin = s.linkedin;
+        if (s.github && !prev.github) next.github = s.github;
+        if (!prev.slug && (data.name || prev.projectName)) {
+          next.slug = generateSlug(data.name || prev.projectName);
         }
         return next;
       });
+      setAiDetails({
+        pricing: data.pricing || '',
+        targetAudience: data.targetAudience || '',
+        techStack: Array.isArray(data.techStack) ? data.techStack : [],
+        longDescription: data.longDescription || '',
+        seo: data.seo || null,
+        faq: Array.isArray(data.faq) ? data.faq : [],
+        socialLinks: data.socialLinks || {},
+      });
       setAutoFilled(true);
-      window.trackEvent('submit_autofill_success', {});
+      window.trackEvent('ai_prefill_success', {});
     } catch (e) {
-      setError("Couldn't auto-fill from that URL — please fill the details in manually.");
+      setPrefillError('Prefill failed. Please fill the details in manually.');
     } finally {
       setAutoFilling(false);
     }
   };
+
+  // Domain Rating lookup (Ahrefs free endpoint) — shown next to the URL.
+  const lookupDomainRating = async (url) => {
+    const u = (url || '').trim();
+    if (!u) { setDrValue(null); return; }
+    setDrLoading(true);
+    try {
+      const res = await fetchDomainRating(u);
+      setDrValue(typeof res.dr === 'number' ? res.dr : null);
+    } finally {
+      setDrLoading(false);
+    }
+  };
+
+  // Upload a logo or cover image the user picked; store the public URL.
+  const handleAssetUpload = async (e, kind) => {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+    const setBusy = kind === 'logo' ? setUploadingLogo : setUploadingCover;
+    setBusy(true);
+    setPrefillError(null);
+    try {
+      const res = await uploadAsset(file, kind);
+      if (res.error) { setPrefillError(res.error); return; }
+      setFormData((prev) => ({ ...prev, [kind === 'logo' ? 'logoUrl' : 'coverUrl']: res.url }));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  // Projected DR with a SubmitHunt do-follow backlink (marketing estimate).
+  const projectedDr = drValue != null ? Math.min(98, drValue + Math.max(6, Math.round((100 - drValue) * 0.18))) : null;
+
+  // Count-up animation (0..1) that drives the DR cards' numbers + bars.
+  useEffect(() => {
+    if (drValue == null) { setDrAnim(0); return undefined; }
+    setDrAnim(0);
+    let step = 0;
+    const steps = 22;
+    const id = setInterval(() => {
+      step += 1;
+      setDrAnim(Math.min(1, step / steps));
+      if (step >= steps) clearInterval(id);
+    }, 40);
+    return () => clearInterval(id);
+  }, [drValue]);
 
   // Requirement #3: verify the do-follow backlink the user placed on their site.
   const handleVerifyBacklink = async () => {
@@ -740,11 +822,14 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
         const submission = {
           title: formData.projectName,
           url: formData.url,
+          tagline: formData.tagline || '',
           description: formData.description || '',
           slug,
           category: formData.category,
+          tags: (formData.tags || '').split(',').map(t => t.trim()).filter(Boolean).slice(0, 5).join(','),
           author: authorInfo,
-          screenshot_url: screenshotUrl || '',
+          logo_url: formData.logoUrl || '',
+          screenshot_url: formData.coverUrl || screenshotUrl || '',
           plan: formData.plan,
           launch_date: resolvedLaunchDate,
           contact_email: contactEmail,
@@ -813,13 +898,30 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
       // Insert, auto-generating a fresh slug on collision. The user NEVER sees a
       // slug / unique-id error — we just retry with a new suffix.
       console.info('[submit] inserting free startup row');
+      const tagsArray = (formData.tags || '')
+        .split(',').map(t => t.trim()).filter(Boolean).slice(0, 5);
+      const coverImage = formData.coverUrl || screenshotUrl || null;
+      const detailsObj = {
+        ...(aiDetails || {}),
+        socialLinks: {
+          ...((aiDetails && aiDetails.socialLinks) || {}),
+          ...(formData.xProfile ? { x: `https://x.com/${formData.xProfile.replace('@', '')}` } : {}),
+          ...(formData.linkedin ? { linkedin: formData.linkedin } : {}),
+          ...(formData.github ? { github: formData.github } : {}),
+        },
+      };
       const baseRow = {
         title: formData.projectName,
         url: formData.url,
+        tagline: formData.tagline || null,
         description: formData.description,
         category: formData.category,
+        tags: tagsArray.length ? tagsArray : null,
         author: authorInfo,
-        screenshot_url: screenshotUrl,
+        logo_url: formData.logoUrl || null,
+        screenshot_url: coverImage,
+        images: coverImage ? [coverImage] : null,
+        details: detailsObj,
         plan: formData.plan,
         payment_status: 'paid',
         launch_date: resolvedLaunchDate,
@@ -1010,6 +1112,21 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
           <p class="text-gray-500">Launch your project on the best Product Hunt alternative.</p>
         </div>
 
+        <!-- Step indicator -->
+        <div class="mb-8 flex items-center max-w-md">
+          <div class="flex items-center gap-2 shrink-0">
+            <div class="w-7 h-7 rounded-full flex items-center justify-center text-xs font-semibold ${currentPage >= 1 ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-500'}">
+              ${currentPage > 1 ? html`<i class="fas fa-check text-[10px]"></i>` : '1'}
+            </div>
+            <span class="text-sm font-medium ${currentPage >= 1 ? 'text-gray-900' : 'text-gray-400'}">Your product</span>
+          </div>
+          <div class="flex-1 h-px mx-3 ${currentPage > 1 ? 'bg-gray-900' : 'bg-gray-200'}"></div>
+          <div class="flex items-center gap-2 shrink-0">
+            <div class="w-7 h-7 rounded-full flex items-center justify-center text-xs font-semibold ${currentPage >= 2 ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-500'}">2</div>
+            <span class="text-sm font-medium ${currentPage >= 2 ? 'text-gray-900' : 'text-gray-400'}">Plan &amp; launch</span>
+          </div>
+        </div>
+
         <div class="mb-6 flex items-start gap-3 p-4 bg-orange-50/60 border border-orange-200 rounded-xl">
           <div class="w-8 h-8 rounded-lg bg-white border border-orange-200 flex items-center justify-center text-orange-600 shrink-0">
             <i class="fas fa-rocket text-sm"></i>
@@ -1053,45 +1170,69 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
         <form onSubmit=${handleSubmit}>
           ${currentPage === 1 ? html`
             <div class="max-w-2xl mx-auto space-y-4">
-              <div class="flex items-start gap-3 p-4 bg-blue-50/70 border border-blue-200 rounded-xl">
-                <div class="w-8 h-8 rounded-lg bg-white border border-blue-200 flex items-center justify-center text-blue-600 shrink-0">
-                  <i class="fas fa-wand-magic-sparkles text-sm"></i>
+              <!-- AI-Powered Form Prefill -->
+              <div class="rounded-2xl border border-indigo-200 bg-gradient-to-b from-indigo-50/70 to-white p-4 sm:p-5">
+                <div class="flex items-start gap-3 mb-3">
+                  <div class="w-9 h-9 rounded-xl bg-white border border-indigo-200 flex items-center justify-center text-indigo-600 shrink-0">
+                    <i class="fas fa-wand-magic-sparkles"></i>
+                  </div>
+                  <div>
+                    <p class="font-semibold text-gray-900 text-sm">AI-Powered Form Prefill</p>
+                    <p class="text-xs text-gray-600 mt-0.5">Enter your website URL. AI fills almost every field — name, tagline, description, categories, tags, pricing, target audience, tech stack, social links, SEO metadata, FAQ, and more. Logo &amp; cover come from your site icons / structured data; social links are extracted from the page.</p>
+                  </div>
                 </div>
-                <div class="text-sm">
-                  <p class="font-medium text-gray-900">Start with your URL</p>
-                  <p class="text-gray-600 mt-0.5">Paste your product link and hit <strong>Auto-fill</strong> — we'll pull in the name, description and details for you to review.</p>
-                </div>
-              </div>
 
-              <div>
-                <label class="block text-black font-bold mb-2" for="url">Startup URL</label>
-                <div class="flex flex-col sm:flex-row gap-2">
-                  <input
-                    type="url"
-                    id="url"
-                    name="url"
-                    value=${formData.url}
-                    onInput=${handleChange}
-                    class="flex-1 px-3 py-2 border-2 border-black focus:outline-none focus:ring-2 focus:ring-blue-400"
-                    placeholder="https://mystartup.com"
-                    required
-                  />
-                  <button
-                    type="button"
-                    onClick=${handleAutoFill}
-                    disabled=${autoFilling || !formData.url}
-                    class="shrink-0 px-4 py-2 rounded-lg bg-indigo-600 text-white font-semibold text-sm hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                  >
-                    ${autoFilling
-                      ? html`<i class="fas fa-spinner fa-spin text-xs"></i> Auto-filling…`
-                      : html`<i class="fas fa-wand-magic-sparkles text-xs"></i> Auto-fill`}
-                  </button>
+                <div class="flex flex-col lg:flex-row gap-3 lg:items-start">
+                  <div class="flex-1 min-w-0">
+                    <div class="flex flex-col sm:flex-row gap-2">
+                      <input
+                        type="url" id="url" name="url"
+                        value=${formData.url}
+                        onInput=${handleChange}
+                        onBlur=${() => lookupDomainRating(formData.url)}
+                        class="flex-1 px-3 py-2.5 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                        placeholder="https://mystartup.com"
+                        required
+                      />
+                      <button
+                        type="button"
+                        onClick=${() => { handleAutoFill(); lookupDomainRating(formData.url); }}
+                        disabled=${autoFilling || !formData.url}
+                        class="shrink-0 px-4 py-2.5 rounded-xl bg-indigo-600 text-white font-semibold text-sm hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                      >
+                        ${autoFilling
+                          ? html`<i class="fas fa-spinner fa-spin text-xs"></i> AI is reading your site…`
+                          : html`<i class="fas fa-wand-magic-sparkles text-xs"></i> Prefill with AI`}
+                      </button>
+                    </div>
+                    ${autoFilled ? html`<p class="text-xs text-emerald-600 mt-1.5 flex items-center gap-1"><i class="fas fa-check"></i> Prefilled from your site — review and edit below.</p>` : ''}
+                    ${prefillError ? html`<p class="text-xs text-red-600 mt-1.5">${prefillError}</p>` : ''}
+                  </div>
+
+                  <!-- Domain Rating: current → projected, animated -->
+                  ${(drLoading || drValue != null) ? html`
+                    <div class="flex items-stretch gap-2 shrink-0">
+                      ${drLoading && drValue == null ? html`
+                        <div class="rounded-xl border border-gray-200 bg-white px-3 py-2 flex items-center gap-2 text-xs text-gray-500"><i class="fas fa-spinner fa-spin"></i> Checking DR…</div>
+                      ` : html`
+                        <div class="rounded-xl border border-gray-200 bg-white px-3 py-2 text-center w-[80px]">
+                          <p class="text-[9px] font-semibold uppercase tracking-wider text-gray-400">DR now</p>
+                          <p class="text-2xl font-bold text-gray-900 tabular-nums leading-tight">${Math.round((drValue || 0) * drAnim)}</p>
+                          <div class="h-1 rounded-full bg-gray-100 mt-1 overflow-hidden"><div class="h-full bg-gray-400" style="width:${(drValue || 0) * drAnim}%"></div></div>
+                        </div>
+                        <div class="flex flex-col items-center justify-center text-emerald-600 px-0.5">
+                          <i class="fas fa-arrow-trend-up text-sm"></i>
+                          <span class="text-[10px] font-bold tabular-nums">+${(projectedDr || 0) - (drValue || 0)}</span>
+                        </div>
+                        <div class="rounded-xl border border-emerald-200 bg-emerald-50/60 px-3 py-2 text-center w-[80px]">
+                          <p class="text-[9px] font-semibold uppercase tracking-wider text-emerald-600">With us</p>
+                          <p class="text-2xl font-bold text-emerald-700 tabular-nums leading-tight">${Math.round((projectedDr || 0) * drAnim)}</p>
+                          <div class="h-1 rounded-full bg-emerald-100 mt-1 overflow-hidden"><div class="h-full bg-emerald-500" style="width:${(projectedDr || 0) * drAnim}%"></div></div>
+                        </div>
+                      `}
+                    </div>
+                  ` : ''}
                 </div>
-                ${autoFilled ? html`
-                  <p class="text-xs text-emerald-600 mt-1 flex items-center gap-1">
-                    <i class="fas fa-check"></i> Pulled from your site — review and edit below.
-                  </p>
-                ` : ''}
               </div>
 
               <div>
@@ -1105,6 +1246,20 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
                   onInput=${handleChange}
                   class="w-full px-3 py-2 border-2 border-black focus:outline-none focus:ring-2 focus:ring-blue-400"
                   required
+                />
+              </div>
+
+              <div>
+                <label class="block text-black font-bold mb-2" for="tagline">Tagline</label>
+                <input
+                  type="text"
+                  id="tagline"
+                  name="tagline"
+                  placeholder="One-line pitch for your product"
+                  value=${formData.tagline}
+                  onInput=${handleChange}
+                  maxlength="80"
+                  class="w-full px-3 py-2 border-2 border-black focus:outline-none focus:ring-2 focus:ring-blue-400"
                 />
               </div>
 
@@ -1167,18 +1322,81 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
               </div>
 
               <div>
-                <label class="block text-black font-bold mb-2" for="xProfile">X Username</label>
+                <label class="block text-black font-bold mb-2" for="tags">Tags</label>
                 <input
                   type="text"
-                  id="xProfile"
-                  name="xProfile"
-                  value=${formData.xProfile}
+                  id="tags"
+                  name="tags"
+                  value=${formData.tags}
                   onInput=${handleChange}
                   class="w-full px-3 py-2 border-2 border-black focus:outline-none focus:ring-2 focus:ring-blue-400"
-                  placeholder="jack"
-                  required
+                  placeholder="ai, productivity, saas"
                 />
-                <p class="text-sm text-gray-500 mt-1">Your X username for attribution</p>
+                <p class="text-sm text-gray-500 mt-1">Comma-separated, up to 5 — shown on your card.</p>
+              </div>
+
+              <!-- Logo & cover upload (saved and used on the listing card) -->
+              <div class="grid sm:grid-cols-2 gap-4">
+                <div>
+                  <label class="block text-black font-bold mb-2">Logo</label>
+                  <div class="flex items-center gap-3">
+                    <div class="w-14 h-14 rounded-xl border-2 border-black bg-gray-50 flex items-center justify-center overflow-hidden shrink-0">
+                      ${formData.logoUrl ? html`<img src=${formData.logoUrl} alt="Logo preview" class="w-full h-full object-contain" />` : html`<i class="fas fa-image text-gray-300"></i>`}
+                    </div>
+                    <label class="cursor-pointer px-3 py-2 rounded-lg border border-gray-300 text-xs font-semibold text-gray-700 hover:bg-gray-50 flex items-center gap-1.5">
+                      ${uploadingLogo ? html`<i class="fas fa-spinner fa-spin"></i> Uploading…` : html`<i class="fas fa-upload"></i> ${formData.logoUrl ? 'Replace' : 'Upload logo'}`}
+                      <input type="file" accept="image/*" class="hidden" onChange=${(e) => handleAssetUpload(e, 'logo')} />
+                    </label>
+                  </div>
+                </div>
+                <div>
+                  <label class="block text-black font-bold mb-2">Cover / screenshot</label>
+                  <div class="flex items-center gap-3">
+                    <div class="w-20 h-14 rounded-xl border-2 border-black bg-gray-50 flex items-center justify-center overflow-hidden shrink-0">
+                      ${formData.coverUrl ? html`<img src=${formData.coverUrl} alt="Cover preview" class="w-full h-full object-cover" />` : html`<i class="fas fa-image text-gray-300"></i>`}
+                    </div>
+                    <label class="cursor-pointer px-3 py-2 rounded-lg border border-gray-300 text-xs font-semibold text-gray-700 hover:bg-gray-50 flex items-center gap-1.5">
+                      ${uploadingCover ? html`<i class="fas fa-spinner fa-spin"></i> Uploading…` : html`<i class="fas fa-upload"></i> ${formData.coverUrl ? 'Replace' : 'Upload cover'}`}
+                      <input type="file" accept="image/*" class="hidden" onChange=${(e) => handleAssetUpload(e, 'cover')} />
+                    </label>
+                  </div>
+                  <p class="text-sm text-gray-500 mt-1">Shown as your listing image.</p>
+                </div>
+              </div>
+
+              <!-- Socials -->
+              <div class="grid sm:grid-cols-3 gap-4">
+                <div>
+                  <label class="block text-black font-bold mb-2" for="xProfile">X Username</label>
+                  <input
+                    type="text" id="xProfile" name="xProfile"
+                    value=${formData.xProfile}
+                    onInput=${handleChange}
+                    class="w-full px-3 py-2 border-2 border-black focus:outline-none focus:ring-2 focus:ring-blue-400"
+                    placeholder="jack"
+                    required
+                  />
+                </div>
+                <div>
+                  <label class="block text-black font-bold mb-2" for="linkedin">LinkedIn</label>
+                  <input
+                    type="text" id="linkedin" name="linkedin"
+                    value=${formData.linkedin}
+                    onInput=${handleChange}
+                    class="w-full px-3 py-2 border-2 border-black focus:outline-none focus:ring-2 focus:ring-blue-400"
+                    placeholder="linkedin.com/company/…"
+                  />
+                </div>
+                <div>
+                  <label class="block text-black font-bold mb-2" for="github">GitHub</label>
+                  <input
+                    type="text" id="github" name="github"
+                    value=${formData.github}
+                    onInput=${handleChange}
+                    class="w-full px-3 py-2 border-2 border-black focus:outline-none focus:ring-2 focus:ring-blue-400"
+                    placeholder="github.com/…"
+                  />
+                </div>
               </div>
 
               <div class="flex justify-end gap-2 pt-4">

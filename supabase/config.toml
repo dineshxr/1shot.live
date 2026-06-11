@@ -112,6 +112,15 @@ verify_jwt = false
 [functions.verify-backlink]
 verify_jwt = false
 
+# ai-prefill resolves the user from the access token (it gates the OpenRouter
+# call on a signed-in user), so it handles its own auth.
+[functions.ai-prefill]
+verify_jwt = false
+
+# domain-rating just proxies Ahrefs' free public endpoint — publicly invokable.
+[functions.domain-rating]
+verify_jwt = false
+
 [auth]
 enabled = true
 # The base URL of your website. Used as an allow-list for redirects and for constructing URLs used
