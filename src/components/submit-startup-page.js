@@ -3,7 +3,7 @@ import { captureScreenshot, uploadScreenshot } from '../lib/screenshot-service.j
 import { Confetti } from './confetti.js';
 import { createCheckoutSession } from '../lib/stripe.js';
 import { config } from '../config.js';
-import { getFreeSubmissionStatus, verifyBacklink, BADGE_EMBED_CODE, BADGE_IMG_URL } from '../lib/backlink.js';
+import { getFreeSubmissionStatus, verifyBacklink, BADGE_LIGHT_EMBED, BADGE_DARK_EMBED } from '../lib/backlink.js';
 import { fetchSiteMetadata } from '../lib/metadata.js';
 
 /* global html, useState, useEffect, useRef */
@@ -51,7 +51,7 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
   const [backlinkUrl, setBacklinkUrl] = useState('');
   const [verifyingBacklink, setVerifyingBacklink] = useState(false);
   const [backlinkError, setBacklinkError] = useState(null);
-  const [copiedEmbed, setCopiedEmbed] = useState(false);
+  const [copiedEmbed, setCopiedEmbed] = useState(''); // '' | 'light' | 'dark'
   // Phase 1 auto-fill (scrape metadata from the URL)
   const [autoFilling, setAutoFilling] = useState(false);
   const [autoFilled, setAutoFilled] = useState(false);
@@ -479,12 +479,13 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
     }
   };
 
-  const copyEmbedCode = async () => {
+  const copyEmbed = async (variant) => {
+    const code = variant === 'dark' ? BADGE_DARK_EMBED : BADGE_LIGHT_EMBED;
     try {
-      await navigator.clipboard.writeText(BADGE_EMBED_CODE);
-      setCopiedEmbed(true);
-      setTimeout(() => setCopiedEmbed(false), 2000);
-    } catch (e) { /* clipboard blocked — the code is visible to copy manually */ }
+      await navigator.clipboard.writeText(code);
+      setCopiedEmbed(variant);
+      setTimeout(() => setCopiedEmbed(''), 2000);
+    } catch (e) { /* clipboard blocked — the badge is shown so it can be copied manually */ }
   };
 
   // Flag whether this site (or a subpage/subdomain of it) is already on the
@@ -958,8 +959,9 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
 
             <div class="border border-gray-200 rounded-xl p-4 bg-white">
               <h4 class="text-sm font-semibold text-gray-900 mb-2">Embed code</h4>
+              <img src="/badge-light.svg" alt="Featured on Submit Hunt" class="h-11 w-auto mb-3" />
               <div class="bg-gray-50 border border-gray-200 p-3 rounded-lg text-xs font-mono mb-3 overflow-x-auto text-gray-700">
-                <code id="embed-code">&lt;a href="https://submithunt.com" target="_blank" rel="noopener"&gt;&lt;img src="https://submithunt.com/badge.png" alt="Featured on SubmitHunt" width="150" height="45" /&gt;&lt;/a&gt;</code>
+                <code id="embed-code">&lt;a href="https://submithunt.com" target="_blank"&gt;&lt;img src="https://submithunt.com/badge-light.svg" alt="Featured on Submit Hunt" width="240" height="66" /&gt;&lt;/a&gt;</code>
               </div>
               <button
                 onClick=${() => {
@@ -1554,15 +1556,20 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
                     ${!backlinkVerified ? html`
                       <div class="space-y-3">
                         <div class="rounded-xl border border-gray-200 bg-gray-50/60 p-4">
-                          <div class="flex items-center justify-between gap-3 mb-3">
-                            <span class="text-xs font-semibold uppercase tracking-wider text-gray-500">Embed this badge</span>
-                            <button type="button" onClick=${copyEmbedCode} class="text-xs font-medium text-indigo-600 hover:text-indigo-700 flex items-center gap-1">
-                              ${copiedEmbed ? html`<i class="fas fa-check"></i> Copied` : html`<i class="fas fa-copy"></i> Copy embed code`}
-                            </button>
-                          </div>
-                          <div class="flex flex-col sm:flex-row items-start gap-4">
-                            <img src="/src/submit-hunt-badge.png" alt="Featured on Submit Hunt" class="h-12 w-auto border border-gray-200 rounded bg-white p-1 shrink-0" />
-                            <code class="block w-full text-[11px] font-mono text-gray-600 bg-white border border-gray-200 rounded-lg p-2.5 overflow-x-auto whitespace-pre-wrap break-all">${BADGE_EMBED_CODE}</code>
+                          <span class="text-xs font-semibold uppercase tracking-wider text-gray-500">Embed a badge — pick a style</span>
+                          <div class="grid sm:grid-cols-2 gap-3 mt-3">
+                            <div class="rounded-lg border border-gray-200 bg-white p-3 flex flex-col items-center gap-3">
+                              <img src="/badge-light.svg" alt="Featured on Submit Hunt" class="h-11 w-auto" />
+                              <button type="button" onClick=${() => copyEmbed('light')} class="w-full px-3 py-1.5 rounded-lg border border-gray-200 text-xs font-semibold text-gray-700 hover:bg-gray-50 flex items-center justify-center gap-1.5">
+                                ${copiedEmbed === 'light' ? html`<i class="fas fa-check text-green-600"></i> Copied` : html`<i class="fas fa-copy"></i> Copy light badge`}
+                              </button>
+                            </div>
+                            <div class="rounded-lg border border-gray-800 bg-gray-900 p-3 flex flex-col items-center gap-3">
+                              <img src="/badge-dark.svg" alt="Featured on Submit Hunt" class="h-11 w-auto" />
+                              <button type="button" onClick=${() => copyEmbed('dark')} class="w-full px-3 py-1.5 rounded-lg border border-gray-700 text-xs font-semibold text-gray-100 hover:bg-gray-800 flex items-center justify-center gap-1.5">
+                                ${copiedEmbed === 'dark' ? html`<i class="fas fa-check text-green-400"></i> Copied` : html`<i class="fas fa-copy"></i> Copy dark badge`}
+                              </button>
+                            </div>
                           </div>
                           <p class="text-[11px] text-gray-400 mt-2">Must stay do-follow — don't add rel="nofollow", "sponsored" or "ugc".</p>
                         </div>

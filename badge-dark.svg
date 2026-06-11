@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="240" height="66" viewBox="0 0 240 66" fill="none" role="img" aria-label="Featured on Submit Hunt">
+  <rect x="1" y="1" width="238" height="64" rx="14" fill="#111827" stroke="#374151" stroke-width="1.5"/>
+  <!-- medal -->
+  <g transform="translate(38,33)">
+    <path d="M-7,5 L-10,20 L-3.5,15.5 L0,7 Z" fill="#2563eb"/>
+    <path d="M7,5 L10,20 L3.5,15.5 L0,7 Z" fill="#1d4ed8"/>
+    <circle cx="0" cy="0" r="15" fill="#f59e0b"/>
+    <circle cx="0" cy="0" r="11.5" fill="#fcd34d"/>
+    <path d="M0,-8 L1.88,-2.59 L7.61,-2.47 L3.04,0.99 L4.7,6.47 L0,3.2 L-4.7,6.47 L-3.04,0.99 L-7.61,-2.47 L-1.88,-2.59 Z" fill="#1f2937"/>
+  </g>
+  <!-- FEATURED ON -->
+  <text x="66" y="27" font-family="'Helvetica Neue',Helvetica,Arial,sans-serif" font-size="10" font-weight="700" letter-spacing="1.5" fill="#9ca3af">FEATURED ON</text>
+  <!-- rocket -->
+  <g transform="translate(74,44)">
+    <path d="M-2.2,6.5 Q0,12.5 2.2,6.5 Q0,8.5 -2.2,6.5 Z" fill="#f59e0b"/>
+    <path d="M0,-9 C4.5,-4 4.5,4 0,8 C-4.5,4 -4.5,-4 0,-9 Z" fill="#ea580c"/>
+    <path d="M-3.6,3 L-6,8 L-2,6 Z" fill="#c2410c"/>
+    <path d="M3.6,3 L6,8 L2,6 Z" fill="#c2410c"/>
+    <circle cx="0" cy="-1.5" r="2.3" fill="#fff7ed"/>
+  </g>
+  <!-- Submit Hunt -->
+  <text x="88" y="49" font-family="'Helvetica Neue',Helvetica,Arial,sans-serif" font-size="20" font-weight="700" fill="#ffffff">Submit Hunt</text>
+</svg>

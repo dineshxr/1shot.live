@@ -3,15 +3,24 @@ import { config } from '../config.js';
 
 const VERIFY_BACKLINK_URL = `${config.supabase.url}/functions/v1/verify-backlink`;
 
-// The badge image lives at /src/submit-hunt-badge.png (same asset success.html
-// uses). The embed is deliberately do-follow — no rel="nofollow" — so it passes
-// our own verifier and gives the maker real link equity.
-export const BADGE_IMG_URL = 'https://submithunt.com/src/submit-hunt-badge.png';
+// Badge assets are SVG (crisp at any size). Two variants — light for
+// light/white backgrounds, dark for dark backgrounds. The embed is deliberately
+// do-follow — no rel="nofollow" — so it passes our own verifier and gives the
+// maker real link equity.
+export const BADGE_LIGHT_URL = 'https://submithunt.com/badge-light.svg';
+export const BADGE_DARK_URL = 'https://submithunt.com/badge-dark.svg';
 
-export const BADGE_EMBED_CODE =
+const buildEmbed = (url) =>
   `<a href="https://submithunt.com" target="_blank">` +
-  `<img src="${BADGE_IMG_URL}" alt="Featured on Submit Hunt" width="200" height="auto" />` +
+  `<img src="${url}" alt="Featured on Submit Hunt" width="240" height="66" />` +
   `</a>`;
+
+export const BADGE_LIGHT_EMBED = buildEmbed(BADGE_LIGHT_URL);
+export const BADGE_DARK_EMBED = buildEmbed(BADGE_DARK_URL);
+
+// Backwards-compatible defaults (light variant).
+export const BADGE_IMG_URL = BADGE_LIGHT_URL;
+export const BADGE_EMBED_CODE = BADGE_LIGHT_EMBED;
 
 // Plain text-link alternative ("set your own link") — also do-follow.
 export const TEXT_LINK_EMBED_CODE =
