@@ -16,21 +16,20 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Get yesterday's date in YYYY-MM-DD format (EST timezone)
+    // Finalize rankings for yesterday's launch — i.e. after all of its votes are in.
     const now = new Date();
     const yesterday = new Date(now);
     yesterday.setDate(yesterday.getDate() - 1);
     const yesterdayStr = yesterday.toISOString().split("T")[0];
 
-    console.log("Calculating rankings for:", yesterdayStr);
+    console.log("Finalizing rankings for:", yesterdayStr);
 
-    // Get all startups launched yesterday that are live
+    // All live startups that launched yesterday.
     const { data: startups, error: fetchError } = await supabase
       .from("startups")
-      .select("id, title, plan, upvote_count, created_at, launch_date")
+      .select("id, title, upvote_count, created_at, launch_date")
       .eq("is_live", true)
-      .eq("launch_date", yesterdayStr)
-      .order("created_at", { ascending: true });
+      .eq("launch_date", yesterdayStr);
 
     if (fetchError) {
       throw fetchError;
@@ -45,69 +44,40 @@ serve(async (req) => {
 
     console.log(`Found ${startups.length} startups for ${yesterdayStr}`);
 
-    // Calculate effective votes for each startup
-    const startupsWithEffectiveVotes = startups.map((startup, index) => {
-      let effectiveVotes = startup.upvote_count || 0;
+    // Rank STRICTLY by upvotes (descending). Earliest submission breaks ties.
+    // Startups with no upvotes are not ranked (daily_rank = null) — same rule as
+    // the live update_daily_rankings() RPC, so the badge never flips from its
+    // live value once the day closes.
+    const ranked = startups
+      .filter((s) => (s.upvote_count || 0) > 0)
+      .sort((a, b) => {
+        const va = a.upvote_count || 0;
+        const vb = b.upvote_count || 0;
+        if (vb !== va) return vb - va;
+        return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+      });
 
-      // Bonus for premium/featured: +1 vote
-      if (startup.plan === "premium" || startup.plan === "featured") {
-        effectiveVotes += 1;
-        console.log(`${startup.title}: +1 bonus for ${startup.plan} plan`);
-      }
+    const unranked = startups.filter((s) => (s.upvote_count || 0) <= 0);
 
-      // Bonus for submission order (first 2 submissions of the day)
-      // Index 0 = first submitted = +2 votes
-      // Index 1 = second submitted = +1 vote
-      if (index === 0) {
-        effectiveVotes += 2;
-        console.log(`${startup.title}: +2 bonus for first submission`);
-      } else if (index === 1) {
-        effectiveVotes += 1;
-        console.log(`${startup.title}: +1 bonus for second submission`);
-      }
-
-      return {
-        ...startup,
-        effectiveVotes,
-        submissionOrder: index + 1
-      };
-    });
-
-    // Sort by effective votes (descending), then by created_at (ascending) for ties
-    startupsWithEffectiveVotes.sort((a, b) => {
-      if (b.effectiveVotes !== a.effectiveVotes) {
-        return b.effectiveVotes - a.effectiveVotes;
-      }
-      // For ties, earlier submission wins
-      return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
-    });
-
-    // Assign ranks and update database
     const updates = [];
-    for (let i = 0; i < startupsWithEffectiveVotes.length; i++) {
-      const startup = startupsWithEffectiveVotes[i];
+    for (let i = 0; i < ranked.length; i++) {
+      const startup = ranked[i];
       const rank = i + 1;
-
-      console.log(`Rank ${rank}: ${startup.title} (${startup.effectiveVotes} effective votes)`);
-
+      console.log(`Rank ${rank}: ${startup.title} (${startup.upvote_count || 0} upvotes)`);
       const { error: updateError } = await supabase
         .from("startups")
         .update({ daily_rank: rank })
         .eq("id", startup.id);
-
       if (updateError) {
         console.error(`Error updating rank for ${startup.title}:`, updateError);
       } else {
-        updates.push({
-          id: startup.id,
-          title: startup.title,
-          rank,
-          effectiveVotes: startup.effectiveVotes,
-          actualVotes: startup.upvote_count || 0,
-          plan: startup.plan,
-          submissionOrder: startup.submissionOrder
-        });
+        updates.push({ id: startup.id, title: startup.title, rank, upvotes: startup.upvote_count || 0 });
       }
+    }
+
+    // Clear rank for startups with no upvotes.
+    for (const startup of unranked) {
+      await supabase.from("startups").update({ daily_rank: null }).eq("id", startup.id);
     }
 
     return new Response(
@@ -115,11 +85,11 @@ serve(async (req) => {
         success: true,
         date: yesterdayStr,
         startupsRanked: updates.length,
-        rankings: updates
+        unranked: unranked.length,
+        rankings: updates,
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
-
   } catch (error) {
     console.error("Error:", error);
     return new Response(
