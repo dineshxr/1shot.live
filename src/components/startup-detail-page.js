@@ -93,6 +93,17 @@ export const StartupDetailPage = ({ user }) => {
     return () => { cancelled = true; };
   }, [user, startup && startup.id]);
 
+  // If arriving from a card's "comments" link, scroll to the discussion.
+  useEffect(() => {
+    if (!startup) return;
+    if (typeof window === 'undefined' || window.location.hash !== '#comments') return;
+    const t = setTimeout(() => {
+      const el = document.getElementById('comments');
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 300);
+    return () => clearTimeout(t);
+  }, [startup]);
+
 
   const handleImageError = (e) => {
     e.target.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='225' viewBox='0 0 400 225'%3E%3Crect width='400' height='225' fill='%23f0f0f0'/%3E%3Ctext x='50%25' y='50%25' font-family='Arial' font-size='24' fill='%23999' text-anchor='middle' dominant-baseline='middle'%3EStartup Image%3C/text%3E%3C/svg%3E";
@@ -356,7 +367,9 @@ export const StartupDetailPage = ({ user }) => {
             </div>
           `}
 
-          <${CommentSection} startup=${startup} user=${user} />
+          <div id="comments">
+            <${CommentSection} startup=${startup} user=${user} />
+          </div>
 
         </div>
       </div>

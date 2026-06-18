@@ -7,13 +7,26 @@
     },
     {
       "src": "api/**/*.js",
-      "use": "@vercel/node"
+      "use": "@vercel/node",
+      "config": { "includeFiles": "index.html" }
     }
   ],
   "rewrites": [
     {
-      "source": "/startup/:path*",
-      "destination": "/index.html"
+      "source": "/sitemap.xml",
+      "destination": "/api/sitemap"
+    },
+    {
+      "source": "/directory",
+      "destination": "/api/directory"
+    },
+    {
+      "source": "/directory/:category",
+      "destination": "/api/directory?category=:category"
+    },
+    {
+      "source": "/startup/:slug",
+      "destination": "/api/startup?slug=:slug"
     },
     {
       "source": "/blog",

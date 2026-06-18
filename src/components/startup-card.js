@@ -181,6 +181,23 @@ export const StartupCard = ({ startup, user, onUpvoteChange, allStartups }) => {
     return `/startup/${startup.slug}`;
   };
 
+  // Comment count for this startup (merged into the feed data in content.js)
+  const commentCount = startup.comment_count || 0;
+
+  // Navigate to the startup detail page and scroll straight to its comments
+  const goToComments = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const url = `/startup/${startup.slug}#comments`;
+    trackEvent(ANALYTICS_EVENTS.LINK_CLICK, {
+      startupId: startup.id,
+      startupName: startup.title,
+      startupUrl: url
+    });
+    window.history.pushState({}, "", url);
+    window.dispatchEvent(new PopStateEvent('popstate'));
+  };
+
   // Check if this startup is from the previous business day's launch (for ranking badges)
   // Monday: Show Friday's launches
   // Tuesday-Friday: Show previous day's launches
@@ -332,6 +349,19 @@ export const StartupCard = ({ startup, user, onUpvoteChange, allStartups }) => {
             <!-- Actions -->
             <div class="flex items-center gap-1 shrink-0">
               ${UpvoteButton({ startup, user, onUpvoteChange })}
+
+              <a
+                href=${`/startup/${startup.slug}#comments`}
+                onClick=${goToComments}
+                class="flex items-center gap-1 p-2 text-gray-400 hover:text-gray-900 transition-colors rounded-lg hover:bg-gray-100"
+                aria-label=${`${commentCount} comment${commentCount === 1 ? '' : 's'} — view discussion`}
+                title="View comments"
+              >
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                </svg>
+                <span class="text-xs font-medium">${commentCount}</span>
+              </a>
 
               <button
                 onClick=${(e) => {
