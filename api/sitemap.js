@@ -57,16 +57,11 @@ export default async function handler(req, res) {
     }
 
     const startups = await fetchAll(
-      'startups?select=slug,updated_at,created_at,category&is_live=eq.true&or=(archived.is.null,archived.is.false)&order=upvote_count.desc'
+      'startups?select=slug,updated_at,created_at&is_live=eq.true&or=(archived.is.null,archived.is.false)&order=upvote_count.desc'
     );
-    const categories = new Set();
     for (const s of startups) {
       if (!s.slug) continue;
       urls.push(tag(`${SITE}/startup/${encodeURIComponent(s.slug)}`, day(s.updated_at || s.created_at, today), 'weekly', '0.6'));
-      if (s.category && String(s.category).trim()) categories.add(String(s.category).trim());
-    }
-    for (const c of categories) {
-      urls.push(tag(`${SITE}/directory/${slugifyCategory(c)}`, today, 'weekly', '0.7'));
     }
   } catch {
     // Degrade gracefully to the static URLs already queued.

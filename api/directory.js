@@ -1,44 +1,72 @@
-// Server-rendered SEO directory at /directory and /directory/:category.
-// Lists every live startup as a crawlable <a> to /startup/<slug> — this is the
-// internal-linking hub that lets search engines discover all startup pages.
-// Self-contained CSS (Tailwind purges classes outside *.html/src/blog, so this
-// page can't rely on vendor/tailwind.css). Client JS adds search/filter/sort/
-// pagination over the already-rendered rows, so it works without JavaScript too.
+// /directory — a curated, DR-ranked directory of the best places to submit a
+// startup or SaaS for backlinks and traffic (à la submitsaas.com). SubmitHunt
+// is featured on top; the rest are a filterable/sortable table. Pure static
+// render (no DB), self-contained CSS (Tailwind purges classes outside
+// *.html/src/blog), with client JS for search/filter/sort that also works
+// without JavaScript.
+// Served at /directory via the rewrite to /api/directory.js in vercel.json.
 
-const SUPABASE_URL = 'https://lbayphzxmdtdmrqmeomt.supabase.co';
-const SUPABASE_ANON =
-  process.env.SUPABASE_ANON_KEY ||
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxiYXlwaHp4bWR0ZG1ycW1lb210Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDA5NTAyNTYsImV4cCI6MjA1NjUyNjI1Nn0.uSt7ll1Gy_TtbHxTyRtkyToZBIbW7ud18X45k5BdzKo';
 const SITE = 'https://submithunt.com';
 
 const esc = (s) =>
   String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-const clip = (s, n) => {
-  s = String(s == null ? '' : s).replace(/\s+/g, ' ').trim();
-  return s.length > n ? s.slice(0, n - 1).trimEnd() + '…' : s;
-};
-const slugify = (c) => String(c).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
-const comma = (n) => String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
 
-async function fetchAll(query) {
-  const out = [];
-  for (let offset = 0; offset < 50000; offset += 1000) {
-    let page;
-    try {
-      const r = await fetch(`${SUPABASE_URL}/rest/v1/${query}&limit=1000&offset=${offset}`, {
-        headers: { apikey: SUPABASE_ANON, Authorization: `Bearer ${SUPABASE_ANON}` },
-      });
-      if (!r.ok) break;
-      page = await r.json();
-    } catch {
-      break;
-    }
-    if (!Array.isArray(page) || page.length === 0) break;
-    out.push(...page);
-    if (page.length < 1000) break;
-  }
-  return out;
-}
+// SubmitHunt — pinned + highlighted at the top.
+const FEATURED = {
+  name: 'SubmitHunt', url: SITE, submit: '/submit', dr: 37,
+  type: 'Startup Directory', pricing: 'Free', dofollow: true,
+};
+
+// Curated submission directories. DR = approximate Ahrefs Domain Rating.
+const DIRECTORIES = [
+  { name: 'GitHub', url: 'https://github.com', submit: 'https://github.com/new', dr: 96, type: 'Community', pricing: 'Free', dofollow: true },
+  { name: 'Medium', url: 'https://medium.com', submit: 'https://medium.com/new-story', dr: 94, type: 'Media', pricing: 'Free', dofollow: false },
+  { name: 'SourceForge', url: 'https://sourceforge.net', submit: 'https://sourceforge.net/create/', dr: 92, type: 'Software Directory', pricing: 'Freemium', dofollow: true },
+  { name: 'Product Hunt', url: 'https://www.producthunt.com', submit: 'https://www.producthunt.com/posts/new', dr: 91, type: 'Launchpad', pricing: 'Free', dofollow: false },
+  { name: 'Hacker News (Show HN)', url: 'https://news.ycombinator.com', submit: 'https://news.ycombinator.com/submit', dr: 91, type: 'Community', pricing: 'Free', dofollow: false },
+  { name: 'Reddit', url: 'https://www.reddit.com', submit: 'https://www.reddit.com/submit', dr: 91, type: 'Community', pricing: 'Free', dofollow: false },
+  { name: 'Crunchbase', url: 'https://www.crunchbase.com', submit: 'https://www.crunchbase.com/register', dr: 91, type: 'Startup Directory', pricing: 'Freemium', dofollow: false },
+  { name: 'G2', url: 'https://www.g2.com', submit: 'https://www.g2.com/products/new', dr: 90, type: 'Software Directory', pricing: 'Freemium', dofollow: false },
+  { name: 'Capterra', url: 'https://www.capterra.com', submit: 'https://www.capterra.com/vendors/sign-up', dr: 90, type: 'Software Directory', pricing: 'Paid', dofollow: false },
+  { name: 'DEV Community', url: 'https://dev.to', submit: 'https://dev.to/new', dr: 90, type: 'Community', pricing: 'Free', dofollow: true },
+  { name: 'Softpedia', url: 'https://www.softpedia.com', submit: 'https://www.softpedia.com/get/submit.shtml', dr: 88, type: 'Software Directory', pricing: 'Free', dofollow: true },
+  { name: 'AlternativeTo', url: 'https://alternativeto.net', submit: 'https://alternativeto.net/manage/submit-app/', dr: 88, type: 'Software Directory', pricing: 'Free', dofollow: true },
+  { name: 'Wellfound (AngelList)', url: 'https://wellfound.com', submit: 'https://wellfound.com/company/new', dr: 88, type: 'Startup Directory', pricing: 'Free', dofollow: false },
+  { name: 'GetApp', url: 'https://www.getapp.com', submit: 'https://vendors.gartner.com', dr: 82, type: 'Software Directory', pricing: 'Paid', dofollow: false },
+  { name: 'Hacker Noon', url: 'https://hackernoon.com', submit: 'https://app.hackernoon.com', dr: 80, type: 'Media', pricing: 'Free', dofollow: false },
+  { name: 'StackShare', url: 'https://stackshare.io', submit: 'https://stackshare.io/tools/new', dr: 78, type: 'Software Directory', pricing: 'Free', dofollow: false },
+  { name: 'F6S', url: 'https://www.f6s.com', submit: 'https://www.f6s.com/companies/add', dr: 78, type: 'Startup Directory', pricing: 'Free', dofollow: true },
+  { name: 'Indie Hackers', url: 'https://www.indiehackers.com', submit: 'https://www.indiehackers.com/products', dr: 76, type: 'Community', pricing: 'Free', dofollow: true },
+  { name: 'Slant', url: 'https://www.slant.co', submit: 'https://www.slant.co', dr: 76, type: 'Software Directory', pricing: 'Free', dofollow: false },
+  { name: 'BetaList', url: 'https://betalist.com', submit: 'https://betalist.com/submit', dr: 73, type: 'Launchpad', pricing: 'Freemium', dofollow: true },
+  { name: 'Land-book', url: 'https://land-book.com', submit: 'https://land-book.com/submit', dr: 73, type: 'Design', pricing: 'Free', dofollow: true },
+  { name: 'SaaSworthy', url: 'https://www.saasworthy.com', submit: 'https://www.saasworthy.com/list-software', dr: 72, type: 'Software Directory', pricing: 'Freemium', dofollow: true },
+  { name: "There's An AI For That", url: 'https://theresanaiforthat.com', submit: 'https://theresanaiforthat.com/submit/', dr: 72, type: 'AI Directory', pricing: 'Paid', dofollow: true },
+  { name: 'Futurepedia', url: 'https://www.futurepedia.io', submit: 'https://www.futurepedia.io/submit-tool', dr: 71, type: 'AI Directory', pricing: 'Freemium', dofollow: true },
+  { name: 'Startup Stash', url: 'https://startupstash.com', submit: 'https://startupstash.com/add-listing/', dr: 71, type: 'Startup Directory', pricing: 'Freemium', dofollow: true },
+  { name: 'Toolify', url: 'https://www.toolify.ai', submit: 'https://www.toolify.ai/submit', dr: 65, type: 'AI Directory', pricing: 'Freemium', dofollow: true },
+  { name: 'SaaSHub', url: 'https://www.saashub.com', submit: 'https://www.saashub.com/submit', dr: 64, type: 'Software Directory', pricing: 'Freemium', dofollow: true },
+  { name: 'Future Tools', url: 'https://www.futuretools.io', submit: 'https://www.futuretools.io/submit-a-tool', dr: 64, type: 'AI Directory', pricing: 'Free', dofollow: false },
+  { name: 'Peerlist', url: 'https://peerlist.io', submit: 'https://peerlist.io/scout', dr: 62, type: 'Community', pricing: 'Free', dofollow: true },
+  { name: 'Betapage', url: 'https://betapage.co', submit: 'https://betapage.co/submit-startup', dr: 60, type: 'Startup Directory', pricing: 'Freemium', dofollow: true },
+  { name: 'Launching Next', url: 'https://www.launchingnext.com', submit: 'https://www.launchingnext.com/submit/', dr: 55, type: 'Startup Directory', pricing: 'Freemium', dofollow: true },
+  { name: 'SideProjectors', url: 'https://www.sideprojectors.com', submit: 'https://www.sideprojectors.com/project/submit', dr: 53, type: 'Startup Directory', pricing: 'Free', dofollow: true },
+  { name: 'Fazier', url: 'https://fazier.com', submit: 'https://fazier.com/submit', dr: 52, type: 'Launchpad', pricing: 'Freemium', dofollow: true },
+  { name: 'TopAI.tools', url: 'https://topai.tools', submit: 'https://topai.tools/submit', dr: 51, type: 'AI Directory', pricing: 'Freemium', dofollow: true },
+  { name: 'Uneed', url: 'https://www.uneed.best', submit: 'https://www.uneed.best/submit-a-tool', dr: 50, type: 'Launchpad', pricing: 'Freemium', dofollow: true },
+  { name: '10words', url: 'https://10words.io', submit: 'https://10words.io/submit', dr: 50, type: 'Startup Directory', pricing: 'Freemium', dofollow: true },
+  { name: 'Dang.ai', url: 'https://dang.ai', submit: 'https://dang.ai/submit', dr: 47, type: 'AI Directory', pricing: 'Freemium', dofollow: true },
+  { name: 'Startups.fyi', url: 'https://www.startups.fyi', submit: 'https://www.startups.fyi/submit', dr: 46, type: 'Startup Directory', pricing: 'Freemium', dofollow: true },
+  { name: 'MicroLaunch', url: 'https://microlaunch.net', submit: 'https://microlaunch.net/submit', dr: 45, type: 'Launchpad', pricing: 'Freemium', dofollow: true },
+  { name: 'NoCode List', url: 'https://nocodelist.co', submit: 'https://nocodelist.co/submit', dr: 45, type: 'Software Directory', pricing: 'Free', dofollow: true },
+  { name: 'Awesome Indie', url: 'https://awesomeindie.com', submit: 'https://awesomeindie.com/submit', dr: 44, type: 'Startup Directory', pricing: 'Free', dofollow: true },
+  { name: 'Tiny Launch', url: 'https://www.tinylaun.ch', submit: 'https://www.tinylaun.ch', dr: 42, type: 'Launchpad', pricing: 'Freemium', dofollow: true },
+  { name: 'AI Tool Hunt', url: 'https://www.aitoolhunt.com', submit: 'https://www.aitoolhunt.com/submit', dr: 41, type: 'AI Directory', pricing: 'Free', dofollow: true },
+  { name: 'PitchWall', url: 'https://pitchwall.co', submit: 'https://pitchwall.co/submit', dr: 40, type: 'Startup Directory', pricing: 'Free', dofollow: true },
+  { name: 'Insanely Cool Tools', url: 'https://insanelycooltools.com', submit: 'https://insanelycooltools.com/submit-a-tool/', dr: 40, type: 'Software Directory', pricing: 'Freemium', dofollow: true },
+];
+
+const TYPES = ['Launchpad', 'Startup Directory', 'Software Directory', 'AI Directory', 'Community', 'Media', 'Design'];
 
 const STYLES = `
 *{box-sizing:border-box;margin:0;padding:0}
@@ -52,111 +80,104 @@ header.site .wrap{display:flex;align-items:center;justify-content:space-between;
 nav.top a{color:#475569;font-size:14px;margin-left:22px}
 nav.top a:hover,nav.top a.active{color:#0f172a}
 .cta{background:#f97316;color:#fff!important;padding:8px 16px;border-radius:8px;font-size:14px;font-weight:600}
-.hero{padding:48px 0 26px}
+.hero{padding:46px 0 8px}
 .hero h1{font-size:34px;font-weight:800;letter-spacing:-.02em;margin-bottom:12px}
 .hero p{color:#475569;max-width:760px;font-size:16px}
-.crumbs{font-size:13px;color:#94a3b8;margin-bottom:14px}
-.crumbs a:hover{color:#475569}
-.controls{display:flex;flex-wrap:wrap;gap:10px;margin:24px 0 14px;align-items:center}
+.feat{margin:26px 0 8px;background:linear-gradient(180deg,#fff7ed,#fff);border:2px solid #fdba74;border-radius:16px;padding:22px 24px;display:flex;align-items:center;justify-content:space-between;gap:20px;flex-wrap:wrap}
+.feat .l{display:flex;align-items:center;gap:16px}
+.feat .mark{width:52px;height:52px;border-radius:14px;background:#f97316;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:26px}
+.feat h2{font-size:20px;font-weight:800;display:flex;align-items:center;gap:10px}
+.feat .badge{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:#9a3412;background:#ffedd5;border:1px solid #fdba74;border-radius:9999px;padding:3px 10px}
+.feat p{color:#7c2d12;font-size:14px;margin-top:3px}
+.feat .meta{color:#9a3412;font-size:13px;margin-top:6px;display:flex;gap:14px;flex-wrap:wrap}
+.feat .submit{background:#f97316;color:#fff;font-weight:700;padding:12px 22px;border-radius:10px;font-size:15px;white-space:nowrap}
+.feat .submit:hover{background:#ea580c}
+.controls{display:flex;flex-wrap:wrap;gap:10px;margin:22px 0 12px;align-items:center}
 .controls input,.controls select{border:1px solid #e2e8f0;background:#fff;border-radius:9px;padding:10px 12px;font-size:14px;color:#0f172a}
-.controls input{flex:1;min-width:220px}
+.controls input{flex:1;min-width:200px}
 .controls input:focus,.controls select:focus{outline:none;border-color:#f97316}
 .count{font-size:13px;color:#64748b;margin-left:auto}
-.chips{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:18px}
-.chip{font-size:13px;color:#475569;background:#fff;border:1px solid #e2e8f0;border-radius:9999px;padding:6px 13px}
-.chip:hover{border-color:#f97316;color:#0f172a}
-.chip.active{background:#0f172a;color:#fff;border-color:#0f172a}
 .panel{background:#fff;border:1px solid #e5e7eb;border-radius:14px;overflow:hidden}
 table{width:100%;border-collapse:collapse;font-size:14px}
 thead th{text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:#94a3b8;font-weight:600;padding:13px 16px;border-bottom:1px solid #eef2f6;white-space:nowrap}
-tbody td{padding:13px 16px;border-bottom:1px solid #f1f5f9;vertical-align:middle}
+tbody td{padding:12px 16px;border-bottom:1px solid #f1f5f9;vertical-align:middle}
 tbody tr:last-child td{border-bottom:none}
 tbody tr:hover{background:#fcfdff}
-.rank{color:#cbd5e1;font-variant-numeric:tabular-nums;width:38px}
-.name{font-weight:600;color:#0f172a}
-.name:hover{color:#f97316}
-.tagline{color:#94a3b8;font-size:12.5px;margin-top:2px;max-width:430px}
-.cat{display:inline-block;background:#f1f5f9;color:#475569;border-radius:9999px;padding:3px 11px;font-size:12px;white-space:nowrap}
-.tags{color:#94a3b8;font-size:12.5px}
-.votes{font-variant-numeric:tabular-nums;color:#0f172a;font-weight:600;white-space:nowrap}
-.tri{display:inline-block;width:0;height:0;border-left:5px solid transparent;border-right:5px solid transparent;border-bottom:8px solid #f97316;margin-right:5px;vertical-align:1px}
-.visit{color:#f97316;font-weight:600;white-space:nowrap}
-.visit:hover{text-decoration:underline}
-.colhide{}
-.pager{display:flex;align-items:center;justify-content:space-between;padding:16px 4px;gap:12px;flex-wrap:wrap}
-.pager button{border:1px solid #e2e8f0;background:#fff;border-radius:9px;padding:8px 16px;font-size:14px;cursor:pointer;color:#0f172a}
-.pager button:disabled{opacity:.45;cursor:default}
-.pager .info{font-size:13px;color:#64748b}
-#dir-empty{display:none;padding:40px 16px;text-align:center;color:#94a3b8}
-.seo{margin:40px 0;color:#475569;font-size:15px;max-width:820px}
+.rank{color:#cbd5e1;font-variant-numeric:tabular-nums;width:34px}
+.nm{font-weight:600;color:#0f172a}
+.nm:hover{color:#f97316}
+.dr{font-variant-numeric:tabular-nums;font-weight:700}
+.dr b{display:inline-block;min-width:30px}
+.bar{display:inline-block;height:6px;border-radius:3px;background:#f97316;vertical-align:middle;margin-left:8px;opacity:.85}
+.type{display:inline-block;background:#f1f5f9;color:#475569;border-radius:9999px;padding:3px 11px;font-size:12px;white-space:nowrap}
+.pill{display:inline-block;border-radius:9999px;padding:2px 9px;font-size:12px;font-weight:600}
+.free{background:#dcfce7;color:#166534}.freemium{background:#e0f2fe;color:#075985}.paid{background:#f1f5f9;color:#475569}
+.do{color:#166534;font-weight:600}.no{color:#94a3b8}
+.visit,.sub{font-weight:600;white-space:nowrap}
+.visit{color:#475569}.visit:hover{color:#0f172a}
+.sub{color:#f97316}.sub:hover{text-decoration:underline}
+#empty{display:none;padding:36px 16px;text-align:center;color:#94a3b8}
+.note{font-size:12px;color:#94a3b8;margin:12px 2px 0}
+.seo{margin:36px 0;color:#475569;font-size:15px;max-width:820px}
 .seo h2{font-size:20px;color:#0f172a;margin:22px 0 8px;font-weight:700}
 footer.site{background:#fff;border-top:1px solid #e5e7eb;margin-top:40px}
 footer.site .wrap{padding:28px 20px;display:flex;flex-wrap:wrap;gap:18px;justify-content:space-between;font-size:13px;color:#64748b}
 footer.site a{color:#475569}footer.site a:hover{color:#0f172a}
-@media(max-width:720px){.col-tags,.col-cat{display:none}.tagline{max-width:200px}.hero h1{font-size:27px}}
+@media(max-width:760px){.col-type,.col-price{display:none}.hero h1{font-size:26px}.feat{flex-direction:column;align-items:flex-start}}
 `;
 
-function row(s, i) {
-  const slug = s.slug;
-  const name = s.title || 'Untitled';
-  const cat = (s.category && String(s.category).trim()) || 'Other';
-  const tagline = clip(s.tagline || s.description || '', 96);
-  const tags = Array.isArray(s.tags) ? s.tags.filter(Boolean).slice(0, 3) : [];
-  const votes = Number(s.upvote_count) || 0;
-  const haystack = [name, tagline, cat, tags.join(' ')].join(' ').toLowerCase();
-  const visit = s.url && /^https?:\/\//.test(s.url)
-    ? `<a class="visit" href="${esc(s.url)}" target="_blank" rel="nofollow noopener">Visit ↗</a>`
-    : '';
+function row(d, i) {
+  const cls = 'free';
+  const pricingCls = d.pricing === 'Free' ? 'free' : d.pricing === 'Paid' ? 'paid' : 'freemium';
   return (
-    `<tr data-cat="${esc(cat)}" data-name="${esc(name)}" data-votes="${votes}" data-search="${esc(haystack)}">` +
+    `<tr data-name="${esc(d.name.toLowerCase())}" data-type="${esc(d.type)}" data-dr="${d.dr}" data-link="${d.dofollow ? 'dofollow' : 'nofollow'}" data-search="${esc((d.name + ' ' + d.type).toLowerCase())}">` +
     `<td class="rank">${i + 1}</td>` +
-    `<td><a class="name" href="/startup/${encodeURIComponent(slug)}">${esc(name)}</a>` +
-    (tagline ? `<div class="tagline">${esc(tagline)}</div>` : '') +
-    `</td>` +
-    `<td class="col-cat"><span class="cat">${esc(cat)}</span></td>` +
-    `<td class="col-tags tags">${esc(tags.join(', '))}</td>` +
-    `<td class="votes"><span class="tri"></span>${votes}</td>` +
-    `<td>${visit}</td>` +
+    `<td><a class="nm" href="${esc(d.url)}" target="_blank" rel="nofollow noopener">${esc(d.name)}</a></td>` +
+    `<td class="col-type"><span class="type">${esc(d.type)}</span></td>` +
+    `<td class="dr"><b>${d.dr}</b><span class="bar" style="width:${Math.round(d.dr / 1.6)}px"></span></td>` +
+    `<td class="col-price"><span class="pill ${pricingCls}">${esc(d.pricing)}</span></td>` +
+    `<td>${d.dofollow ? '<span class="do">Dofollow</span>' : '<span class="no">Nofollow</span>'}</td>` +
+    `<td><a class="visit" href="${esc(d.url)}" target="_blank" rel="nofollow noopener">Visit ↗</a></td>` +
+    `<td><a class="sub" href="${esc(d.submit)}" target="_blank" rel="nofollow noopener">Submit ↗</a></td>` +
     `</tr>`
   );
 }
 
 const CLIENT_JS =
-  "(function(){var rows=Array.prototype.slice.call(document.querySelectorAll('#dir-table tbody tr'));" +
-  "var s=document.getElementById('dir-search'),c=document.getElementById('dir-cat'),so=document.getElementById('dir-sort');" +
-  "var pv=document.getElementById('dir-prev'),nx=document.getElementById('dir-next'),inf=document.getElementById('dir-info'),pg=document.getElementById('dir-page'),emp=document.getElementById('dir-empty');" +
-  "var PER=50,page=1,filtered=rows;" +
-  "function apply(){var q=(s.value||'').toLowerCase().trim();var cat=c?c.value:'all';var sort=so?so.value:'votes';" +
-  "filtered=rows.filter(function(r){if(cat!=='all'&&r.getAttribute('data-cat')!==cat)return false;if(!q)return true;return r.getAttribute('data-search').indexOf(q)!==-1;});" +
-  "filtered.sort(function(a,b){if(sort==='name')return a.getAttribute('data-name').toLowerCase().localeCompare(b.getAttribute('data-name').toLowerCase());return (+b.getAttribute('data-votes'))-(+a.getAttribute('data-votes'));});" +
-  "page=1;render();}" +
-  "function render(){var total=filtered.length,pages=Math.max(1,Math.ceil(total/PER));if(page>pages)page=pages;" +
-  "rows.forEach(function(r){r.style.display='none';});var start=(page-1)*PER,end=Math.min(start+PER,total);" +
-  "for(var i=start;i<end;i++){var r=filtered[i];r.style.display='';r.querySelector('.rank').textContent=(i+1);}" +
-  "inf.textContent=total?('Showing '+(start+1)+'-'+end+' of '+total):'';pg.textContent='Page '+page+' of '+pages;" +
-  "emp.style.display=total?'none':'block';pv.disabled=page<=1;nx.disabled=page>=pages;}" +
-  "s.addEventListener('input',apply);if(c)c.addEventListener('change',apply);if(so)so.addEventListener('change',apply);" +
-  "pv.addEventListener('click',function(){if(page>1){page--;render();window.scrollTo(0,0);}});" +
-  "nx.addEventListener('click',function(){page++;render();window.scrollTo(0,0);});apply();})();";
+  "(function(){var rows=Array.prototype.slice.call(document.querySelectorAll('#dt tbody tr'));" +
+  "var s=document.getElementById('q'),tp=document.getElementById('tp'),lk=document.getElementById('lk'),so=document.getElementById('so'),inf=document.getElementById('inf'),emp=document.getElementById('empty');" +
+  "function apply(){var q=(s.value||'').toLowerCase().trim(),t=tp.value,l=lk.value,sort=so.value,vis=[];" +
+  "rows.forEach(function(r){var ok=true;if(t!=='all'&&r.getAttribute('data-type')!==t)ok=false;if(l!=='all'&&r.getAttribute('data-link')!==l)ok=false;if(q&&r.getAttribute('data-search').indexOf(q)===-1)ok=false;r.style.display=ok?'':'none';if(ok)vis.push(r);});" +
+  "vis.sort(function(a,b){if(sort==='name')return a.getAttribute('data-name').localeCompare(b.getAttribute('data-name'));return (+b.getAttribute('data-dr'))-(+a.getAttribute('data-dr'));});" +
+  "var tb=document.querySelector('#dt tbody');vis.forEach(function(r,i){tb.appendChild(r);r.querySelector('.rank').textContent=(i+1);});" +
+  "inf.textContent=vis.length+' director'+(vis.length===1?'y':'ies');emp.style.display=vis.length?'none':'block';}" +
+  "s.addEventListener('input',apply);tp.addEventListener('change',apply);lk.addEventListener('change',apply);so.addEventListener('change',apply);apply();})();";
 
-function page({ canonical, title, desc, h1, intro, crumbs, chips, showCatSelect, rowsHtml, catOptions, seo, itemList }) {
+export default async function handler(req, res) {
+  const sorted = DIRECTORIES.slice().sort((a, b) => b.dr - a.dr);
+  const canonical = `${SITE}/directory`;
+  const title = `Startup & SaaS Submission Directories — Ranked by DR (${sorted.length + 1}) | SubmitHunt`;
+  const desc = `The best directories to submit your startup or SaaS in 2026, ranked by Domain Rating. Start with SubmitHunt — a free listing and a dofollow backlink — then work down the list.`;
+
   const jsonld = [
+    { '@context': 'https://schema.org', '@type': 'CollectionPage', name: title, description: desc, url: canonical, isPartOf: { '@type': 'WebSite', name: 'SubmitHunt', url: `${SITE}/` } },
     {
-      '@context': 'https://schema.org',
-      '@type': 'CollectionPage',
-      name: title,
-      description: desc,
-      url: canonical,
-      isPartOf: { '@type': 'WebSite', name: 'SubmitHunt', url: `${SITE}/` },
+      '@context': 'https://schema.org', '@type': 'ItemList',
+      itemListElement: [FEATURED, ...sorted].slice(0, 30).map((d, i) => ({ '@type': 'ListItem', position: i + 1, name: d.name, url: d.url })),
     },
-    { '@context': 'https://schema.org', '@type': 'ItemList', itemListElement: itemList },
     {
-      '@context': 'https://schema.org',
-      '@type': 'BreadcrumbList',
-      itemListElement: crumbs.map((c, i) => ({ '@type': 'ListItem', position: i + 1, name: c.name, item: c.url })),
+      '@context': 'https://schema.org', '@type': 'BreadcrumbList',
+      itemListElement: [
+        { '@type': 'ListItem', position: 1, name: 'Home', item: `${SITE}/` },
+        { '@type': 'ListItem', position: 2, name: 'Directory', item: canonical },
+      ],
     },
   ];
-  return (
+
+  const typeOptions = TYPES.map((t) => `<option value="${esc(t)}">${esc(t)}</option>`).join('');
+  const rowsHtml = sorted.map((d, i) => row(d, i)).join('');
+
+  const html =
     `<!DOCTYPE html><html lang="en"><head>` +
     `<meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" />` +
     `<title>${esc(title)}</title>` +
@@ -174,116 +195,34 @@ function page({ canonical, title, desc, h1, intro, crumbs, chips, showCatSelect,
     `<nav class="top"><a href="/">Discover</a><a class="active" href="/directory">Directory</a><a href="/blog">Blog</a><a href="/pricing">Pricing</a><a class="cta" href="/submit">Submit your startup</a></nav>` +
     `</div></header>` +
     `<main class="wrap">` +
-    `<div class="hero">${crumbs.length > 1 ? `<div class="crumbs">${crumbs.map((c, i) => (i < crumbs.length - 1 ? `<a href="${esc(c.url)}">${esc(c.name)}</a> / ` : esc(c.name))).join('')}</div>` : ''}` +
-    `<h1>${esc(h1)}</h1><p>${intro}</p></div>` +
-    (chips ? `<div class="chips">${chips}</div>` : '') +
-    `<div class="controls"><input id="dir-search" type="search" placeholder="Search startups…" aria-label="Search startups" />` +
-    (showCatSelect ? `<select id="dir-cat" aria-label="Filter by category"><option value="all">All categories</option>${catOptions}</select>` : '') +
-    `<select id="dir-sort" aria-label="Sort"><option value="votes">Most upvoted</option><option value="name">Name A–Z</option></select>` +
-    `<span class="count" id="dir-info"></span></div>` +
-    `<div class="panel"><table id="dir-table"><thead><tr><th>#</th><th>Startup</th><th class="col-cat">Category</th><th class="col-tags">Tags</th><th>Upvotes</th><th>Link</th></tr></thead>` +
-    `<tbody>${rowsHtml}</tbody></table><div id="dir-empty">No startups match your search.</div></div>` +
-    `<div class="pager"><button id="dir-prev" type="button">← Prev</button><span class="info" id="dir-page"></span><button id="dir-next" type="button">Next →</button></div>` +
-    `<section class="seo">${seo}</section>` +
+    `<div class="hero"><h1>Startup &amp; SaaS Submission Directories</h1>` +
+    `<p>${sorted.length + 1} of the best places to submit your startup or SaaS for backlinks and traffic — ranked by Ahrefs Domain Rating (DR). Submit to the high-DR ones first for the strongest SEO boost.</p></div>` +
+    // Featured SubmitHunt
+    `<div class="feat"><div class="l"><div class="mark">S</div><div>` +
+    `<h2>SubmitHunt <span class="badge">Start here</span></h2>` +
+    `<p>Free listing, a dofollow DR ${FEATURED.dr} backlink, and your launch in front of thousands of founders &amp; early adopters.</p>` +
+    `<div class="meta"><span>DR ${FEATURED.dr}</span><span>${FEATURED.type}</span><span>Free</span><span class="do">Dofollow</span></div>` +
+    `</div></div><a class="submit" href="/submit">Submit your startup →</a></div>` +
+    // Controls
+    `<div class="controls"><input id="q" type="search" placeholder="Search directories…" aria-label="Search directories" />` +
+    `<select id="tp" aria-label="Filter by type"><option value="all">All types</option>${typeOptions}</select>` +
+    `<select id="lk" aria-label="Filter by link type"><option value="all">All links</option><option value="dofollow">Dofollow</option><option value="nofollow">Nofollow</option></select>` +
+    `<select id="so" aria-label="Sort"><option value="dr">Highest DR</option><option value="name">Name A–Z</option></select>` +
+    `<span class="count" id="inf"></span></div>` +
+    // Table
+    `<div class="panel"><table id="dt"><thead><tr><th>#</th><th>Directory</th><th class="col-type">Type</th><th>DR</th><th class="col-price">Pricing</th><th>Link</th><th>Visit</th><th>Submit</th></tr></thead>` +
+    `<tbody>${rowsHtml}</tbody></table><div id="empty">No directories match your filters.</div></div>` +
+    `<p class="note">DR (Domain Rating) values are approximate and updated periodically. Always review each directory's guidelines before submitting.</p>` +
+    // SEO copy
+    `<section class="seo"><h2>How to use this directory list</h2>` +
+    `<p>Submitting your startup to directories is one of the fastest ways to earn your first backlinks, referral traffic, and a brand presence in search. Work down this list from the highest Domain Rating, prioritising <strong>dofollow</strong> directories that pass SEO value. Start with <a href="/submit" style="color:#f97316">SubmitHunt</a> for a free dofollow listing, then read our guides on <a href="/blog/list-your-startup" style="color:#f97316">listing your startup</a>, <a href="/blog/saas-directory-submission" style="color:#f97316">SaaS directory submission</a>, and <a href="/blog/startup-link-submission" style="color:#f97316">startup link submission</a>.</p>` +
+    `<h2>Dofollow vs nofollow</h2><p>Dofollow links pass authority to your domain; nofollow links still bring traffic and keep your link profile natural. A healthy profile has both — so don't skip high-traffic nofollow sites like Product Hunt or Hacker News.</p></section>` +
     `</main>` +
-    `<footer class="site"><div class="wrap"><div>© ${new Date().getFullYear()} SubmitHunt — a directory for startups & AI projects.</div>` +
+    `<footer class="site"><div class="wrap"><div>© ${new Date().getFullYear()} SubmitHunt — submit your startup &amp; get a dofollow backlink.</div>` +
     `<div><a href="/">Discover</a> · <a href="/directory">Directory</a> · <a href="/submit">Submit</a> · <a href="/pricing">Pricing</a> · <a href="/blog">Blog</a></div></div></footer>` +
-    `<script>${CLIENT_JS}</script></body></html>`
-  );
-}
-
-export default async function handler(req, res) {
-  const requested = req.query && req.query.category ? slugify(String(req.query.category)) : null;
-
-  const all = await fetchAll(
-    'startups?select=slug,title,tagline,description,category,tags,upvote_count,url,logo_url&is_live=eq.true&or=(archived.is.null,archived.is.false)&order=upvote_count.desc'
-  );
-  const live = all.filter((s) => s.slug);
-
-  // Category counts for chips / select.
-  const counts = {};
-  for (const s of live) {
-    const c = (s.category && String(s.category).trim()) || 'Other';
-    counts[c] = (counts[c] || 0) + 1;
-  }
-  const cats = Object.keys(counts).sort((a, b) => counts[b] - counts[a]);
+    `<script>${CLIENT_JS}</script></body></html>`;
 
   res.setHeader('Content-Type', 'text/html; charset=utf-8');
   res.setHeader('Cache-Control', 'public, max-age=0, s-maxage=3600, stale-while-revalidate=86400');
-
-  // ---- Category page ----
-  if (requested) {
-    const matchCat = cats.find((c) => slugify(c) === requested);
-    if (!matchCat) {
-      res.status(404).send(
-        page({
-          canonical: `${SITE}/directory`,
-          title: 'Category not found — SubmitHunt Directory',
-          desc: 'Browse the full SubmitHunt startup directory.',
-          h1: 'Category not found',
-          intro: `That category does not exist. <a href="/directory" style="color:#f97316">Browse the full directory →</a>`,
-          crumbs: [{ name: 'Home', url: `${SITE}/` }, { name: 'Directory', url: `${SITE}/directory` }],
-          chips: '',
-          showCatSelect: false,
-          rowsHtml: '',
-          catOptions: '',
-          seo: '',
-          itemList: [],
-        })
-      );
-      return;
-    }
-    const items = live.filter((s) => ((s.category && String(s.category).trim()) || 'Other') === matchCat);
-    const canonical = `${SITE}/directory/${slugify(matchCat)}`;
-    const rowsHtml = items.map((s, i) => row(s, i)).join('');
-    const itemList = items.slice(0, 30).map((s, i) => ({
-      '@type': 'ListItem', position: i + 1, url: `${SITE}/startup/${encodeURIComponent(s.slug)}`, name: s.title,
-    }));
-    res.status(200).send(
-      page({
-        canonical,
-        title: `Best ${matchCat} Startups & Tools (${comma(items.length)}) — SubmitHunt Directory`,
-        desc: clip(`Browse ${comma(items.length)} ${matchCat} startups and tools on SubmitHunt. Discover, compare and visit the best ${matchCat} products — or submit your own startup for free.`, 160),
-        h1: `Best ${matchCat} Startups & AI Tools`,
-        intro: `Browse <strong>${comma(items.length)}</strong> ${esc(matchCat)} startups and tools submitted to SubmitHunt. Search, sort by upvotes, and click any name to see the full listing — or <a href="/submit" style="color:#f97316">submit your own</a> to get listed with a dofollow backlink.`,
-        crumbs: [
-          { name: 'Home', url: `${SITE}/` },
-          { name: 'Directory', url: `${SITE}/directory` },
-          { name: matchCat, url: canonical },
-        ],
-        chips: `<a class="chip" href="/directory">← All categories</a>` + cats.filter((c) => c !== matchCat).slice(0, 12).map((c) => `<a class="chip" href="/directory/${slugify(c)}">${esc(c)}</a>`).join(''),
-        showCatSelect: false,
-        rowsHtml,
-        catOptions: '',
-        seo: `<h2>About ${esc(matchCat)} on SubmitHunt</h2><p>SubmitHunt is a launch directory where founders submit startups and AI tools to get discovered and earn a dofollow backlink. This page collects every live ${esc(matchCat)} product on the platform, ranked by community upvotes. Found one you like? Open its page to read more and visit the site. Building something in ${esc(matchCat)}? <a href="/submit" style="color:#f97316">Submit your startup</a> to get listed.</p>`,
-        itemList,
-      })
-    );
-    return;
-  }
-
-  // ---- Main directory hub ----
-  const canonical = `${SITE}/directory`;
-  const rowsHtml = live.map((s, i) => row(s, i)).join('');
-  const catOptions = cats.map((c) => `<option value="${esc(c)}">${esc(c)} (${counts[c]})</option>`).join('');
-  const chips = cats.slice(0, 14).map((c) => `<a class="chip" href="/directory/${slugify(c)}">${esc(c)} <span style="color:#cbd5e1">${counts[c]}</span></a>`).join('');
-  const itemList = live.slice(0, 30).map((s, i) => ({
-    '@type': 'ListItem', position: i + 1, url: `${SITE}/startup/${encodeURIComponent(s.slug)}`, name: s.title,
-  }));
-  res.status(200).send(
-    page({
-      canonical,
-      title: `Startup Directory — Browse ${comma(live.length)}+ Startups & AI Tools | SubmitHunt`,
-      desc: clip(`Browse SubmitHunt's directory of ${comma(live.length)} live startups and AI tools across ${cats.length} categories. Discover new launches, filter by category, or submit your own startup for free.`, 160),
-      h1: `Startup Directory`,
-      intro: `Browse <strong>${comma(live.length)}</strong> live startups and AI tools across <strong>${cats.length}</strong> categories. Search, filter by category, sort by upvotes, and click any name for the full listing — or <a href="/submit" style="color:#f97316">submit your own startup</a> to get listed with a dofollow backlink.`,
-      crumbs: [{ name: 'Home', url: `${SITE}/` }, { name: 'Directory', url: canonical }],
-      chips,
-      showCatSelect: true,
-      rowsHtml,
-      catOptions,
-      seo: `<h2>What is the SubmitHunt directory?</h2><p>SubmitHunt is a Product Hunt alternative where founders submit startups and AI tools to get discovered by early adopters, investors, and other builders — and earn a dofollow backlink from a high-authority domain. This directory lists every live product on the platform, ranked by community upvotes, so you can browse the newest launches by category. <a href="/submit" style="color:#f97316">Submit your startup</a> to get listed for free.</p>`,
-      itemList,
-    })
-  );
+  res.status(200).send(html);
 }

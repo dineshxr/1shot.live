@@ -142,7 +142,7 @@ export default async function handler(req, res) {
   let title, desc, url, ogImg, meta, jsonld;
   if (startup) {
     url = `${SITE}/startup/${encodeURIComponent(startup.slug || slug)}`;
-    ogImg = `${SITE}/api/og?slug=${encodeURIComponent(startup.slug || slug)}`;
+    ogImg = `${SITE}/api/og.js?slug=${encodeURIComponent(startup.slug || slug)}`;
     title = `${startup.title} — ${clip(startup.tagline || startup.category || 'Startup', 60)} | SubmitHunt`;
     desc = clip(startup.tagline || startup.description || `${startup.title} on SubmitHunt — discover, upvote and visit.`, 160);
     meta = metaBlock(startup, url, ogImg, title, desc);

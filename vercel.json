@@ -14,19 +14,15 @@
   "rewrites": [
     {
       "source": "/sitemap.xml",
-      "destination": "/api/sitemap"
+      "destination": "/api/sitemap.js"
     },
     {
       "source": "/directory",
-      "destination": "/api/directory"
-    },
-    {
-      "source": "/directory/:category",
-      "destination": "/api/directory?category=:category"
+      "destination": "/api/directory.js"
     },
     {
       "source": "/startup/:slug",
-      "destination": "/api/startup?slug=:slug"
+      "destination": "/api/startup.js?slug=:slug"
     },
     {
       "source": "/blog",
