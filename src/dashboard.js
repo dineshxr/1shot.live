@@ -1,5 +1,6 @@
 import { auth } from './lib/auth.js';
 import { supabaseClient } from './lib/supabase-client.js';
+import { BADGE_LIGHT_EMBED } from './lib/backlink.js';
 
 class Dashboard {
     constructor() {
@@ -197,12 +198,12 @@ class Dashboard {
 
             <div class="mt-3 flex items-start gap-2 text-xs text-gray-500">
                 <i class="fas fa-link mt-0.5"></i>
-                <span>Plus a do-follow SubmitHunt backlink on each product's own site — verified when you submit it.</span>
+                <span><span class="font-semibold text-gray-600">Optional:</span> add a do-follow SubmitHunt badge to each product's own site to claim a permanent DR 37+ backlink. Skip it and you still launch — you just forfeit the link equity.</span>
             </div>
 
             ${engagementReady
                 ? `<div class="mt-4 px-4 py-3 bg-emerald-50 border border-emerald-200 rounded-xl text-sm text-emerald-800 font-medium flex items-center gap-2">
-                       <i class="fas fa-circle-check"></i> Engagement complete — add your backlink at submission to launch free.
+                       <i class="fas fa-circle-check"></i> Engagement complete — you can launch free now.
                        <a href="/submit" class="ml-auto underline underline-offset-2 whitespace-nowrap">Submit a product</a>
                    </div>`
                 : `<div class="mt-4 flex flex-wrap items-center gap-2">
@@ -397,6 +398,21 @@ class Dashboard {
                         </a>
                     </div>
 
+                    ${!isPremium && !isFeatured && !listing.backlink_verified_at ? `
+                    <div class="border-t border-gray-200 pt-4 mt-4">
+                        <div class="rounded-lg border border-amber-200 bg-amber-50 p-3">
+                            <p class="text-[13px] text-amber-800 leading-snug">
+                                <i class="fas fa-triangle-exclamation text-[11px] mr-1"></i>
+                                <strong>No do-follow backlink yet.</strong> Add our badge to your product's site to claim your free DR 37+ backlink and boost your own SEO.
+                            </p>
+                            <button onclick="dashboard.copyBadge(this)"
+                                    class="mt-2 inline-flex items-center gap-1.5 text-xs font-semibold text-amber-900 border border-amber-300 bg-white px-2.5 py-1 rounded-lg hover:bg-amber-100 transition-colors">
+                                <i class="fas fa-copy text-[10px]"></i> Copy badge embed
+                            </button>
+                        </div>
+                    </div>
+                    ` : ''}
+
                     ${!isPremium && !isFeatured ? `
                     <div class="border-t border-gray-200 pt-4 mt-4">
                         <p class="text-[11px] uppercase tracking-wider font-semibold text-gray-500 mb-2">Boost your listing</p>
@@ -415,6 +431,18 @@ class Dashboard {
                 </div>
             </div>
         `;
+    }
+
+    // Copy the do-follow badge embed from a listing's backlink reminder.
+    async copyBadge(btn) {
+        try {
+            await navigator.clipboard.writeText(BADGE_LIGHT_EMBED);
+            const original = btn.innerHTML;
+            btn.innerHTML = '<i class="fas fa-check text-[10px]"></i> Copied — now paste it on your site';
+            setTimeout(() => { btn.innerHTML = original; }, 2200);
+        } catch (e) {
+            console.warn('Failed to copy badge embed:', e);
+        }
     }
 
     showUpgradeModal(listingId, listingTitle, productType) {

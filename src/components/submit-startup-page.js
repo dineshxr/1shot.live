@@ -60,10 +60,14 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
   const [freeStatus, setFreeStatus] = useState(null);
   const [checkingStatus, setCheckingStatus] = useState(false);
   const [wasLocked, setWasLocked] = useState(false); // saw the unlock panel this visit
-  // Backlink verification (requirement #3)
+  // Backlink: an OPTIONAL final step. A do-follow badge earns a DR 37+ backlink,
+  // but the maker can skip it (skipBacklink) and launch without — they just
+  // forfeit the link equity (and we keep reminding them on the dashboard + in
+  // the launch email).
   const [backlinkUrl, setBacklinkUrl] = useState('');
   const [verifyingBacklink, setVerifyingBacklink] = useState(false);
   const [backlinkError, setBacklinkError] = useState(null);
+  const [skipBacklink, setSkipBacklink] = useState(false); // "continue with a no-follow backlink"
   const [copiedEmbed, setCopiedEmbed] = useState(''); // '' | 'light' | 'dark'
   // Phase 1 auto-fill (scrape metadata from the URL)
   const [autoFilling, setAutoFilling] = useState(false);
@@ -697,11 +701,12 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
       return;
     }
 
-    // Free launches must be unlocked first: upvote 3 + comment 1 + a verified
-    // do-follow backlink. The DB trigger enforces this regardless; this just
-    // catches it early with a friendlier message.
+    // Free launches must be unlocked first: upvote 3 + comment 1. The do-follow
+    // backlink is optional now, so it's not part of this gate. The DB trigger
+    // enforces the engagement rule regardless; this just catches it early with a
+    // friendlier message.
     if (formData.plan === 'free' && freeStatus && !freeStatus.eligible) {
-      setError('Complete the unlock steps first — upvote 3 products, comment on 1, and verify your backlink.');
+      setError('Complete the unlock steps first — upvote 3 products and comment on 1.');
       return;
     }
 
@@ -962,7 +967,7 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
         }
         if (/FREE_UNLOCK_REQUIRED/i.test(msg)) {
           checkFreeStatus(); // re-sync the unlock checklist
-          throw new Error('Almost there — finish the unlock steps (upvote 3, comment 1, verify your backlink), then try again.');
+          throw new Error('Almost there — finish the unlock steps (upvote 3 products, comment on 1), then try again.');
         }
         if (res.error.code === '23505' && /email/i.test(msg)) {
           // Transitional: the one-active-free-launch-per-email unique index
@@ -1779,23 +1784,29 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
                 </div>
               ` : ''}
 
-              <!-- Final step: do-follow backlink (after slot selection; gates submit, not unlock) -->
+              <!-- Optional final step: do-follow backlink (after slot selection).
+                   Recommended — earns a DR 37+ do-follow backlink — but skippable
+                   via the toggle below. The DB gate no longer requires it. -->
               ${formData.plan === 'free' && freeUnlocked ? html`
-                <div class="border ${backlinkVerified ? 'border-emerald-200' : 'border-gray-200'} rounded-2xl overflow-hidden">
-                  <div class="flex items-start gap-4 px-5 sm:px-6 pt-5 pb-4 ${backlinkVerified ? 'bg-emerald-50/50' : 'bg-gray-50/60'}">
+                <div class="border ${backlinkVerified ? 'border-emerald-200' : (skipBacklink ? 'border-amber-200' : 'border-gray-200')} rounded-2xl overflow-hidden">
+                  <div class="flex items-start gap-4 px-5 sm:px-6 pt-5 pb-4 ${backlinkVerified ? 'bg-emerald-50/50' : (skipBacklink ? 'bg-amber-50/40' : 'bg-gray-50/60')}">
                     <div class="w-10 h-10 rounded-xl border flex items-center justify-center shrink-0 ${backlinkVerified ? 'bg-emerald-50 border-emerald-100 text-emerald-600' : 'bg-amber-50 border-amber-100 text-amber-600'}">
                       <i class="fas fa-link"></i>
                     </div>
                     <div class="flex-1 min-w-0">
-                      <p class="font-semibold text-gray-900 text-sm">Final step — add a do-follow backlink</p>
-                      <p class="text-sm text-gray-500 mt-0.5">Place our badge on your homepage or footer, then verify it to finish your free launch.</p>
+                      <p class="font-semibold text-gray-900 text-sm">Add a do-follow backlink <span class="font-normal text-gray-400">— recommended</span></p>
+                      <p class="text-sm text-gray-500 mt-0.5">Place our badge on your homepage or footer to claim a permanent <strong>DR 37+ do-follow backlink</strong>. Optional — you can skip and launch without it.</p>
                     </div>
                     ${backlinkVerified ? html`<span class="w-7 h-7 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-600 flex items-center justify-center shrink-0 mt-0.5"><i class="fas fa-check text-[11px]"></i></span>` : ''}
                   </div>
 
                   <div class="px-5 sm:px-6 pb-5 pt-1">
-                    ${!backlinkVerified ? html`
-                      <div class="space-y-3">
+                    ${backlinkVerified ? html`
+                      <p class="text-sm text-emerald-700 font-medium flex items-center gap-1.5">
+                        <i class="fas fa-check"></i> Backlink verified — your DR 37+ do-follow link is locked in.
+                      </p>
+                    ` : html`
+                      <div class="space-y-3 ${skipBacklink ? 'opacity-60 pointer-events-none' : ''}">
                         <div class="rounded-xl border border-gray-200 bg-gray-50/60 p-4">
                           <span class="text-xs font-semibold uppercase tracking-wider text-gray-500">Embed a badge — pick a style</span>
                           <div class="grid sm:grid-cols-2 gap-3 mt-3">
@@ -1826,10 +1837,15 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
                           ${backlinkError ? html`<p class="text-sm text-red-600 mt-1">${backlinkError}</p>` : ''}
                         </div>
                       </div>
-                    ` : html`
-                      <p class="text-sm text-emerald-700 font-medium flex items-center gap-1.5">
-                        <i class="fas fa-check"></i> Backlink verified — you're ready to submit.
-                      </p>
+
+                      <!-- Skip toggle: continue with a no-follow (or no) backlink -->
+                      <label class="mt-4 flex items-start gap-3 rounded-xl border ${skipBacklink ? 'border-amber-300 bg-amber-50/70' : 'border-gray-200 bg-white'} p-3 cursor-pointer transition-colors">
+                        <input type="checkbox" checked=${skipBacklink} onChange=${(e) => setSkipBacklink(e.target.checked)} class="mt-0.5 h-4 w-4 rounded border-gray-300 text-amber-600 focus:ring-amber-400" />
+                        <span class="text-sm text-gray-700">
+                          <span class="font-medium text-gray-900">Continue with a no-follow backlink</span> — skip verification and launch now.
+                          <span class="block text-xs text-amber-700 mt-0.5">You'll forfeit your free DR 37+ do-follow link equity. You can still add it later from your dashboard.</span>
+                        </span>
+                      </label>
                     `}
                   </div>
                 </div>
@@ -1878,14 +1894,15 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
         setShowScheduleConfirm(true);
       }}
                       class="sh-btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
-                      disabled=${loading || !backlinkVerified || (!turnstileToken && !turnstileUnavailable)}
-                      title=${!backlinkVerified ? 'Verify your backlink above to enable submission' : ''}
+                      disabled=${loading || !(backlinkVerified || skipBacklink) || (!turnstileToken && !turnstileUnavailable)}
+                      title=${!(backlinkVerified || skipBacklink) ? 'Verify your backlink above, or check “Continue with a no-follow backlink” to skip' : ''}
                     >
                       ${loading
                         ? html`<i class="fas fa-spinner fa-spin text-xs"></i> Submitting…`
                         : html`${formData.launchDate ? 'Schedule free launch' : 'Submit free launch'} <i class="fas fa-arrow-right text-xs"></i>`}
                     </button>
-                    ${!backlinkVerified ? html`<p class="text-xs text-gray-400">Verify your backlink above to enable submission.</p>` : ''}
+                    ${!backlinkVerified && !skipBacklink ? html`<p class="text-xs text-gray-400">Verify your backlink above, or check “Continue with a no-follow backlink” to skip.</p>` : ''}
+                    ${!backlinkVerified && skipBacklink ? html`<p class="text-xs text-amber-600">Launching without a do-follow backlink — you'll miss the DR 37+ link equity.</p>` : ''}
                   </div>
                 ` : ''}
 
