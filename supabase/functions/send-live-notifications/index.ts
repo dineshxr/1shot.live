@@ -12,6 +12,17 @@ serve(async (req) => {
     return new Response('ok', { headers: corsHeaders })
   }
 
+  // verify_jwt is disabled for this function (pg_cron calls it via pg_net, which
+  // can't mint platform JWTs). This shared-secret check is the auth gate; the
+  // secret lives in Vault (DB side) and in the CRON_SECRET edge secret.
+  const cronSecret = Deno.env.get('CRON_SECRET')
+  if (!cronSecret || req.headers.get('x-cron-secret') !== cronSecret) {
+    return new Response(
+      JSON.stringify({ error: 'Unauthorized', success: false }),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 401 }
+    )
+  }
+
   try {
     // Create Supabase client
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!
@@ -328,6 +339,7 @@ async function sendLiveNotification(listing: any, blogUrl: string | null = null)
 
     const startupUrl = `https://submithunt.com/startup/${listing.slug || listing.id}`;
     const isPaid = listing.plan === 'premium' || listing.plan === 'featured' || listing.plan === 'pro' || listing.plan === 'lite';
+    const isFeatured = listing.plan === 'featured';
     const shareText = encodeURIComponent(`I just launched ${listing.title} on @SubmitHunt! Check it out and give it an upvote 🚀`);
 
     // Free makers can skip the do-follow backlink at submit time. If they did,
@@ -339,7 +351,11 @@ async function sendLiveNotification(listing: any, blogUrl: string | null = null)
     const emailData = {
       from: 'SubmitHunt <hello@submithunt.com>',
       to: [listing.author_email],
-      subject: `${listing.title} is live — here's how to maximize your launch`,
+      subject: isFeatured
+        ? `${listing.title} is live — your Featured Spot is active`
+        : isPaid
+          ? `${listing.title} is live — your Premium launch is rolling`
+          : `${listing.title} is live — here's how to maximize your launch`,
       html: `
 <!DOCTYPE html>
 <html>
@@ -408,9 +424,9 @@ async function sendLiveNotification(listing: any, blogUrl: string | null = null)
       <!-- Upsell for Free Users -->
       <div style="background: #1a1a1a; border-radius: 8px; padding: 28px; margin: 25px 0;">
         <p style="margin: 0 0 6px 0; color: #f59e0b; font-size: 12px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px;">For ${listing.title}</p>
-        <h3 style="margin: 0 0 12px 0; color: #fff; font-size: 22px; line-height: 1.3;">Get a guaranteed dofollow backlink for $20</h3>
+        <h3 style="margin: 0 0 12px 0; color: #fff; font-size: 22px; line-height: 1.3;">Your free listing comes down in 7 days. Premium keeps working for 14.</h3>
         <p style="margin: 0 0 20px 0; color: #ccc; font-size: 14px; line-height: 1.6;">
-          Most founders pay $50-200 for a single backlink from a DR 37+ site. With a Premium upgrade, you get one automatically — plus your listing stays on the homepage for 14 days instead of 7.
+          Launch day gets you the spike — the second week is where steady traffic compounds. Premium doubles your homepage run and includes a guaranteed dofollow backlink from our DR 37+ site (founders routinely pay $50–200 for one of those elsewhere).
         </p>
         
         <table style="width: 100%; margin-bottom: 20px;" cellpadding="0" cellspacing="0">
@@ -453,12 +469,26 @@ async function sendLiveNotification(listing: any, blogUrl: string | null = null)
         </div>
         <p style="margin: 12px 0 0 0; color: #888; font-size: 12px; text-align: center;">One-time payment. No subscription.</p>
       </div>
+      ` : isFeatured ? `
+      <!-- Featured Spot recap -->
+      <div style="background: linear-gradient(135deg, #7c3aed 0%, #5b21b6 100%); border-radius: 8px; padding: 25px; margin: 25px 0;">
+        <h3 style="margin: 0 0 10px 0; color: #fff; font-size: 18px;">Your Featured Spot is live</h3>
+        <p style="margin: 0 0 12px 0; color: #fff; font-size: 14px; line-height: 1.6; opacity: 0.95;">
+          ${listing.title} is running with featured placement in the feed — gradient-border card, prime visibility to every visitor for the next 7 days. Your guaranteed dofollow backlink (DR 37+) goes live within 24 hours.
+        </p>
+        <p style="margin: 0; color: #ddd6fe; font-size: 13px; line-height: 1.6;">
+          Make the placement count: share your listing in the first few hours — featured products that do convert the extra eyeballs into upvotes and a shot at the Top 3 badge.
+        </p>
+      </div>
       ` : `
-      <!-- Paid Plan Thank You -->
+      <!-- Premium recap -->
       <div style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); border-radius: 8px; padding: 25px; margin: 25px 0;">
         <h3 style="margin: 0 0 10px 0; color: #fff; font-size: 18px;">Your Premium benefits are active</h3>
-        <p style="margin: 0; color: #fff; font-size: 14px; line-height: 1.6; opacity: 0.95;">
-          Your listing has priority placement and extended homepage visibility. Your dofollow backlink (37+ DR) will be live within 24 hours. We'll also feature ${listing.title} in our next newsletter to 2,000+ subscribers.
+        <p style="margin: 0 0 12px 0; color: #fff; font-size: 14px; line-height: 1.6; opacity: 0.95;">
+          ${listing.title} gets priority placement and stays on the homepage for 14 days — double the standard run. Your guaranteed dofollow backlink (DR 37+) goes live within 24 hours, and we'll feature you in our next newsletter to 2,000+ subscribers.
+        </p>
+        <p style="margin: 0; color: #d1fae5; font-size: 13px; line-height: 1.6;">
+          Make the long run count: share early, reply to every comment, and let the second week compound what launch day starts.
         </p>
       </div>
       `}
@@ -519,8 +549,8 @@ ${badgeEmbed}
 
 Add it from your dashboard: https://submithunt.com/dashboard
 
-` : ''}${!isPaid ? `GET A GUARANTEED BACKLINK FOR $20
-Most founders pay $50-200 for a single backlink from a DR 37+ site. With a Premium upgrade, you get one automatically — plus your listing stays on the homepage for 14 days instead of 7.
+` : ''}${!isPaid ? `YOUR FREE LISTING COMES DOWN IN 7 DAYS. PREMIUM KEEPS WORKING FOR 14.
+Launch day gets you the spike — the second week is where steady traffic compounds. Premium doubles your homepage run and includes a guaranteed dofollow backlink from our DR 37+ site (founders routinely pay $50–200 for one of those elsewhere).
 
 - Permanent dofollow backlink (37+ DR)
 - 14 days on homepage (vs 7 for free)
@@ -529,8 +559,14 @@ Most founders pay $50-200 for a single backlink from a DR 37+ site. With a Premi
 
 Upgrade: https://submithunt.com/pricing
 One-time payment. No subscription.
+` : isFeatured ? `YOUR FEATURED SPOT IS LIVE
+${listing.title} is running with featured placement in the feed — gradient-border card, prime visibility to every visitor for the next 7 days. Your guaranteed dofollow backlink (DR 37+) goes live within 24 hours.
+
+Make the placement count: share your listing in the first few hours — featured products that do convert the extra eyeballs into upvotes and a shot at the Top 3 badge.
 ` : `YOUR PREMIUM BENEFITS ARE ACTIVE
-Your listing has priority placement and extended homepage visibility. Your dofollow backlink (37+ DR) will be live within 24 hours.
+${listing.title} gets priority placement and stays on the homepage for 14 days — double the standard run. Your guaranteed dofollow backlink (DR 37+) goes live within 24 hours, and we'll feature you in our next newsletter to 2,000+ subscribers.
+
+Make the long run count: share early, reply to every comment, and let the second week compound what launch day starts.
 `}
 
 ${blogUrl ? `YOUR BLOG POST IS LIVE

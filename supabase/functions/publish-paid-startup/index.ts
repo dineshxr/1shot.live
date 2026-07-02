@@ -211,13 +211,18 @@ async function sendLiveNotification(listing: any, blogUrl: string | null = null)
     }
 
     const startupUrl = `https://submithunt.com/startup/${listing.slug || listing.id}`;
-    const isPaidPlan = ['premium', 'featured', 'pro', 'lite'].includes(listing.plan);
+    const isFeatured = listing.plan === 'featured';
+    const planLabel = isFeatured ? 'Featured Spot ($50)' : 'Premium Launch ($20)';
     const shareText = encodeURIComponent(`I just launched ${listing.title} on @SubmitHunt! Check it out and give it an upvote 🚀`);
 
+    // This is the ONLY email a paid launch gets (notification_sent is stamped
+    // right after) — thank-you + summary + live status, no upsell.
     const emailData = {
       from: 'SubmitHunt <hello@submithunt.com>',
       to: [listing.author_email],
-      subject: `${listing.title} is live — here's how to maximize your launch`,
+      subject: isFeatured
+        ? `Payment received — your Featured Spot for ${listing.title} is live`
+        : `Payment received — ${listing.title} is live on SubmitHunt`,
       html: `
 <!DOCTYPE html>
 <html>
@@ -231,24 +236,38 @@ async function sendLiveNotification(listing: any, blogUrl: string | null = null)
     
     <!-- Header -->
     <div style="background-color: #60a5fa; padding: 30px; text-align: center; border-bottom: 4px solid #000;">
-      <h1 style="margin: 0; color: #000; font-size: 26px; font-weight: bold;">${listing.title} is LIVE</h1>
-      <p style="margin: 8px 0 0 0; color: #1a1a1a; font-size: 15px;">Your listing is now visible to thousands of founders and early adopters</p>
+      <h1 style="margin: 0; color: #000; font-size: 26px; font-weight: bold;">Thank you — ${listing.title} is live</h1>
+      <p style="margin: 8px 0 0 0; color: #1a1a1a; font-size: 15px;">Payment confirmed. Your listing is already visible to founders and early adopters.</p>
     </div>
-    
+
     <!-- Main Content -->
     <div style="padding: 30px;">
       <p style="font-size: 16px; color: #333; margin-bottom: 20px; line-height: 1.6;">
         Hey ${listing.author_name || 'there'},
       </p>
-      
+
       <p style="font-size: 16px; color: #555; line-height: 1.6; margin-bottom: 0;">
-        <strong>${listing.title}</strong> just went live on SubmitHunt. Your product page is ready:
+        Thanks for going ${isFeatured ? 'Featured' : 'Premium'}. Your payment went through and <strong>${listing.title}</strong> skipped the queue — here's your launch summary:
       </p>
-      
-      <!-- Startup Card -->
+
+      <!-- Summary Card -->
       <div style="background-color: #f8f9fa; border: 2px solid #e9ecef; border-radius: 8px; padding: 20px; margin: 20px 0;">
         <h2 style="margin: 0 0 8px 0; color: #333; font-size: 20px;">${listing.title}</h2>
         <p style="margin: 0 0 15px 0; color: #666; font-size: 14px; line-height: 1.5;">${listing.description?.substring(0, 150) || ''}${listing.description?.length > 150 ? '...' : ''}</p>
+        <table cellpadding="0" cellspacing="0" style="width: 100%; font-size: 14px; margin-bottom: 15px;">
+          <tr>
+            <td style="padding: 5px 0; color: #888; width: 110px;">Plan</td>
+            <td style="padding: 5px 0; color: #333; font-weight: bold;">${planLabel}</td>
+          </tr>
+          <tr>
+            <td style="padding: 5px 0; color: #888;">Status</td>
+            <td style="padding: 5px 0; color: #16a34a; font-weight: bold;">Live now</td>
+          </tr>
+          <tr>
+            <td style="padding: 5px 0; color: #888;">Visibility</td>
+            <td style="padding: 5px 0; color: #333; font-weight: bold;">${isFeatured ? 'Featured placement, 7 days' : 'Homepage, 14 days'}</td>
+          </tr>
+        </table>
         <a href="${startupUrl}" style="display: inline-block; background-color: #000; color: #fff; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 14px;">View Your Listing</a>
       </div>
       
@@ -264,61 +283,20 @@ async function sendLiveNotification(listing: any, blogUrl: string | null = null)
         <a href="https://twitter.com/intent/tweet?text=${shareText}&url=${encodeURIComponent(startupUrl)}" style="display: inline-block; background-color: #000; color: #fff; padding: 10px 20px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 14px;">Share on X</a>
       </div>
       
-      ${!isPaidPlan ? `
-      <!-- Upsell for Free Users -->
-      <div style="background: #1a1a1a; border-radius: 8px; padding: 28px; margin: 25px 0;">
-        <p style="margin: 0 0 6px 0; color: #f59e0b; font-size: 12px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px;">For ${listing.title}</p>
-        <h3 style="margin: 0 0 12px 0; color: #fff; font-size: 22px; line-height: 1.3;">Get a guaranteed dofollow backlink for $20</h3>
-        <p style="margin: 0 0 20px 0; color: #ccc; font-size: 14px; line-height: 1.6;">
-          Most founders pay $50-200 for a single backlink from a DR 37+ site. With a Premium upgrade, you get one automatically &mdash; plus your listing stays on the homepage for 14 days instead of 7.
+      ${isFeatured ? `
+      <!-- Featured Spot recap -->
+      <div style="background: linear-gradient(135deg, #7c3aed 0%, #5b21b6 100%); border-radius: 8px; padding: 25px; margin: 25px 0;">
+        <h3 style="margin: 0 0 10px 0; color: #fff; font-size: 18px;">Your Featured Spot benefits are active</h3>
+        <p style="margin: 0; color: #fff; font-size: 14px; line-height: 1.6; opacity: 0.95;">
+          ${listing.title} is running with featured placement in the feed — gradient-border card, prime visibility to every visitor for the next 7 days. Your guaranteed dofollow backlink (DR 37+) goes live within 24 hours.
         </p>
-        
-        <table style="width: 100%; margin-bottom: 20px;" cellpadding="0" cellspacing="0">
-          <tr>
-            <td style="padding: 8px 0; border-bottom: 1px solid #333;">
-              <table cellpadding="0" cellspacing="0"><tr>
-                <td style="color: #22c55e; font-size: 16px; padding-right: 10px; vertical-align: top;">&#10003;</td>
-                <td style="color: #e5e5e5; font-size: 14px;">Permanent dofollow backlink (37+ DR)</td>
-              </tr></table>
-            </td>
-          </tr>
-          <tr>
-            <td style="padding: 8px 0; border-bottom: 1px solid #333;">
-              <table cellpadding="0" cellspacing="0"><tr>
-                <td style="color: #22c55e; font-size: 16px; padding-right: 10px; vertical-align: top;">&#10003;</td>
-                <td style="color: #e5e5e5; font-size: 14px;">14 days on homepage (vs 7 for free)</td>
-              </tr></table>
-            </td>
-          </tr>
-          <tr>
-            <td style="padding: 8px 0; border-bottom: 1px solid #333;">
-              <table cellpadding="0" cellspacing="0"><tr>
-                <td style="color: #22c55e; font-size: 16px; padding-right: 10px; vertical-align: top;">&#10003;</td>
-                <td style="color: #e5e5e5; font-size: 14px;">Featured in newsletter (2,000+ subscribers)</td>
-              </tr></table>
-            </td>
-          </tr>
-          <tr>
-            <td style="padding: 8px 0;">
-              <table cellpadding="0" cellspacing="0"><tr>
-                <td style="color: #22c55e; font-size: 16px; padding-right: 10px; vertical-align: top;">&#10003;</td>
-                <td style="color: #e5e5e5; font-size: 14px;">Skip the queue on future launches</td>
-              </tr></table>
-            </td>
-          </tr>
-        </table>
-        
-        <div style="text-align: center;">
-          <a href="https://submithunt.com/pricing" style="display: inline-block; background-color: #f59e0b; color: #000; padding: 14px 32px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 15px;">Upgrade to Premium &mdash; $20</a>
-        </div>
-        <p style="margin: 12px 0 0 0; color: #888; font-size: 12px; text-align: center;">One-time payment. No subscription.</p>
       </div>
       ` : `
-      <!-- Paid Plan Thank You -->
+      <!-- Premium recap -->
       <div style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); border-radius: 8px; padding: 25px; margin: 25px 0;">
         <h3 style="margin: 0 0 10px 0; color: #fff; font-size: 18px;">Your Premium benefits are active</h3>
         <p style="margin: 0; color: #fff; font-size: 14px; line-height: 1.6; opacity: 0.95;">
-          Your listing has priority placement and extended homepage visibility. Your dofollow backlink (37+ DR) will be live within 24 hours. We'll also feature ${listing.title} in our next newsletter to 2,000+ subscribers.
+          ${listing.title} has priority placement and stays on the homepage for 14 days — double the standard run. Your guaranteed dofollow backlink (DR 37+) goes live within 24 hours, and we'll feature you in our next newsletter to 2,000+ subscribers.
         </p>
       </div>
       `}
@@ -357,12 +335,18 @@ async function sendLiveNotification(listing: any, blogUrl: string | null = null)
 </body>
 </html>
       `,
-      text: `${listing.title} is live on SubmitHunt
+      text: `Thank you — ${listing.title} is live on SubmitHunt
 
 Hey ${listing.author_name || 'there'},
 
-${listing.title} just went live on SubmitHunt. Your product page is ready:
-${startupUrl}
+Thanks for going ${isFeatured ? 'Featured' : 'Premium'}. Your payment went through and ${listing.title} skipped the queue.
+
+YOUR LAUNCH SUMMARY
+- Plan: ${planLabel}
+- Status: Live now
+- Visibility: ${isFeatured ? 'Featured placement, 7 days' : 'Homepage, 14 days'}
+
+Your product page: ${startupUrl}
 
 THE #1 THING THAT SEPARATES TOP LAUNCHES
 Products that reach the Top 3 on launch day all have one thing in common: their founders shared the listing within the first few hours.
@@ -371,18 +355,10 @@ Top 3 products earn a permanent badge + a dofollow backlink from our 37+ DR site
 
 Share on X: https://twitter.com/intent/tweet?text=${shareText}&url=${encodeURIComponent(startupUrl)}
 
-${!isPaidPlan ? `GET A GUARANTEED BACKLINK FOR $20
-Most founders pay $50-200 for a single backlink from a DR 37+ site. With a Premium upgrade, you get one automatically -- plus your listing stays on the homepage for 14 days instead of 7.
-
-- Permanent dofollow backlink (37+ DR)
-- 14 days on homepage (vs 7 for free)
-- Featured in newsletter (2,000+ subscribers)
-- Skip the queue on future launches
-
-Upgrade: https://submithunt.com/pricing
-One-time payment. No subscription.
+${isFeatured ? `YOUR FEATURED SPOT BENEFITS ARE ACTIVE
+${listing.title} is running with featured placement in the feed — gradient-border card, prime visibility to every visitor for the next 7 days. Your guaranteed dofollow backlink (DR 37+) goes live within 24 hours.
 ` : `YOUR PREMIUM BENEFITS ARE ACTIVE
-Your listing has priority placement and extended homepage visibility. Your dofollow backlink (37+ DR) will be live within 24 hours.
+${listing.title} has priority placement and stays on the homepage for 14 days — double the standard run. Your guaranteed dofollow backlink (DR 37+) goes live within 24 hours, and we'll feature you in our next newsletter to 2,000+ subscribers.
 `}
 
 ${blogUrl ? `YOUR BLOG POST IS LIVE
