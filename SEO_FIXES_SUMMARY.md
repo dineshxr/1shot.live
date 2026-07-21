@@ -87,7 +87,7 @@ Add descriptive paragraphs (200+ words) to each page. Example for submit.html:
   <p class="mb-4">
     Submit your startup to SubmitHunt and get discovered by thousands of founders, 
     investors, and early adopters. Our platform provides instant visibility with a 
-    high-quality dofollow backlink from our DR 37+ domain, helping boost your SEO 
+    high-quality dofollow backlink from our DR 38+ domain, helping boost your SEO 
     rankings and drive organic traffic to your website.
   </p>
   <p class="mb-4">

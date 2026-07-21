@@ -116,7 +116,7 @@ export const SubmitGameForm = ({ isOpen, onClose }) => {
         <h2 class="text-2xl font-bold mb-2 text-black">Submit Your Project</h2>
         <div class="mb-4 bg-yellow-300 p-3 border border-black rounded">
           <p class="font-bold flex items-center">
-            <span class="mr-2">🚀</span> Launch Today, Get a 37+ DR Backlink
+            <span class="mr-2">🚀</span> Launch Today, Get a 38+ DR Backlink
           </p>
         </div>
 

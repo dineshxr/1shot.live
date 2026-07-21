@@ -13,7 +13,7 @@ const esc = (s) =>
 
 // SubmitHunt — pinned + highlighted at the top.
 const FEATURED = {
-  name: 'SubmitHunt', url: SITE, submit: '/submit', dr: 37,
+  name: 'SubmitHunt', url: SITE, submit: '/submit', dr: 38,
   type: 'Startup Directory', pricing: 'Free', dofollow: true,
 };
 

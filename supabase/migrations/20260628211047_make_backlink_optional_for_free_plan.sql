@@ -7,7 +7,7 @@
 --
 -- The backlink is now OPTIONAL. A free launch is unlocked by community
 -- engagement alone (upvote 3 + comment 1). Makers can still add a do-follow
--- badge to claim a DR 37+ backlink — and we keep nudging them to (submit form
+-- badge to claim a DR 38+ backlink — and we keep nudging them to (submit form
 -- skip toggle, dashboard, launch email) — but it no longer blocks the launch.
 --
 -- We only relax the `eligible` computation. sh_free_submission_status() STILL

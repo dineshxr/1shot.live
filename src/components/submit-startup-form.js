@@ -931,11 +931,11 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
           <div class="mt-6 p-4 border-2 border-black rounded bg-orange-50">
             <h3 class="font-bold text-lg mb-2 flex items-center">
               <i class="fas fa-award mr-2 text-orange-600"></i>
-              Get Your Badge & Keep Your 37+ DR Backlink!
+              Get Your Badge & Keep Your 38+ DR Backlink!
             </h3>
             <div class="mb-4 p-3 bg-yellow-100 border border-yellow-400 rounded">
               <p class="text-sm font-bold text-yellow-800 mb-1">⚠️ Important:</p>
-              <p class="text-sm text-yellow-800">Add our badge to your website to make your listing <strong>permanent</strong> and keep your 37+ DR backlink as <strong>dofollow</strong>. Without the badge, your backlink will become nofollow after 30 days. <strong>Note:</strong> You need at least 3 upvotes to secure your permanent backlink.</p>
+              <p class="text-sm text-yellow-800">Add our badge to your website to make your listing <strong>permanent</strong> and keep your 38+ DR backlink as <strong>dofollow</strong>. Without the badge, your backlink will become nofollow after 30 days. <strong>Note:</strong> You need at least 3 upvotes to secure your permanent backlink.</p>
             </div>
             
             <div class="space-y-4">
@@ -1082,7 +1082,7 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
         ` : html`
           <div class="mb-4 bg-yellow-300 p-3 border border-black rounded">
             <p class="font-bold flex items-center">
-              <span class="mr-2">🚀</span> Submit Your Startup, Get a 37+ DR Backlink
+              <span class="mr-2">🚀</span> Submit Your Startup, Get a 38+ DR Backlink
             </p>
             <p class="text-sm mt-1">Join hundreds of founders who chose SubmitHunt as their Product Hunt alternative</p>
             <p class="text-xs mt-2 font-medium text-gray-700">
@@ -1390,7 +1390,7 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
                     </div>
                     <ul class="list-disc pl-5 space-y-1 mb-3">
                       <li>Live on homepage for 14 days</li>
-                      <li><strong>Dofollow backlink (37+ DR)</strong></li>
+                      <li><strong>Dofollow backlink (38+ DR)</strong></li>
                       <li>Launch immediately (skip the queue)</li>
                       <li>Featured in our startup newsletter</li>
                     </ul>

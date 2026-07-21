@@ -3,7 +3,7 @@ import { html } from 'htm/preact';
 // Before/After Domain-Rating comparison cards (same design as the sign-in
 // success screen), reused on the pricing and featured pages.
 const X_ROWS = ['Buried past page one', 'No high-authority backlinks', 'Hard to get discovered'];
-const CHECK_ROWS = ['Featured on the homepage', '37+ DR dofollow backlink', 'Seen by thousands of founders'];
+const CHECK_ROWS = ['Featured on the homepage', '38+ DR dofollow backlink', 'Seen by thousands of founders'];
 
 export const DrComparison = () => html`
   <section class="py-12 sm:py-16">
@@ -11,7 +11,7 @@ export const DrComparison = () => html`
       <div class="text-center mb-8">
         <span class="text-xs font-semibold uppercase tracking-wider text-orange-600">The backlink effect</span>
         <h2 class="text-2xl sm:text-3xl font-semibold tracking-tight text-gray-900 mt-2">What a SubmitHunt launch does for your DR</h2>
-        <p class="text-gray-500 mt-2">Every plan ships a do-follow 37+ DR backlink. Here's the before and after.</p>
+        <p class="text-gray-500 mt-2">Every plan ships a do-follow 38+ DR backlink. Here's the before and after.</p>
       </div>
 
       <div class="grid sm:grid-cols-2 gap-4">
@@ -38,7 +38,7 @@ export const DrComparison = () => html`
           <div class="flex items-baseline gap-2 mt-1 mb-4">
             <span class="text-3xl font-bold tracking-tight text-gray-300">DR 12</span>
             <span class="text-xl text-gray-300">›</span>
-            <span class="text-3xl font-bold tracking-tight text-orange-600">37+</span>
+            <span class="text-3xl font-bold tracking-tight text-orange-600">38+</span>
           </div>
           <ul class="space-y-2.5 text-sm">
             ${CHECK_ROWS.map((t) => html`

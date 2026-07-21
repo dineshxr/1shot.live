@@ -55,7 +55,7 @@ export const UpvoteButton = ({ startup, user, onUpvoteChange }) => {
     <button
       onclick=${handleUpvote}
       disabled=${isVoting}
-      class="flex flex-col items-center justify-center gap-0.5 min-w-[52px] px-2 py-1.5 rounded-xl border transition-colors ${
+      class="sh-upvote ${userVoted ? 'sh-upvote--voted' : ''} flex flex-col items-center justify-center gap-0.5 min-w-[52px] px-2 py-1.5 rounded-xl border ${
         userVoted
           ? 'border-orange-300 bg-orange-50 text-orange-700 hover:bg-orange-100'
           : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300 hover:bg-gray-50'

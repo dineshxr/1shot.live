@@ -136,6 +136,7 @@ async function handleCheckoutComplete(session: Stripe.Checkout.Session) {
   let effectiveStartupId: string | null = startup_id || null;
   let insertedNewStartup = false;
   let insertedLaunchDate = paymentDate;
+  let insertedIsLive = true;
 
   if (!effectiveStartupId && session.metadata?.sub === "1") {
     // Throw on failure so Stripe retries — never silently drop a paid launch.
@@ -147,8 +148,9 @@ async function handleCheckoutComplete(session: Stripe.Checkout.Session) {
     );
     effectiveStartupId = result.id;
     insertedLaunchDate = result.launchDate;
+    insertedIsLive = result.isLive;
     insertedNewStartup = true;
-    console.log("Inserted new paid startup from metadata:", effectiveStartupId, "launch_date:", insertedLaunchDate);
+    console.log("Inserted new paid startup from metadata:", effectiveStartupId, "launch_date:", insertedLaunchDate, "isLive:", insertedIsLive);
   }
 
   // Record the payment
@@ -170,10 +172,17 @@ async function handleCheckoutComplete(session: Stripe.Checkout.Session) {
     console.log("Payment recorded successfully");
   }
 
-  // A freshly inserted row is already paid + live with the correct plan, so
-  // just send the "you're live" notification and finish (skip update paths).
+  // A freshly inserted row is paid with the correct plan. If it launches today
+  // it's already live — send the "you're live" thank-you and finish. If the
+  // maker scheduled a future weekday, it was inserted not-live: send a
+  // "scheduled" confirmation now and let the day-of sweep publish it + send the
+  // launch email. Either way we skip the dashboard-upgrade paths below.
   if (insertedNewStartup && effectiveStartupId) {
-    await publishPaidStartup(effectiveStartupId, insertedLaunchDate);
+    if (insertedIsLive) {
+      await publishPaidStartup(effectiveStartupId, insertedLaunchDate);
+    } else {
+      await schedulePaidStartup(effectiveStartupId, insertedLaunchDate);
+    }
     return;
   }
 
@@ -434,14 +443,28 @@ function toWeekday(dateStr: string, fallbackPstDate: string): string {
   return `${yyyy}-${mm}-${dd}`;
 }
 
+// featured_until = 7 days after the launch day, at end-of-window. Pure UTC-noon
+// arithmetic (launch_date is YYYY-MM-DD) so there's no timezone drift.
+function featuredUntilFrom(launchDate: string): string {
+  const [y, mo, da] = launchDate.split("-").map((n) => parseInt(n, 10));
+  const d = new Date(Date.UTC(y, mo - 1, da, 12));
+  d.setUTCDate(d.getUTCDate() + 7);
+  return d.toISOString();
+}
+
 async function insertPaidStartupFromMetadata(
   session: Stripe.Checkout.Session,
   product: string,
   paymentDate: string,
   paymentTimestamp: string,
-): Promise<{ id: string; launchDate: string }> {
+): Promise<{ id: string; launchDate: string; isLive: boolean }> {
   const m = session.metadata || {};
   const launchDate = toWeekday(m.sub_launch_date || "", paymentDate);
+  // Paid launches go live immediately UNLESS the maker scheduled a future
+  // weekday — then the row waits (is_live=false) and send-live-notifications
+  // flips it live at 8 AM PST on the day. YYYY-MM-DD compares lexically, which
+  // matches chronological order.
+  const isLive = launchDate <= paymentDate;
 
   let author: Record<string, unknown> = {};
   try {
@@ -468,16 +491,17 @@ async function insertPaidStartupFromMetadata(
     images: cover ? [cover] : null,
     plan: product, // 'premium' | 'featured'
     payment_status: "paid",
-    is_live: true,
+    is_live: isLive,
     launch_date: launchDate,
     notification_sent: false,
     notification_sent_at: null,
     updated_at: paymentTimestamp,
   };
   if (product === "featured") {
-    const fu = new Date();
-    fu.setDate(fu.getDate() + 7);
-    baseRow.featured_until = fu.toISOString();
+    // Featured runs for 7 days from the day it goes LIVE (the scheduled launch
+    // day), not from payment — otherwise a spot scheduled a week out could
+    // expire before it ever launches.
+    baseRow.featured_until = featuredUntilFrom(launchDate);
   }
 
   const baseSlug = (m.sub_slug || slugify(String(baseRow.title))).slice(0, 50);
@@ -491,7 +515,7 @@ async function insertPaidStartupFromMetadata(
       .single();
 
     if (!error && data) {
-      return { id: data.id, launchDate };
+      return { id: data.id, launchDate, isLive };
     }
 
     const msg = error?.message || "";
@@ -506,7 +530,7 @@ async function insertPaidStartupFromMetadata(
       const update: Record<string, unknown> = {
         plan: product,
         payment_status: "paid",
-        is_live: true,
+        is_live: isLive,
         launch_date: launchDate,
         notification_sent: false,
         notification_sent_at: null,
@@ -519,7 +543,7 @@ async function insertPaidStartupFromMetadata(
         .eq("url", baseRow.url)
         .select("id")
         .single();
-      if (!upErr && up) return { id: up.id, launchDate };
+      if (!upErr && up) return { id: up.id, launchDate, isLive };
       throw new Error(`URL conflict and update failed: ${upErr?.message || "unknown"}`);
     }
 
@@ -545,5 +569,29 @@ async function publishPaidStartup(startupId: string, paymentDate: string): Promi
     }
   } catch (err) {
     console.error("Error calling publish-paid-startup function:", err);
+  }
+}
+
+// Future-dated paid launch: send the "scheduled" confirmation now (payment
+// received + launch day). The row stays not-live until send-live-notifications
+// publishes it on the day and sends the launch email. Same edge function as the
+// immediate path, with scheduled=true.
+async function schedulePaidStartup(startupId: string, launchDate: string): Promise<void> {
+  try {
+    const res = await fetch(`${supabaseUrl}/functions/v1/publish-paid-startup`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${supabaseServiceKey}`,
+      },
+      body: JSON.stringify({ startupId, paymentDate: launchDate, scheduled: true }),
+    });
+    if (res.ok) {
+      console.log("Scheduled paid startup — confirmation sent:", await res.json());
+    } else {
+      console.error("Failed to send scheduled confirmation:", await res.text());
+    }
+  } catch (err) {
+    console.error("Error calling publish-paid-startup (scheduled):", err);
   }
 }

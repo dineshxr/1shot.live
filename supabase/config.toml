@@ -121,6 +121,35 @@ verify_jwt = false
 [functions.domain-rating]
 verify_jwt = false
 
+# Called hourly by pg_cron via pg_net, which can't send a platform JWT. Auth is
+# an x-cron-secret header checked in code against the CRON_SECRET edge secret
+# (same value stored in Vault as 'cron_secret').
+[functions.send-live-notifications]
+verify_jwt = false
+
+# Called daily by pg_cron; same x-cron-secret auth as send-live-notifications.
+[functions.update-daily-rankings]
+verify_jwt = false
+
+# Called by the notify_comment_on_insert DB trigger via pg_net; same
+# x-cron-secret auth as the cron-driven functions.
+[functions.notify-comment]
+verify_jwt = false
+
+# Called by the notify_submission_on_insert DB trigger via pg_net (free-plan
+# submission confirmations); same x-cron-secret auth.
+[functions.send-submission-confirmation]
+verify_jwt = false
+
+# Called every 30 min by pg_cron (safety net for paid rows whose webhook
+# publish failed); same x-cron-secret auth.
+[functions.publish-stuck-paid-startups]
+verify_jwt = false
+
+# Called daily by pg_cron; same x-cron-secret auth.
+[functions.backfill-blog-posts]
+verify_jwt = false
+
 [auth]
 enabled = true
 # The base URL of your website. Used as an allow-list for redirects and for constructing URLs used

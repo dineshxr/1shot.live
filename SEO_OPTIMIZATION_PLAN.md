@@ -100,7 +100,7 @@
 <div class="seo-content">
   <p>Submit your startup to SubmitHunt and get discovered by thousands of founders, 
   investors, and early adopters. Our platform provides instant visibility with a 
-  high-quality dofollow backlink from our DR 37+ domain, helping boost your SEO 
+  high-quality dofollow backlink from our DR 38+ domain, helping boost your SEO 
   rankings and drive organic traffic to your website.</p>
   
   <p>Whether you're launching a SaaS product, mobile app, or innovative tech solution, 

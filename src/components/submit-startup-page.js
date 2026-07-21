@@ -23,6 +23,74 @@ const VERIFY_TURNSTILE_URL = `${config.supabase.url}/functions/v1/verify-turnsti
 // Turnstile explicit-render widget id (module scope — one submit form per page).
 let turnstileWidgetId = null;
 
+// ---------------------------------------------------------------------------
+// Paid launch scheduling
+//
+// Paid plans (Premium / Featured) may pick ANY future weekday to launch on:
+// the soonest launchable weekday is recommended, but they can schedule up to
+// PAID_SCHEDULE_MAX_DAYS out. Dates are computed on the PST wall clock and
+// anchored at UTC noon to classify the weekday without local-timezone drift,
+// so a launch day chosen here lines up exactly with the go-live cron (which
+// compares against the PST date) and the webhook's weekday coercion.
+const PAID_SCHEDULE_MAX_DAYS = 90;
+
+// "Now" as a PST wall-clock Date.
+const pstNow = () => new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Los_Angeles' }));
+
+// YYYY-MM-DD for a Date in PST — same basis the webhook/cron use for "today".
+const pstDateStr = (d = new Date()) => d.toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' });
+
+// UTC-noon anchor for a PST wall-clock day (weekday classification only).
+const pstDayAnchor = (d) => new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate(), 12));
+
+const anchorToValue = (a) =>
+  `${a.getUTCFullYear()}-${String(a.getUTCMonth() + 1).padStart(2, '0')}-${String(a.getUTCDate()).padStart(2, '0')}`;
+
+// Parse a YYYY-MM-DD into a UTC-noon anchor (null if malformed).
+const valueToAnchor = (value) => {
+  const [y, m, d] = (value || '').split('-').map(Number);
+  if (!y || !m || !d) return null;
+  return new Date(Date.UTC(y, m - 1, d, 12));
+};
+
+const isWeekdayValue = (value) => {
+  const a = valueToAnchor(value);
+  if (!a) return false;
+  const dow = a.getUTCDay();
+  return dow >= 1 && dow <= 5;
+};
+
+// Format a YYYY-MM-DD launch day for display (weekday classification is UTC so
+// the day never shifts).
+const formatLaunchLabel = (value, opts = { weekday: 'long', month: 'long', day: 'numeric' }) => {
+  const a = valueToAnchor(value);
+  return a ? a.toLocaleDateString('en-US', { ...opts, timeZone: 'UTC' }) : '';
+};
+
+// Every selectable paid launch weekday: the soonest launchable weekday (today
+// if it's a weekday — paid goes live immediately, any hour — otherwise the next
+// weekday) through PAID_SCHEDULE_MAX_DAYS out.
+const buildPaidLaunchDates = () => {
+  const start = pstDayAnchor(pstNow());
+  const end = new Date(start);
+  end.setUTCDate(end.getUTCDate() + PAID_SCHEDULE_MAX_DAYS);
+  const out = [];
+  const cursor = new Date(start);
+  while (cursor <= end) {
+    const dow = cursor.getUTCDay();
+    if (dow >= 1 && dow <= 5) {
+      out.push({
+        value: anchorToValue(cursor),
+        dow,
+        dayNum: String(cursor.getUTCDate()),
+        short: cursor.toLocaleDateString('en-US', { weekday: 'short', timeZone: 'UTC' }),
+      });
+    }
+    cursor.setUTCDate(cursor.getUTCDate() + 1);
+  }
+  return out;
+};
+
 export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
   const [formData, setFormData] = useState({
     url: "",
@@ -54,13 +122,16 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
   const [currentPage, setCurrentPage] = useState(1);
   const [showSuccessPage, setShowSuccessPage] = useState(false);
   const [availableLaunchDates, setAvailableLaunchDates] = useState([]);
+  // Selectable launch weekdays for paid plans (any future weekday, soonest
+  // recommended). Computed once on mount; refreshed when a paid plan is picked.
+  const [paidLaunchDates, setPaidLaunchDates] = useState(() => buildPaidLaunchDates());
   // Combined free-plan unlock status from get_free_submission_status — null
   // until loaded. Shape: {eligible, upvotes_done, upvotes_required,
   // comments_done, comments_required, backlink_verified, is_returning}.
   const [freeStatus, setFreeStatus] = useState(null);
   const [checkingStatus, setCheckingStatus] = useState(false);
   const [wasLocked, setWasLocked] = useState(false); // saw the unlock panel this visit
-  // Backlink: an OPTIONAL final step. A do-follow badge earns a DR 37+ backlink,
+  // Backlink: an OPTIONAL final step. A do-follow badge earns a DR 38+ backlink,
   // but the maker can skip it (skipBacklink) and launch without — they just
   // forfeit the link equity (and we keep reminding them on the dashboard + in
   // the launch email).
@@ -377,6 +448,19 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
     };
   }, []);
 
+  // Ensure a paid plan always has a valid launch weekday selected — covers every
+  // entry point into a paid plan (the ?plan= deep link and a restored draft, not
+  // just the plan cards). Refreshes the window first so a tab left open across
+  // midnight can't offer a stale "soonest" date.
+  useEffect(() => {
+    if (formData.plan !== 'premium' && formData.plan !== 'featured') return;
+    const fresh = buildPaidLaunchDates();
+    setPaidLaunchDates(fresh);
+    if (!formData.launchDate || !fresh.some(d => d.value === formData.launchDate)) {
+      setFormData(prev => ({ ...prev, launchDate: fresh[0]?.value || '' }));
+    }
+  }, [formData.plan]);
+
   // Fetch the unlock status when the user lands on the plan step (page 2), and
   // reset it to null first so a freshly-edited URL can't briefly show the
   // previous URL's "unlocked" state. Keyed on currentPage (not formData.url) so
@@ -645,7 +729,34 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
   };
 
   const selectPlan = (plan) => {
-    setFormData(prev => ({ ...prev, plan }));
+    setFormData(prev => {
+      const next = { ...prev, plan };
+      if (plan === 'premium' || plan === 'featured') {
+        // Default paid launches to the soonest launchable weekday (recommended).
+        // Keep an already-chosen weekday if it's still within the paid window.
+        if (!prev.launchDate || !paidLaunchDates.some(d => d.value === prev.launchDate)) {
+          next.launchDate = paidLaunchDates[0]?.value || '';
+        }
+      } else {
+        // Free uses the slot-limited grid; drop any paid-only date so it can
+        // never bypass the free queue or the 6-slots-a-day cap.
+        next.launchDate = '';
+      }
+      return next;
+    });
+  };
+
+  // Snap an arbitrary date (e.g. from the native date input) to a valid paid
+  // launch weekday: bump weekends to Monday, clamp into the schedulable window.
+  const selectPaidDate = (value) => {
+    let a = valueToAnchor(value);
+    if (!a) return;
+    while (a.getUTCDay() === 0 || a.getUTCDay() === 6) a.setUTCDate(a.getUTCDate() + 1);
+    const first = valueToAnchor(paidLaunchDates[0]?.value);
+    const last = valueToAnchor(paidLaunchDates[paidLaunchDates.length - 1]?.value);
+    if (first && a < first) a = first;
+    if (last && a > last) a = last;
+    setFormData(prev => ({ ...prev, launchDate: anchorToValue(a) }));
   };
 
   // Re-launch Stripe checkout for a submission that was started but never paid.
@@ -794,7 +905,14 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
         email: contactEmail
       };
 
-      const resolvedLaunchDate = formData.launchDate || await (async () => {
+      // On the free plan, only honor a launch date that's an actually-available
+      // slot in the grid — never a stray paid-window date. Paid plans use the
+      // maker's chosen weekday as-is.
+      const selectedLaunchDate = formData.plan === 'free'
+        ? (availableLaunchDates.some(d => d.value === formData.launchDate && d.freeAvailable) ? formData.launchDate : '')
+        : formData.launchDate;
+
+      const resolvedLaunchDate = selectedLaunchDate || await (async () => {
         // For paid plans, use today's PST date so it launches on payment date.
         // The startups table has a CHECK constraint requiring launch_date to
         // be a weekday (Mon-Fri), so if today is a weekend bump forward to
@@ -1046,6 +1164,7 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
               <div class="text-sm">
                 <p class="font-medium text-gray-900">Redirecting to payment…</p>
                 <p class="text-gray-600">You'll be redirected to Stripe to complete your ${formData.plan === 'featured' ? '$50 payment' : '$20 payment'}.</p>
+                ${formData.launchDate ? html`<p class="text-gray-600 mt-1">Launch day: <strong>${formatLaunchLabel(formData.launchDate)}</strong>${formData.launchDate === pstDateStr() ? ' — live right after payment' : ' — scheduled, we\'ll launch it for you'}.</p>` : ''}
               </div>
             </div>
           ` : html`
@@ -1068,7 +1187,7 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
           <div class="mt-6 p-5 border border-orange-200 rounded-2xl bg-orange-50/40">
             <h3 class="font-semibold text-gray-900 mb-3 flex items-center">
               <i class="fas fa-award mr-2 text-orange-600"></i>
-              Get your badge & keep your 37+ DR backlink
+              Get your badge & keep your 38+ DR backlink
             </h3>
             <div class="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-xl">
               <p class="text-sm text-amber-900">Add our badge to your website to make your listing <strong>permanent</strong> and keep your backlink as <strong>dofollow</strong>.</p>
@@ -1147,7 +1266,7 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
             <i class="fas fa-rocket text-sm"></i>
           </div>
           <div class="text-sm">
-            <p class="font-medium text-gray-900">Submit your startup, get a 37+ DR backlink</p>
+            <p class="font-medium text-gray-900">Submit your startup, get a 38+ DR backlink</p>
             <p class="text-gray-600 mt-0.5">Join hundreds of founders who chose SubmitHunt.</p>
           </div>
         </div>
@@ -1192,8 +1311,8 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
                     <i class="fas fa-wand-magic-sparkles"></i>
                   </div>
                   <div>
-                    <p class="font-semibold text-gray-900 text-sm">AI-Powered Form Prefill</p>
-                    <p class="text-xs text-gray-600 mt-0.5">Enter your website URL. AI fills almost every field — name, tagline, description, categories, tags, pricing, target audience, tech stack, social links, SEO metadata, FAQ, and more. Logo & cover come from your site icons / structured data; social links are extracted from the page.</p>
+                    <p class="font-semibold text-gray-900 text-sm">Turn your URL into a listing</p>
+                    <p class="text-xs text-gray-600 mt-0.5"><span class="font-medium text-gray-700">AI prepares the draft. You review it before submitting.</span> Enter your website URL and AI fills almost every field — name, tagline, description, categories, tags, pricing, target audience, tech stack, social links, SEO metadata, FAQ, and more. Logo & cover come from your site icons / structured data; social links are extracted from the page.</p>
                   </div>
                 </div>
 
@@ -1626,6 +1745,60 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
                 </div>
               </div>
               
+              ${(formData.plan === 'premium' || formData.plan === 'featured') && paidLaunchDates.length > 0 ? (() => {
+    const todayStr = pstDateStr();
+    const soonest = paidLaunchDates[0];
+    const latest = paidLaunchDates[paidLaunchDates.length - 1];
+    const launchesToday = formData.launchDate === todayStr;
+    return html`
+                <div class="mt-2 rounded-2xl border border-orange-200 bg-orange-50/40 p-5">
+                  <h3 class="text-lg font-bold text-gray-900 mb-1 flex items-center gap-2"><i class="fas fa-calendar-day text-orange-500"></i> Choose your launch day</h3>
+                  <p class="text-gray-600 text-sm mb-4">
+                    Your ${formData.plan === 'featured' ? 'Featured Spot' : 'Premium launch'} goes live at <strong>8 AM PST</strong> on the weekday you pick — launch now, or schedule any weekday through ${formatLaunchLabel(latest.value, { month: 'long', day: 'numeric' })}.
+                  </p>
+
+                  <div class="grid grid-cols-5 gap-2 mb-4">
+                    ${paidLaunchDates.slice(0, 10).map((d, i) => {
+      const isSelected = formData.launchDate === d.value;
+      const isSoonest = i === 0;
+      return html`
+                        <button
+                          type="button"
+                          onClick=${() => selectPaidDate(d.value)}
+                          class="relative text-center pt-3 pb-2 px-1 rounded-lg border-2 transition-all ${isSelected ? 'border-orange-500 bg-orange-100' : 'border-gray-200 bg-white hover:border-orange-300 hover:bg-orange-50'}"
+                        >
+                          ${isSoonest ? html`<span class="absolute -top-2.5 left-1/2 -translate-x-1/2 text-[9px] font-bold uppercase tracking-wide bg-orange-500 text-white px-1.5 py-0.5 rounded-full whitespace-nowrap">Soonest</span>` : ''}
+                          <div class="text-[11px] font-bold ${isSelected ? 'text-orange-700' : 'text-gray-500'}">${d.short}</div>
+                          <div class="text-lg font-bold ${isSelected ? 'text-orange-700' : 'text-gray-900'}">${d.dayNum}</div>
+                        </button>`;
+    })}
+                  </div>
+
+                  <div class="flex flex-wrap items-center gap-2">
+                    <label class="text-sm text-gray-600" for="paidLaunchDate">Prefer another day?</label>
+                    <input
+                      type="date"
+                      id="paidLaunchDate"
+                      min=${soonest.value}
+                      max=${latest.value}
+                      value=${formData.launchDate}
+                      onChange=${(e) => selectPaidDate(e.target.value)}
+                      class="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-400"
+                    />
+                    <span class="text-xs text-gray-400">Weekdays only</span>
+                  </div>
+
+                  ${formData.launchDate ? html`
+                    <p class="text-sm text-gray-600 mt-3 pt-3 border-t border-orange-100">
+                      Launch day: <span class="text-gray-900 font-semibold">${formatLaunchLabel(formData.launchDate)}, 8:00 AM PST</span>
+                      ${launchesToday
+        ? html`<span class="block sm:inline sm:ml-1 text-emerald-600 font-medium">— goes live right after payment.</span>`
+        : html`<span class="block sm:inline sm:ml-1 text-gray-500">— we'll hold your listing until then, then launch it automatically.</span>`}
+                    </p>` : ''}
+                </div>
+    `;
+  })() : ''}
+
               ${formData.plan === 'free' && statusLoading ? html`
                 <div class="text-center py-6">
                   <div class="inline-block animate-spin rounded-full h-6 w-6 border-2 border-gray-300 border-t-gray-900"></div>
@@ -1785,7 +1958,7 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
               ` : ''}
 
               <!-- Optional final step: do-follow backlink (after slot selection).
-                   Recommended — earns a DR 37+ do-follow backlink — but skippable
+                   Recommended — earns a DR 38+ do-follow backlink — but skippable
                    via the toggle below. The DB gate no longer requires it. -->
               ${formData.plan === 'free' && freeUnlocked ? html`
                 <div class="border ${backlinkVerified ? 'border-emerald-200' : (skipBacklink ? 'border-amber-200' : 'border-gray-200')} rounded-2xl overflow-hidden">
@@ -1795,7 +1968,7 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
                     </div>
                     <div class="flex-1 min-w-0">
                       <p class="font-semibold text-gray-900 text-sm">Add a do-follow backlink <span class="font-normal text-gray-400">— recommended</span></p>
-                      <p class="text-sm text-gray-500 mt-0.5">Place our badge on your homepage or footer to claim a permanent <strong>DR 37+ do-follow backlink</strong>. Optional — you can skip and launch without it.</p>
+                      <p class="text-sm text-gray-500 mt-0.5">Place our badge on your homepage or footer to claim a permanent <strong>DR 38+ do-follow backlink</strong> — and earn a <span class="inline-flex items-center gap-1 font-semibold text-amber-700"><svg viewBox="0 0 24 24" class="w-[15px] h-[15px]"><path fill="#f59e0b" d="M22.5 12c0-1.47-.81-2.75-2.01-3.42.32-1.3-.02-2.72-1.03-3.73s-2.43-1.35-3.73-1.03C15.03.81 13.75 0 12 0S8.97.81 8.27 2.79c-1.3-.32-2.72.02-3.73 1.03S3.19 6.25 3.51 7.55C2.31 8.22 1.5 9.5 1.5 12s.81 2.75 2.01 3.42c-.32 1.3.02 2.72 1.03 3.73s2.43 1.35 3.73 1.03C8.97 22.19 10.25 24 12 24s3.03-.81 3.73-2.79c1.3.32 2.72-.02 3.73-1.03s1.35-2.43 1.03-3.73C21.69 14.75 22.5 13.47 22.5 12z"/><path fill="#fff" d="M10.62 15.53l-3.15-3.15 1.32-1.32 1.83 1.83 4.55-4.55 1.32 1.33z"/></svg>gold verified checkmark</span> next to your listing. Skip it and you launch without either.</p>
                     </div>
                     ${backlinkVerified ? html`<span class="w-7 h-7 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-600 flex items-center justify-center shrink-0 mt-0.5"><i class="fas fa-check text-[11px]"></i></span>` : ''}
                   </div>
@@ -1803,7 +1976,7 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
                   <div class="px-5 sm:px-6 pb-5 pt-1">
                     ${backlinkVerified ? html`
                       <p class="text-sm text-emerald-700 font-medium flex items-center gap-1.5">
-                        <i class="fas fa-check"></i> Backlink verified — your DR 37+ do-follow link is locked in.
+                        <i class="fas fa-check"></i> Backlink verified — your DR 38+ do-follow link is locked in, and your listing now shows the gold verified checkmark.
                       </p>
                     ` : html`
                       <div class="space-y-3 ${skipBacklink ? 'opacity-60 pointer-events-none' : ''}">
@@ -1838,12 +2011,37 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
                         </div>
                       </div>
 
+                      <!-- Live preview: what the listing keeps vs. loses. When the
+                           maker toggles "skip", the DR 38+ pill and gold checkmark
+                           drop away so the trade-off is felt, not just read. -->
+                      <div class="mt-4 rounded-xl border ${skipBacklink ? 'border-amber-200 bg-amber-50/40' : 'border-gray-200 bg-white'} p-4 transition-colors overflow-hidden">
+                        <p class="text-[11px] font-semibold uppercase tracking-wider text-gray-400 mb-2.5">Preview — your listing on the homepage</p>
+                        <div class="flex items-center gap-2 min-h-[36px]">
+                          <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-orange-400 to-orange-600 text-white text-sm font-bold flex items-center justify-center shrink-0">
+                            ${(formData.projectName || 'Y').charAt(0).toUpperCase()}
+                          </div>
+                          <span class="font-semibold text-gray-900 text-sm truncate">${formData.projectName || 'Your startup'}</span>
+                          <span class="sh-drop ${skipBacklink ? 'sh-drop--gone' : 'sh-drop--in'}" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" class="w-[18px] h-[18px]">
+                              <path fill="#f59e0b" d="M22.5 12c0-1.47-.81-2.75-2.01-3.42.32-1.3-.02-2.72-1.03-3.73s-2.43-1.35-3.73-1.03C15.03.81 13.75 0 12 0S8.97.81 8.27 2.79c-1.3-.32-2.72.02-3.73 1.03S3.19 6.25 3.51 7.55C2.31 8.22 1.5 9.5 1.5 12s.81 2.75 2.01 3.42c-.32 1.3.02 2.72 1.03 3.73s2.43 1.35 3.73 1.03C8.97 22.19 10.25 24 12 24s3.03-.81 3.73-2.79c1.3.32 2.72-.02 3.73-1.03s1.35-2.43 1.03-3.73C21.69 14.75 22.5 13.47 22.5 12z"/>
+                              <path fill="#fff" d="M10.62 15.53l-3.15-3.15 1.32-1.32 1.83 1.83 4.55-4.55 1.32 1.33z"/>
+                            </svg>
+                          </span>
+                          <span class="sh-drop sh-drop--d1 ${skipBacklink ? 'sh-drop--gone' : 'sh-drop--in'} text-[11px] font-bold text-orange-700 bg-orange-50 border border-orange-200 px-2 py-0.5 rounded-full">DR 38+</span>
+                        </div>
+                        <p class="text-xs mt-2.5 ${skipBacklink ? 'text-amber-700' : 'text-gray-400'}">
+                          ${skipBacklink
+        ? html`<i class="fas fa-arrow-trend-down mr-1"></i> Skipping drops your <strong>DR 38+ backlink</strong> and the <strong>gold verified checkmark</strong> — gone from your listing.`
+        : html`Verify your badge to keep the DR 38+ backlink and the gold verified checkmark on your listing.`}
+                        </p>
+                      </div>
+
                       <!-- Skip toggle: continue with a no-follow (or no) backlink -->
                       <label class="mt-4 flex items-start gap-3 rounded-xl border ${skipBacklink ? 'border-amber-300 bg-amber-50/70' : 'border-gray-200 bg-white'} p-3 cursor-pointer transition-colors">
-                        <input type="checkbox" checked=${skipBacklink} onChange=${(e) => setSkipBacklink(e.target.checked)} class="mt-0.5 h-4 w-4 rounded border-gray-300 text-amber-600 focus:ring-amber-400" />
+                        <input type="checkbox" checked=${skipBacklink} onChange=${(e) => setSkipBacklink(e.target.checked)} class="mt-0.5 h-5 w-5 rounded-full border-2 border-gray-300 text-amber-600 focus:ring-amber-400 focus:ring-offset-0" />
                         <span class="text-sm text-gray-700">
                           <span class="font-medium text-gray-900">Continue with a no-follow backlink</span> — skip verification and launch now.
-                          <span class="block text-xs text-amber-700 mt-0.5">You'll forfeit your free DR 37+ do-follow link equity. You can still add it later from your dashboard.</span>
+                          <span class="block text-xs text-amber-700 mt-0.5">You'll forfeit your free DR 38+ do-follow link equity <strong>and the gold verified checkmark</strong> next to your listing. You can still add it later from your dashboard.</span>
                         </span>
                       </label>
                     `}
@@ -1902,7 +2100,7 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
                         : html`${formData.launchDate ? 'Schedule free launch' : 'Submit free launch'} <i class="fas fa-arrow-right text-xs"></i>`}
                     </button>
                     ${!backlinkVerified && !skipBacklink ? html`<p class="text-xs text-gray-400">Verify your backlink above, or check “Continue with a no-follow backlink” to skip.</p>` : ''}
-                    ${!backlinkVerified && skipBacklink ? html`<p class="text-xs text-amber-600">Launching without a do-follow backlink — you'll miss the DR 37+ link equity.</p>` : ''}
+                    ${!backlinkVerified && skipBacklink ? html`<p class="text-xs text-amber-600">Launching without a do-follow backlink — you'll miss the DR 38+ link equity and the gold verified checkmark on your listing.</p>` : ''}
                   </div>
                 ` : ''}
 

@@ -26,7 +26,7 @@ const seoBlogPosts = [
     <a href="https://submithunt.com">SubmitHunt</a> has emerged as one of the most effective platforms for startup launches. With a focus on quality over quantity, SubmitHunt provides:
   </p>
   <ul>
-    <li><strong>High-Quality Backlinks:</strong> Domain authority of 37+ for SEO benefits</li>
+    <li><strong>High-Quality Backlinks:</strong> Domain authority of 38+ for SEO benefits</li>
     <li><strong>Engaged Community:</strong> Thousands of founders and early adopters</li>
     <li><strong>Fast Approval:</strong> Get live within 24 hours</li>
     <li><strong>Featured Options:</strong> Premium placements for maximum visibility</li>
@@ -232,7 +232,7 @@ const seoBlogPosts = [
     <li><strong>Nofollow Links:</strong> Don't pass SEO value but still drive traffic and brand awareness</li>
   </ul>
   <p>
-    Focus on directories that provide dofollow backlinks from high-authority domains (DR 30+). <a href="https://submithunt.com">SubmitHunt</a>, for example, offers dofollow backlinks from a DR 37+ domain.
+    Focus on directories that provide dofollow backlinks from high-authority domains (DR 30+). <a href="https://submithunt.com">SubmitHunt</a>, for example, offers dofollow backlinks from a DR 38+ domain.
   </p>
 
   <h2>The SEO Benefits of Directory Submissions</h2>
@@ -323,13 +323,13 @@ const seoBlogPosts = [
 
   <h2>Start Building Your Backlink Profile</h2>
   <p>
-    The best time to start building backlinks was when you launched. The second best time is now. Submit your startup to <a href="https://submithunt.com">SubmitHunt</a> and get a high-quality dofollow backlink from a DR 37+ domain.
+    The best time to start building backlinks was when you launched. The second best time is now. Submit your startup to <a href="https://submithunt.com">SubmitHunt</a> and get a high-quality dofollow backlink from a DR 38+ domain.
   </p>
 
   <div class="cta-box" style="background: #f8f9fa; padding: 20px; border-left: 4px solid #60a5fa; margin: 30px 0;">
     <h3 style="margin-top: 0;">Get a High-Quality Backlink</h3>
     <p>
-      Submit your startup to SubmitHunt and get a dofollow backlink from our DR 37+ domain. Improve your SEO and get discovered.
+      Submit your startup to SubmitHunt and get a dofollow backlink from our DR 38+ domain. Improve your SEO and get discovered.
     </p>
     <a href="https://submithunt.com/submit" style="display: inline-block; background: #60a5fa; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">Submit Now</a>
   </div>

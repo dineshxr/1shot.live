@@ -77,7 +77,7 @@ serve(async (req) => {
     const shareText = encodeURIComponent(`I just launched ${startup.title} on @SubmitHunt! Check it out and give it an upvote 🚀`);
 
     // Free makers can skip the do-follow backlink at submit time. If they did,
-    // keep reminding them they can still claim the free DR 37+ link equity.
+    // keep reminding them they can still claim the free DR 38+ link equity.
     const badgeEmbed = '<a href="https://submithunt.com" target="_blank"><img src="https://submithunt.com/badge-light.svg" alt="Featured on Submit Hunt" width="240" height="66" /></a>';
     const badgeEmbedEscaped = badgeEmbed.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     const showBacklinkReminder = !isPaid && !startup.backlink_verified_at;
@@ -124,7 +124,7 @@ serve(async (req) => {
           Products that reach the Top 3 on launch day all have one thing in common: their founders shared the listing within the first few hours. The earlier you share, the more momentum you build.
         </p>
         <p style="margin: 0 0 15px 0; color: #92400e; font-size: 14px; font-weight: bold;">
-          Top 3 products earn a permanent badge + a dofollow backlink from our 37+ DR site.
+          Top 3 products earn a permanent badge + a dofollow backlink from our 38+ DR site.
         </p>
         <a href="https://twitter.com/intent/tweet?text=${shareText}&url=${encodeURIComponent(startupUrl)}" style="display: inline-block; background-color: #000; color: #fff; padding: 10px 20px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 14px;">Share on X</a>
       </div>
@@ -132,9 +132,9 @@ serve(async (req) => {
       ${showBacklinkReminder ? `
       <!-- Free do-follow backlink reminder (skipped at submit time) -->
       <div style="background-color: #eff6ff; border-left: 4px solid #3b82f6; border-radius: 0 8px 8px 0; padding: 20px; margin: 25px 0;">
-        <h3 style="margin: 0 0 8px 0; color: #1e40af; font-size: 16px;">Claim your free DR 37+ backlink</h3>
+        <h3 style="margin: 0 0 8px 0; color: #1e40af; font-size: 16px;">Claim your free DR 38+ backlink</h3>
         <p style="margin: 0 0 14px 0; color: #1e3a8a; font-size: 14px; line-height: 1.6;">
-          You launched without a do-follow SubmitHunt backlink — so you're not yet getting the DR 37+ link equity that lifts your own SEO. Add our badge to your homepage or footer (keep it do-follow) and it's yours, free.
+          You launched without a do-follow SubmitHunt backlink — so you're not yet getting the DR 38+ link equity that lifts your own SEO. Add our badge to your homepage or footer (keep it do-follow) and it's yours, free.
         </p>
         <div style="text-align: center; margin-bottom: 14px;">
           <img src="https://submithunt.com/badge-light.svg" alt="Featured on Submit Hunt" width="200" style="height: auto;" />
@@ -153,7 +153,7 @@ serve(async (req) => {
         <p style="margin: 0 0 6px 0; color: #f59e0b; font-size: 12px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px;">For ${startup.title}</p>
         <h3 style="margin: 0 0 12px 0; color: #fff; font-size: 22px; line-height: 1.3;">Get a guaranteed dofollow backlink for $20</h3>
         <p style="margin: 0 0 20px 0; color: #ccc; font-size: 14px; line-height: 1.6;">
-          Most founders pay $50-200 for a single backlink from a DR 37+ site. With a Premium upgrade, you get one automatically &mdash; plus your listing stays on the homepage for 14 days instead of 7.
+          Most founders pay $50-200 for a single backlink from a DR 38+ site. With a Premium upgrade, you get one automatically &mdash; plus your listing stays on the homepage for 14 days instead of 7.
         </p>
         
         <table style="width: 100%; margin-bottom: 20px;" cellpadding="0" cellspacing="0">
@@ -161,7 +161,7 @@ serve(async (req) => {
             <td style="padding: 8px 0; border-bottom: 1px solid #333;">
               <table cellpadding="0" cellspacing="0"><tr>
                 <td style="color: #22c55e; font-size: 16px; padding-right: 10px; vertical-align: top;">&#10003;</td>
-                <td style="color: #e5e5e5; font-size: 14px;">Permanent dofollow backlink (37+ DR)</td>
+                <td style="color: #e5e5e5; font-size: 14px;">Permanent dofollow backlink (38+ DR)</td>
               </tr></table>
             </td>
           </tr>
@@ -201,7 +201,7 @@ serve(async (req) => {
       <div style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); border-radius: 8px; padding: 25px; margin: 25px 0;">
         <h3 style="margin: 0 0 10px 0; color: #fff; font-size: 18px;">Your Premium benefits are active</h3>
         <p style="margin: 0; color: #fff; font-size: 14px; line-height: 1.6; opacity: 0.95;">
-          Your listing has priority placement and extended homepage visibility. Your dofollow backlink (37+ DR) will be live within 24 hours. We'll also feature ${startup.title} in our next newsletter to 2,000+ subscribers.
+          Your listing has priority placement and extended homepage visibility. Your dofollow backlink (38+ DR) will be live within 24 hours. We'll also feature ${startup.title} in our next newsletter to 2,000+ subscribers.
         </p>
       </div>
       `}

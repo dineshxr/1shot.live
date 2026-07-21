@@ -104,7 +104,7 @@
       <ul class="text-sm text-blue-800 space-y-2">
         <li class="flex items-start gap-2">
           <i class="fas fa-check text-blue-500 mt-1"></i>
-          <span>Your startup is now live on the homepage</span>
+          <span id="next-step-live">Your startup is now live on the homepage</span>
         </li>
         <li class="flex items-start gap-2">
           <i class="fas fa-check text-blue-500 mt-1"></i>
@@ -155,9 +155,28 @@
       }
     }
 
-    // Payment succeeded — clear the "not submitted yet" draft and the saved
-    // in-progress form so the not-submitted banner and stale form data don't
-    // resurface if the user returns to /submit.
+    // Payment succeeded. Before clearing the draft, read the chosen launch date
+    // so the "What's Next" copy is accurate: a same-day launch is live now, a
+    // scheduled one goes live on its weekday. (Paid launches store the pending
+    // submission with launch_date.)
+    try {
+      const pending = JSON.parse(localStorage.getItem('sh_pending_submission') || 'null');
+      const launchDate = pending && pending.launch_date;
+      if (launchDate) {
+        const todayPst = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' });
+        const liveStep = document.getElementById('next-step-live');
+        if (liveStep && launchDate > todayPst) {
+          const [y, m, d] = launchDate.split('-').map(Number);
+          const label = new Date(Date.UTC(y, m - 1, d)).toLocaleDateString('en-US', {
+            weekday: 'long', month: 'long', day: 'numeric', timeZone: 'UTC',
+          });
+          liveStep.textContent = `Your launch is scheduled for ${label} at 8 AM PST — we'll email you the moment it goes live`;
+        }
+      }
+    } catch (e) { /* ignore */ }
+
+    // Clear the "not submitted yet" draft and the saved in-progress form so the
+    // not-submitted banner and stale form data don't resurface on /submit.
     try { localStorage.removeItem('sh_pending_submission'); } catch (e) { /* ignore */ }
     try { localStorage.removeItem('sh_submit_formdata'); } catch (e) { /* ignore */ }
 
