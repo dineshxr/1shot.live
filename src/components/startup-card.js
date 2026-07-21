@@ -335,8 +335,8 @@ export const StartupCard = ({ startup, user, onUpvoteChange, allStartups }) => {
                       aria-label="Verified do-follow backlink"
                     >
                       <svg viewBox="0 0 24 24" class="w-[18px] h-[18px]" aria-hidden="true">
-                        <path fill="url(#sh-gold)" d="M22.5 12c0-1.47-.81-2.75-2.01-3.42.32-1.3-.02-2.72-1.03-3.73s-2.43-1.35-3.73-1.03C15.03.81 13.75 0 12 0S8.97.81 8.27 2.79c-1.3-.32-2.72.02-3.73 1.03S3.19 6.25 3.51 7.55C2.31 8.22 1.5 9.5 1.5 12s.81 2.75 2.01 3.42c-.32 1.3.02 2.72 1.03 3.73s2.43 1.35 3.73 1.03C8.97 22.19 10.25 24 12 24s3.03-.81 3.73-2.79c1.3.32 2.72-.02 3.73-1.03s1.35-2.43 1.03-3.73C21.69 14.75 22.5 13.47 22.5 12z"/>
-                        <path fill="#fff" d="M10.62 15.53l-3.15-3.15 1.32-1.32 1.83 1.83 4.55-4.55 1.32 1.33z"/>
+                        <circle cx="12" cy="12" r="11" fill="url(#sh-gold)"/>
+                        <path fill="#fff" d="M10.28 16.4l-3.3-3.3 1.4-1.4 1.9 1.9 4.95-4.95 1.4 1.4z"/>
                         <linearGradient id="sh-gold" x1="0" y1="0" x2="0" y2="24" gradientUnits="userSpaceOnUse">
                           <stop offset="0" stop-color="#fbbf24"/>
                           <stop offset="1" stop-color="#d97706"/>

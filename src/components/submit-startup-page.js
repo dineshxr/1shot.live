@@ -1593,10 +1593,6 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
                         <i class="fas fa-check text-gray-400 mt-1 text-xs"></i>
                         <span class="text-gray-700 text-sm">Badge for top 3 ranking</span>
                       </div>
-                      <div class="flex items-start gap-2.5">
-                        <i class="fas fa-circle-check text-green-600 mt-1 text-xs"></i>
-                        <span class="text-green-700 text-sm font-semibold">Guaranteed dofollow backlink</span>
-                      </div>
                       <div class="flex items-start gap-2.5 mt-3 pt-3 border-t border-gray-200">
                         <i class="fas fa-clock text-amber-500 mt-1 text-xs"></i>
                         <span class="text-amber-700 text-sm font-medium">Launch in ${getDelayText()}</span>
@@ -1944,7 +1940,7 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
 
                   ${availableLaunchDates.some(d => !d.freeAvailable) ? html`
                     <div class="mt-3 rounded-xl border border-orange-200 bg-gradient-to-r from-orange-50 to-amber-50 p-3 flex flex-wrap items-center justify-between gap-3">
-                      <p class="text-sm text-orange-900"><strong>Some days are sold out.</strong> Don't wait in the free queue.</p>
+                      <p class="text-sm text-orange-900"><strong>High visibility days are FULL.</strong> Don't wait in the free queue.</p>
                       <button
                         type="button"
                         onClick=${() => selectPlan('premium')}
@@ -1968,7 +1964,7 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
                     </div>
                     <div class="flex-1 min-w-0">
                       <p class="font-semibold text-gray-900 text-sm">Add a do-follow backlink <span class="font-normal text-gray-400">— recommended</span></p>
-                      <p class="text-sm text-gray-500 mt-0.5">Place our badge on your homepage or footer to claim a permanent <strong>DR 38+ do-follow backlink</strong> — and earn a <span class="inline-flex items-center gap-1 font-semibold text-amber-700"><svg viewBox="0 0 24 24" class="w-[15px] h-[15px]"><path fill="#f59e0b" d="M22.5 12c0-1.47-.81-2.75-2.01-3.42.32-1.3-.02-2.72-1.03-3.73s-2.43-1.35-3.73-1.03C15.03.81 13.75 0 12 0S8.97.81 8.27 2.79c-1.3-.32-2.72.02-3.73 1.03S3.19 6.25 3.51 7.55C2.31 8.22 1.5 9.5 1.5 12s.81 2.75 2.01 3.42c-.32 1.3.02 2.72 1.03 3.73s2.43 1.35 3.73 1.03C8.97 22.19 10.25 24 12 24s3.03-.81 3.73-2.79c1.3.32 2.72-.02 3.73-1.03s1.35-2.43 1.03-3.73C21.69 14.75 22.5 13.47 22.5 12z"/><path fill="#fff" d="M10.62 15.53l-3.15-3.15 1.32-1.32 1.83 1.83 4.55-4.55 1.32 1.33z"/></svg>gold verified checkmark</span> next to your listing. Skip it and you launch without either.</p>
+                      <p class="text-sm text-gray-500 mt-0.5">Place our badge on your homepage or footer to claim a permanent <strong>DR 38+ do-follow backlink</strong> — and earn a <span class="inline-flex items-center gap-1 font-semibold text-amber-700"><svg viewBox="0 0 24 24" class="w-[15px] h-[15px]"><circle cx="12" cy="12" r="11" fill="#f59e0b"/><path fill="#fff" d="M10.28 16.4l-3.3-3.3 1.4-1.4 1.9 1.9 4.95-4.95 1.4 1.4z"/></svg>gold verified checkmark</span> next to your listing. Skip it and you launch without either.</p>
                     </div>
                     ${backlinkVerified ? html`<span class="w-7 h-7 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-600 flex items-center justify-center shrink-0 mt-0.5"><i class="fas fa-check text-[11px]"></i></span>` : ''}
                   </div>
@@ -2023,8 +2019,8 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
                           <span class="font-semibold text-gray-900 text-sm truncate">${formData.projectName || 'Your startup'}</span>
                           <span class="sh-drop ${skipBacklink ? 'sh-drop--gone' : 'sh-drop--in'}" aria-hidden="true">
                             <svg viewBox="0 0 24 24" class="w-[18px] h-[18px]">
-                              <path fill="#f59e0b" d="M22.5 12c0-1.47-.81-2.75-2.01-3.42.32-1.3-.02-2.72-1.03-3.73s-2.43-1.35-3.73-1.03C15.03.81 13.75 0 12 0S8.97.81 8.27 2.79c-1.3-.32-2.72.02-3.73 1.03S3.19 6.25 3.51 7.55C2.31 8.22 1.5 9.5 1.5 12s.81 2.75 2.01 3.42c-.32 1.3.02 2.72 1.03 3.73s2.43 1.35 3.73 1.03C8.97 22.19 10.25 24 12 24s3.03-.81 3.73-2.79c1.3.32 2.72-.02 3.73-1.03s1.35-2.43 1.03-3.73C21.69 14.75 22.5 13.47 22.5 12z"/>
-                              <path fill="#fff" d="M10.62 15.53l-3.15-3.15 1.32-1.32 1.83 1.83 4.55-4.55 1.32 1.33z"/>
+                              <circle cx="12" cy="12" r="11" fill="#f59e0b"/>
+                              <path fill="#fff" d="M10.28 16.4l-3.3-3.3 1.4-1.4 1.9 1.9 4.95-4.95 1.4 1.4z"/>
                             </svg>
                           </span>
                           <span class="sh-drop sh-drop--d1 ${skipBacklink ? 'sh-drop--gone' : 'sh-drop--in'} text-[11px] font-bold text-orange-700 bg-orange-50 border border-orange-200 px-2 py-0.5 rounded-full">DR 38+</span>
@@ -2088,18 +2084,20 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
                       onClick=${() => {
         if (!formData.projectName) { setError('Please enter a startup name.'); return; }
         if (!formData.category) { setError('Please select a category.'); return; }
+        if (!formData.launchDate) { setError('Please select a launch date above.'); return; }
         setError(null);
         setShowScheduleConfirm(true);
       }}
                       class="sh-btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
-                      disabled=${loading || !(backlinkVerified || skipBacklink) || (!turnstileToken && !turnstileUnavailable)}
-                      title=${!(backlinkVerified || skipBacklink) ? 'Verify your backlink above, or check “Continue with a no-follow backlink” to skip' : ''}
+                      disabled=${loading || !formData.launchDate || !(backlinkVerified || skipBacklink) || (!turnstileToken && !turnstileUnavailable)}
+                      title=${!formData.launchDate ? 'Select a launch date above to continue' : (!(backlinkVerified || skipBacklink) ? 'Verify your backlink above, or check “Continue with a no-follow backlink” to skip' : '')}
                     >
                       ${loading
                         ? html`<i class="fas fa-spinner fa-spin text-xs"></i> Submitting…`
-                        : html`${formData.launchDate ? 'Schedule free launch' : 'Submit free launch'} <i class="fas fa-arrow-right text-xs"></i>`}
+                        : html`Schedule free launch <i class="fas fa-arrow-right text-xs"></i>`}
                     </button>
-                    ${!backlinkVerified && !skipBacklink ? html`<p class="text-xs text-gray-400">Verify your backlink above, or check “Continue with a no-follow backlink” to skip.</p>` : ''}
+                    ${!formData.launchDate ? html`<p class="text-xs text-amber-600">Pick a launch date above to continue.</p>` : ''}
+                    ${formData.launchDate && !backlinkVerified && !skipBacklink ? html`<p class="text-xs text-gray-400">Verify your backlink above, or check “Continue with a no-follow backlink” to skip.</p>` : ''}
                     ${!backlinkVerified && skipBacklink ? html`<p class="text-xs text-amber-600">Launching without a do-follow backlink — you'll miss the DR 38+ link equity and the gold verified checkmark on your listing.</p>` : ''}
                   </div>
                 ` : ''}
