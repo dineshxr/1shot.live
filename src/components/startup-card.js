@@ -146,7 +146,7 @@ export const StartupCard = ({ startup, user, onUpvoteChange, allStartups }) => {
     }
 
     // Add the free backlink message
-    shareText += `\n\nEarning free DR 37+ backlink on submithunt`;
+    shareText += `\n\nEarning free DR 38+ backlink on submithunt`;
 
     // Add creator tag if available
     if (startup.author && startup.author.name) {
@@ -326,6 +326,26 @@ export const StartupCard = ({ startup, user, onUpvoteChange, allStartups }) => {
                   ${startup.plan === 'premium' && html`
                     <span class="text-[10px] font-semibold uppercase tracking-wider text-orange-700 bg-orange-50 border border-orange-200 px-2 py-0.5 rounded-full">
                       Premium
+                    </span>
+                  `}
+                  ${startup.backlink_verified_at && html`
+                    <span
+                      class="group/vf relative inline-flex items-center shrink-0 leading-none"
+                      onClick=${(e) => { e.preventDefault(); e.stopPropagation(); }}
+                      aria-label="Verified do-follow backlink"
+                    >
+                      <svg viewBox="0 0 24 24" class="w-[18px] h-[18px]" aria-hidden="true">
+                        <path fill="url(#sh-gold)" d="M22.5 12c0-1.47-.81-2.75-2.01-3.42.32-1.3-.02-2.72-1.03-3.73s-2.43-1.35-3.73-1.03C15.03.81 13.75 0 12 0S8.97.81 8.27 2.79c-1.3-.32-2.72.02-3.73 1.03S3.19 6.25 3.51 7.55C2.31 8.22 1.5 9.5 1.5 12s.81 2.75 2.01 3.42c-.32 1.3.02 2.72 1.03 3.73s2.43 1.35 3.73 1.03C8.97 22.19 10.25 24 12 24s3.03-.81 3.73-2.79c1.3.32 2.72-.02 3.73-1.03s1.35-2.43 1.03-3.73C21.69 14.75 22.5 13.47 22.5 12z"/>
+                        <path fill="#fff" d="M10.62 15.53l-3.15-3.15 1.32-1.32 1.83 1.83 4.55-4.55 1.32 1.33z"/>
+                        <linearGradient id="sh-gold" x1="0" y1="0" x2="0" y2="24" gradientUnits="userSpaceOnUse">
+                          <stop offset="0" stop-color="#fbbf24"/>
+                          <stop offset="1" stop-color="#d97706"/>
+                        </linearGradient>
+                      </svg>
+                      <span class="pointer-events-none absolute left-1/2 -translate-x-1/2 top-[26px] z-30 whitespace-nowrap rounded-lg bg-gray-900 text-white text-[11px] font-medium leading-snug px-3 py-1.5 opacity-0 invisible group-hover/vf:opacity-100 group-hover/vf:visible transition-opacity duration-150 shadow-xl normal-case tracking-normal">
+                        <span class="font-semibold text-amber-300">Verified</span> — earning a DR 38+ backlink
+                        <span class="absolute -top-1 left-1/2 -translate-x-1/2 w-2 h-2 rotate-45 bg-gray-900"></span>
+                      </span>
                     </span>
                   `}
                 </div>

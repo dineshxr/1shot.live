@@ -27,7 +27,7 @@ VALUES
   </ul>
 
   <h2>Start with SubmitHunt</h2>
-  <p><a href="https://submithunt.com">SubmitHunt</a> combines all these benefits in one platform. With a DR 37+ domain, engaged community, and fast approval process, it''s the perfect starting point for your directory strategy.</p>
+  <p><a href="https://submithunt.com">SubmitHunt</a> combines all these benefits in one platform. With a DR 38+ domain, engaged community, and fast approval process, it''s the perfect starting point for your directory strategy.</p>
 
   <div class="cta-box" style="background: #f8f9fa; padding: 20px; border-left: 4px solid #60a5fa; margin: 30px 0;">
     <h3 style="margin-top: 0;">Submit Your Startup Today</h3>
@@ -116,7 +116,7 @@ VALUES
   <h2>Best Ways to Build Backlinks</h2>
   
   <h3>1. Directory Submissions</h3>
-  <p>Submit to reputable startup directories. <a href="https://submithunt.com">SubmitHunt</a> provides dofollow backlinks from a DR 37+ domain—one of the easiest high-quality backlinks you can get.</p>
+  <p>Submit to reputable startup directories. <a href="https://submithunt.com">SubmitHunt</a> provides dofollow backlinks from a DR 38+ domain—one of the easiest high-quality backlinks you can get.</p>
 
   <h3>2. Guest Blogging</h3>
   <p>Write valuable content for established blogs in your industry. Include a natural link back to your site.</p>
@@ -149,7 +149,7 @@ VALUES
 
   <div class="cta-box" style="background: #f8f9fa; padding: 20px; border-left: 4px solid #60a5fa; margin: 30px 0;">
     <h3 style="margin-top: 0;">Get Your First Quality Backlink</h3>
-    <p>Submit to SubmitHunt and get a dofollow backlink from our DR 37+ domain.</p>
+    <p>Submit to SubmitHunt and get a dofollow backlink from our DR 38+ domain.</p>
     <a href="https://submithunt.com/submit" style="display: inline-block; background: #60a5fa; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">Submit Your Startup</a>
   </div>
 </article>',

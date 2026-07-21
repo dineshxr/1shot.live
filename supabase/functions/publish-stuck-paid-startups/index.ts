@@ -35,10 +35,15 @@ serve(async (req) => {
 
     console.log("Finding stuck paid startups...")
 
-    // Find paid startups that have actually paid but are not live yet.
-    // CRITICAL: filter on payment_status='paid' so unpaid pending rows
-    // (inserted at form-submit time, awaiting Stripe webhook) are never
-    // promoted to live by this function.
+    // Today's PST date — the basis the launch pipeline uses for "today".
+    const todayPst = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' })
+
+    // Find paid startups that have actually paid but are not live yet, whose
+    // launch day has ALREADY arrived (launch_date <= today).
+    // CRITICAL: filter on payment_status='paid' so unpaid pending rows (inserted
+    // at form-submit time, awaiting Stripe webhook) are never promoted to live.
+    // The launch_date gate leaves future-scheduled paid launches alone — they're
+    // not stuck, they're waiting for their day.
     const { data: stuckStartups, error: findError } = await supabase
       .from('startups')
       .select('id, title, slug, plan, author, launch_date, is_live, created_at, payment_status')
@@ -46,6 +51,7 @@ serve(async (req) => {
       .eq('archived', false)
       .eq('payment_status', 'paid')
       .in('plan', ['premium', 'featured'])
+      .lte('launch_date', todayPst)
       .order('created_at', { ascending: true })
 
     if (findError) {
@@ -53,12 +59,22 @@ serve(async (req) => {
       throw findError
     }
 
-    console.log(`Found ${stuckStartups?.length || 0} paid startups that are not live`)
+    // A row scheduled for TODAY should still go live at the 8 AM PST sweep, not
+    // whenever this 30-minute net happens to fire — otherwise a legitimately
+    // scheduled launch would appear at, say, 00:15 instead of the 8 AM we
+    // promised. Overdue rows (launch_date < today) are always caught up now.
+    const nowPst = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Los_Angeles' }))
+    const currentHour = nowPst.getHours()
+    const dueStartups = (stuckStartups || []).filter(
+      s => s.launch_date < todayPst || currentHour >= 8
+    )
 
-    if (!stuckStartups || stuckStartups.length === 0) {
+    console.log(`Found ${stuckStartups?.length || 0} not-live paid startups (${dueStartups.length} due to publish now)`)
+
+    if (dueStartups.length === 0) {
       return new Response(
         JSON.stringify({
-          message: 'No stuck paid startups found',
+          message: 'No stuck paid startups due to publish',
           count: 0
         }),
         {
@@ -68,17 +84,19 @@ serve(async (req) => {
       )
     }
 
-    // Publish each stuck startup; the hourly sweep handles the launch email.
+    // Publish each due startup; the hourly sweep handles the launch email.
     const results = []
-    for (const startup of stuckStartups) {
+    for (const startup of dueStartups) {
       try {
         console.log(`Publishing stuck paid startup: ${startup.title} (${startup.plan})`)
 
+        // Keep the maker's chosen launch_date (it's already a weekday and due).
+        // Overwriting it with "today" used to risk a weekend value that violates
+        // the weekday CHECK constraint, and would rewrite a scheduled date.
         const { error: updateError } = await supabase
           .from('startups')
           .update({
             is_live: true,
-            launch_date: new Date().toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' }),
             notification_sent: false, // hourly sweep sends the launch email
             notification_sent_at: null
           })

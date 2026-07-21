@@ -45,18 +45,35 @@ export const Content = ({ user, onStartupsChange, selectedCategory, sortBy, sear
           // The comments table is sparse, so one lightweight query covers all.
           let withCounts = filteredData;
           try {
-            const { data: commentRows } = await supabase
-              .from('comments')
-              .select('startup_id');
+            // One query for comment counts, one for verified do-follow backlinks.
+            // The feed RPC doesn't return backlink_verified_at, so we merge it in
+            // here (like comment_count) to drive the gold "verified" checkmark.
+            const [{ data: commentRows }, { data: verifiedRows }] = await Promise.all([
+              supabase.from('comments').select('startup_id'),
+              supabase.from('startups').select('id, backlink_verified_at').not('backlink_verified_at', 'is', null),
+            ]);
+
+            const counts = {};
             if (Array.isArray(commentRows)) {
-              const counts = {};
               commentRows.forEach((r) => {
                 if (r && r.startup_id) counts[r.startup_id] = (counts[r.startup_id] || 0) + 1;
               });
-              withCounts = filteredData.map((s) => ({ ...s, comment_count: counts[s.id] || 0 }));
             }
+
+            const verified = {};
+            if (Array.isArray(verifiedRows)) {
+              verifiedRows.forEach((r) => {
+                if (r && r.id) verified[r.id] = r.backlink_verified_at;
+              });
+            }
+
+            withCounts = filteredData.map((s) => ({
+              ...s,
+              comment_count: counts[s.id] || 0,
+              backlink_verified_at: verified[s.id] || s.backlink_verified_at || null,
+            }));
           } catch (e) {
-            console.log('Comment counts unavailable:', e);
+            console.log('Comment counts / backlink status unavailable:', e);
           }
 
           setStartups(withCounts);

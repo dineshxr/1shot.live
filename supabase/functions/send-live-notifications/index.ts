@@ -54,11 +54,24 @@ serve(async (req) => {
 
     const listings = (startupsToGoLive || [])
       .filter((s: any) => {
-        // Paid startups (premium/featured) should go live immediately regardless
-        // of launch_date or time — but ONLY if payment has been confirmed.
+        // Paid startups (premium/featured) go live on the launch day the maker
+        // chose — but ONLY if payment has been confirmed.
         if (s.plan === 'premium' || s.plan === 'featured') {
           if (s.payment_status !== 'paid') {
             console.log(`Skipping unpaid ${s.plan} startup ${s.title} (payment_status=${s.payment_status})`)
+            return false
+          }
+          // Same-day paid launches are flipped live immediately by the Stripe
+          // webhook, so a not-live paid row here is either scheduled for a
+          // future day (hold it) or due today/overdue (publish it). On the day
+          // itself, wait for the 8 AM PST sweep so it matches the time we
+          // promised the maker; overdue rows publish right away.
+          if (s.launch_date && s.launch_date > todayPst) {
+            console.log(`Holding scheduled ${s.plan} startup ${s.title} until ${s.launch_date}`)
+            return false
+          }
+          if (s.launch_date === todayPst && currentHour < 8) {
+            console.log(`Holding ${s.plan} startup ${s.title} until 8 AM PST on launch day (${currentHour} PST)`)
             return false
           }
           console.log(`Processing paid startup: ${s.title} (${s.plan})`)
@@ -343,7 +356,7 @@ async function sendLiveNotification(listing: any, blogUrl: string | null = null)
     const shareText = encodeURIComponent(`I just launched ${listing.title} on @SubmitHunt! Check it out and give it an upvote 🚀`);
 
     // Free makers can skip the do-follow backlink at submit time. If they did,
-    // keep reminding them they can still claim the free DR 37+ link equity.
+    // keep reminding them they can still claim the free DR 38+ link equity.
     const badgeEmbed = '<a href="https://submithunt.com" target="_blank"><img src="https://submithunt.com/badge-light.svg" alt="Featured on Submit Hunt" width="240" height="66" /></a>';
     const badgeEmbedEscaped = badgeEmbed.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     const showBacklinkReminder = !isPaid && !listing.backlink_verified_at;
@@ -397,7 +410,7 @@ async function sendLiveNotification(listing: any, blogUrl: string | null = null)
           Products that reach the Top 3 on launch day all have one thing in common: their founders shared the listing within the first few hours. The earlier you share, the more momentum you build.
         </p>
         <p style="margin: 0 0 15px 0; color: #92400e; font-size: 14px; font-weight: bold;">
-          Top 3 products earn a permanent badge + a dofollow backlink from our 37+ DR site.
+          Top 3 products earn a permanent badge + a dofollow backlink from our 38+ DR site.
         </p>
         <a href="https://twitter.com/intent/tweet?text=${shareText}&url=${encodeURIComponent(startupUrl)}" style="display: inline-block; background-color: #000; color: #fff; padding: 10px 20px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 14px;">Share on X</a>
       </div>
@@ -405,9 +418,9 @@ async function sendLiveNotification(listing: any, blogUrl: string | null = null)
       ${showBacklinkReminder ? `
       <!-- Free do-follow backlink reminder (skipped at submit time) -->
       <div style="background-color: #eff6ff; border-left: 4px solid #3b82f6; border-radius: 0 8px 8px 0; padding: 20px; margin: 25px 0;">
-        <h3 style="margin: 0 0 8px 0; color: #1e40af; font-size: 16px;">Claim your free DR 37+ backlink</h3>
+        <h3 style="margin: 0 0 8px 0; color: #1e40af; font-size: 16px;">Claim your free DR 38+ backlink</h3>
         <p style="margin: 0 0 14px 0; color: #1e3a8a; font-size: 14px; line-height: 1.6;">
-          You launched without a do-follow SubmitHunt backlink — so you're not yet getting the DR 37+ link equity that lifts your own SEO. Add our badge to your homepage or footer (keep it do-follow) and it's yours, free.
+          You launched without a do-follow SubmitHunt backlink — so you're not yet getting the DR 38+ link equity that lifts your own SEO. Add our badge to your homepage or footer (keep it do-follow) and it's yours, free.
         </p>
         <div style="text-align: center; margin-bottom: 14px;">
           <img src="https://submithunt.com/badge-light.svg" alt="Featured on Submit Hunt" width="200" style="height: auto;" />
@@ -426,7 +439,7 @@ async function sendLiveNotification(listing: any, blogUrl: string | null = null)
         <p style="margin: 0 0 6px 0; color: #f59e0b; font-size: 12px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px;">For ${listing.title}</p>
         <h3 style="margin: 0 0 12px 0; color: #fff; font-size: 22px; line-height: 1.3;">Your free listing comes down in 7 days. Premium keeps working for 14.</h3>
         <p style="margin: 0 0 20px 0; color: #ccc; font-size: 14px; line-height: 1.6;">
-          Launch day gets you the spike — the second week is where steady traffic compounds. Premium doubles your homepage run and includes a guaranteed dofollow backlink from our DR 37+ site (founders routinely pay $50–200 for one of those elsewhere).
+          Launch day gets you the spike — the second week is where steady traffic compounds. Premium doubles your homepage run and includes a guaranteed dofollow backlink from our DR 38+ site (founders routinely pay $50–200 for one of those elsewhere).
         </p>
         
         <table style="width: 100%; margin-bottom: 20px;" cellpadding="0" cellspacing="0">
@@ -434,7 +447,7 @@ async function sendLiveNotification(listing: any, blogUrl: string | null = null)
             <td style="padding: 8px 0; border-bottom: 1px solid #333;">
               <table cellpadding="0" cellspacing="0"><tr>
                 <td style="color: #22c55e; font-size: 16px; padding-right: 10px; vertical-align: top;">&#10003;</td>
-                <td style="color: #e5e5e5; font-size: 14px;">Permanent dofollow backlink (37+ DR)</td>
+                <td style="color: #e5e5e5; font-size: 14px;">Permanent dofollow backlink (38+ DR)</td>
               </tr></table>
             </td>
           </tr>
@@ -474,7 +487,7 @@ async function sendLiveNotification(listing: any, blogUrl: string | null = null)
       <div style="background: linear-gradient(135deg, #7c3aed 0%, #5b21b6 100%); border-radius: 8px; padding: 25px; margin: 25px 0;">
         <h3 style="margin: 0 0 10px 0; color: #fff; font-size: 18px;">Your Featured Spot is live</h3>
         <p style="margin: 0 0 12px 0; color: #fff; font-size: 14px; line-height: 1.6; opacity: 0.95;">
-          ${listing.title} is running with featured placement in the feed — gradient-border card, prime visibility to every visitor for the next 7 days. Your guaranteed dofollow backlink (DR 37+) goes live within 24 hours.
+          ${listing.title} is running with featured placement in the feed — gradient-border card, prime visibility to every visitor for the next 7 days. Your guaranteed dofollow backlink (DR 38+) goes live within 24 hours.
         </p>
         <p style="margin: 0; color: #ddd6fe; font-size: 13px; line-height: 1.6;">
           Make the placement count: share your listing in the first few hours — featured products that do convert the extra eyeballs into upvotes and a shot at the Top 3 badge.
@@ -485,7 +498,7 @@ async function sendLiveNotification(listing: any, blogUrl: string | null = null)
       <div style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); border-radius: 8px; padding: 25px; margin: 25px 0;">
         <h3 style="margin: 0 0 10px 0; color: #fff; font-size: 18px;">Your Premium benefits are active</h3>
         <p style="margin: 0 0 12px 0; color: #fff; font-size: 14px; line-height: 1.6; opacity: 0.95;">
-          ${listing.title} gets priority placement and stays on the homepage for 14 days — double the standard run. Your guaranteed dofollow backlink (DR 37+) goes live within 24 hours, and we'll feature you in our next newsletter to 2,000+ subscribers.
+          ${listing.title} gets priority placement and stays on the homepage for 14 days — double the standard run. Your guaranteed dofollow backlink (DR 38+) goes live within 24 hours, and we'll feature you in our next newsletter to 2,000+ subscribers.
         </p>
         <p style="margin: 0; color: #d1fae5; font-size: 13px; line-height: 1.6;">
           Make the long run count: share early, reply to every comment, and let the second week compound what launch day starts.
@@ -537,12 +550,12 @@ ${startupUrl}
 THE #1 THING THAT SEPARATES TOP LAUNCHES
 Products that reach the Top 3 on launch day all have one thing in common: their founders shared the listing within the first few hours.
 
-Top 3 products earn a permanent badge + a dofollow backlink from our 37+ DR site.
+Top 3 products earn a permanent badge + a dofollow backlink from our 38+ DR site.
 
 Share on X: https://twitter.com/intent/tweet?text=${shareText}&url=${encodeURIComponent(startupUrl)}
 
-${showBacklinkReminder ? `CLAIM YOUR FREE DR 37+ BACKLINK
-You launched without a do-follow SubmitHunt backlink, so you're missing the DR 37+ link equity that lifts your own SEO. Add our badge to your homepage or footer (keep it do-follow) and it's yours, free.
+${showBacklinkReminder ? `CLAIM YOUR FREE DR 38+ BACKLINK
+You launched without a do-follow SubmitHunt backlink, so you're missing the DR 38+ link equity that lifts your own SEO. Add our badge to your homepage or footer (keep it do-follow) and it's yours, free.
 
 Paste this on your site:
 ${badgeEmbed}
@@ -550,9 +563,9 @@ ${badgeEmbed}
 Add it from your dashboard: https://submithunt.com/dashboard
 
 ` : ''}${!isPaid ? `YOUR FREE LISTING COMES DOWN IN 7 DAYS. PREMIUM KEEPS WORKING FOR 14.
-Launch day gets you the spike — the second week is where steady traffic compounds. Premium doubles your homepage run and includes a guaranteed dofollow backlink from our DR 37+ site (founders routinely pay $50–200 for one of those elsewhere).
+Launch day gets you the spike — the second week is where steady traffic compounds. Premium doubles your homepage run and includes a guaranteed dofollow backlink from our DR 38+ site (founders routinely pay $50–200 for one of those elsewhere).
 
-- Permanent dofollow backlink (37+ DR)
+- Permanent dofollow backlink (38+ DR)
 - 14 days on homepage (vs 7 for free)
 - Featured in newsletter (2,000+ subscribers)
 - Skip the queue on future launches
@@ -560,11 +573,11 @@ Launch day gets you the spike — the second week is where steady traffic compou
 Upgrade: https://submithunt.com/pricing
 One-time payment. No subscription.
 ` : isFeatured ? `YOUR FEATURED SPOT IS LIVE
-${listing.title} is running with featured placement in the feed — gradient-border card, prime visibility to every visitor for the next 7 days. Your guaranteed dofollow backlink (DR 37+) goes live within 24 hours.
+${listing.title} is running with featured placement in the feed — gradient-border card, prime visibility to every visitor for the next 7 days. Your guaranteed dofollow backlink (DR 38+) goes live within 24 hours.
 
 Make the placement count: share your listing in the first few hours — featured products that do convert the extra eyeballs into upvotes and a shot at the Top 3 badge.
 ` : `YOUR PREMIUM BENEFITS ARE ACTIVE
-${listing.title} gets priority placement and stays on the homepage for 14 days — double the standard run. Your guaranteed dofollow backlink (DR 37+) goes live within 24 hours, and we'll feature you in our next newsletter to 2,000+ subscribers.
+${listing.title} gets priority placement and stays on the homepage for 14 days — double the standard run. Your guaranteed dofollow backlink (DR 38+) goes live within 24 hours, and we'll feature you in our next newsletter to 2,000+ subscribers.
 
 Make the long run count: share early, reply to every comment, and let the second week compound what launch day starts.
 `}

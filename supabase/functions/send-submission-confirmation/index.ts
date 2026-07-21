@@ -173,9 +173,9 @@ async function sendConfirmationEmail(resendApiKey: string, startup: any, authorE
       ${showBadgeReminder ? `
       <!-- Badge reminder (skipped at submit time) -->
       <div style="background-color: #eff6ff; border-left: 4px solid #3b82f6; border-radius: 0 8px 8px 0; padding: 20px; margin: 25px 0;">
-        <h3 style="margin: 0 0 8px 0; color: #1e40af; font-size: 16px;">Don't leave your free DR 37+ backlink on the table</h3>
+        <h3 style="margin: 0 0 8px 0; color: #1e40af; font-size: 16px;">Don't leave your free DR 38+ backlink on the table</h3>
         <p style="margin: 0 0 14px 0; color: #1e3a8a; font-size: 14px; line-height: 1.6;">
-          You skipped the badge step. Add our badge to your homepage or footer (keep it do-follow) before launch day and your listing becomes <strong>permanent</strong> — and your backlink from our DR 37+ site stays <strong>dofollow</strong>. Free either way.
+          You skipped the badge step. Add our badge to your homepage or footer (keep it do-follow) before launch day and your listing becomes <strong>permanent</strong> — and your backlink from our DR 38+ site stays <strong>dofollow</strong>. Free either way.
         </p>
         <div style="text-align: center; margin-bottom: 14px;">
           <img src="https://submithunt.com/badge-light.svg" alt="Featured on Submit Hunt" width="200" style="height: auto;" />
@@ -193,7 +193,7 @@ async function sendConfirmationEmail(resendApiKey: string, startup: any, authorE
         <p style="margin: 0 0 6px 0; color: #f59e0b; font-size: 12px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px;">Don't want to wait?</p>
         <h3 style="margin: 0 0 12px 0; color: #fff; font-size: 21px; line-height: 1.3;">Skip the queue — launch ${startup.title} today</h3>
         <p style="margin: 0 0 18px 0; color: #ccc; font-size: 14px; line-height: 1.6;">
-          Premium launches go live immediately instead of waiting for a free slot — and stay on the homepage for 14 days instead of 7, with a guaranteed dofollow backlink from our DR 37+ site and a spot in our newsletter to 2,000+ subscribers.
+          Premium launches go live immediately instead of waiting for a free slot — and stay on the homepage for 14 days instead of 7, with a guaranteed dofollow backlink from our DR 38+ site and a spot in our newsletter to 2,000+ subscribers.
         </p>
         <div style="text-align: center;">
           <a href="https://submithunt.com/pricing" style="display: inline-block; background-color: #f59e0b; color: #000; padding: 13px 30px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 15px;">Upgrade to Premium — $20 one-time</a>
@@ -230,8 +230,8 @@ WHAT HAPPENS NEXT
 2. You'll get an email with your live listing link + a dedicated SEO blog post about your product
 3. You stay on the homepage for 7 days — Top 3 by upvotes on launch day earns a permanent badge + dofollow backlink
 
-${showBadgeReminder ? `DON'T LEAVE YOUR FREE DR 37+ BACKLINK ON THE TABLE
-You skipped the badge step. Add our badge to your homepage or footer (keep it do-follow) before launch day and your listing becomes permanent — and your backlink from our DR 37+ site stays dofollow. Free either way.
+${showBadgeReminder ? `DON'T LEAVE YOUR FREE DR 38+ BACKLINK ON THE TABLE
+You skipped the badge step. Add our badge to your homepage or footer (keep it do-follow) before launch day and your listing becomes permanent — and your backlink from our DR 38+ site stays dofollow. Free either way.
 
 Paste this on your site:
 ${badgeEmbed}
@@ -239,7 +239,7 @@ ${badgeEmbed}
 Verify it from your dashboard: https://submithunt.com/dashboard
 
 ` : ''}DON'T WANT TO WAIT?
-Premium launches go live immediately instead of waiting for a free slot — and stay on the homepage for 14 days instead of 7, with a guaranteed dofollow backlink from our DR 37+ site and a spot in our newsletter to 2,000+ subscribers.
+Premium launches go live immediately instead of waiting for a free slot — and stay on the homepage for 14 days instead of 7, with a guaranteed dofollow backlink from our DR 38+ site and a spot in our newsletter to 2,000+ subscribers.
 
 Upgrade to Premium ($20 one-time): https://submithunt.com/pricing
 

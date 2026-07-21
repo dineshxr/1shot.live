@@ -18,9 +18,11 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
-    // Get startup ID and optional payment date from request body
-    const { startupId, paymentDate } = await req.json()
-    
+    // Get startup ID and optional payment date from request body.
+    // scheduled=true → a future-dated paid launch: send the "scheduled"
+    // confirmation only; do NOT go live (the day-of sweep handles that).
+    const { startupId, paymentDate, scheduled } = await req.json()
+
     if (!startupId) {
       return new Response(
         JSON.stringify({ error: 'startupId is required' }),
@@ -38,7 +40,7 @@ serve(async (req) => {
     // Get the startup details
     const { data: startup, error: startupError } = await supabase
       .from('startups')
-      .select('id, title, slug, description, plan, author, launch_date, is_live, payment_status')
+      .select('id, title, slug, description, plan, author, launch_date, is_live, payment_status, confirmation_sent_at')
       .eq('id', startupId)
       .single()
 
@@ -95,10 +97,49 @@ serve(async (req) => {
       )
     }
 
+    // Scheduled (future-dated) paid launch: send the confirmation and stop.
+    // The row stays not-live; send-live-notifications publishes it and sends
+    // the launch email on the chosen day. confirmation_sent_at makes this
+    // idempotent (paid rows never get the free submission-confirmation email).
+    if (scheduled) {
+      if (startup.confirmation_sent_at) {
+        console.log(`Scheduled confirmation already sent for ${startup.title}`)
+        return new Response(
+          JSON.stringify({ message: 'Scheduled confirmation already sent', scheduled: true }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
+        )
+      }
+
+      const scheduledLaunchDate = startup.launch_date || launchDate
+      const emailSent = await sendScheduledConfirmation({
+        ...startup,
+        author_email: startup.author?.email,
+        author_name: startup.author?.name,
+      }, scheduledLaunchDate)
+
+      if (emailSent) {
+        await supabase
+          .from('startups')
+          .update({ confirmation_sent_at: new Date().toISOString() })
+          .eq('id', startupId)
+      }
+
+      console.log(`Scheduled ${startup.plan} startup ${startup.title} for ${scheduledLaunchDate} — emailSent=${emailSent}`)
+      return new Response(
+        JSON.stringify({
+          message: 'Scheduled confirmation sent',
+          scheduled: true,
+          launch_date: scheduledLaunchDate,
+          emailSent,
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
+      )
+    }
+
     // Update startup to live immediately
     const { error: updateError } = await supabase
       .from('startups')
-      .update({ 
+      .update({
         is_live: true,
         launch_date: launchDate, // Use payment date instead of today
         notification_sent: false, // Reset so notification gets sent
@@ -278,7 +319,7 @@ async function sendLiveNotification(listing: any, blogUrl: string | null = null)
           Products that reach the Top 3 on launch day all have one thing in common: their founders shared the listing within the first few hours. The earlier you share, the more momentum you build.
         </p>
         <p style="margin: 0 0 15px 0; color: #92400e; font-size: 14px; font-weight: bold;">
-          Top 3 products earn a permanent badge + a dofollow backlink from our 37+ DR site.
+          Top 3 products earn a permanent badge + a dofollow backlink from our 38+ DR site.
         </p>
         <a href="https://twitter.com/intent/tweet?text=${shareText}&url=${encodeURIComponent(startupUrl)}" style="display: inline-block; background-color: #000; color: #fff; padding: 10px 20px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 14px;">Share on X</a>
       </div>
@@ -288,7 +329,7 @@ async function sendLiveNotification(listing: any, blogUrl: string | null = null)
       <div style="background: linear-gradient(135deg, #7c3aed 0%, #5b21b6 100%); border-radius: 8px; padding: 25px; margin: 25px 0;">
         <h3 style="margin: 0 0 10px 0; color: #fff; font-size: 18px;">Your Featured Spot benefits are active</h3>
         <p style="margin: 0; color: #fff; font-size: 14px; line-height: 1.6; opacity: 0.95;">
-          ${listing.title} is running with featured placement in the feed — gradient-border card, prime visibility to every visitor for the next 7 days. Your guaranteed dofollow backlink (DR 37+) goes live within 24 hours.
+          ${listing.title} is running with featured placement in the feed — gradient-border card, prime visibility to every visitor for the next 7 days. Your guaranteed dofollow backlink (DR 38+) goes live within 24 hours.
         </p>
       </div>
       ` : `
@@ -296,7 +337,7 @@ async function sendLiveNotification(listing: any, blogUrl: string | null = null)
       <div style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); border-radius: 8px; padding: 25px; margin: 25px 0;">
         <h3 style="margin: 0 0 10px 0; color: #fff; font-size: 18px;">Your Premium benefits are active</h3>
         <p style="margin: 0; color: #fff; font-size: 14px; line-height: 1.6; opacity: 0.95;">
-          ${listing.title} has priority placement and stays on the homepage for 14 days — double the standard run. Your guaranteed dofollow backlink (DR 37+) goes live within 24 hours, and we'll feature you in our next newsletter to 2,000+ subscribers.
+          ${listing.title} has priority placement and stays on the homepage for 14 days — double the standard run. Your guaranteed dofollow backlink (DR 38+) goes live within 24 hours, and we'll feature you in our next newsletter to 2,000+ subscribers.
         </p>
       </div>
       `}
@@ -351,14 +392,14 @@ Your product page: ${startupUrl}
 THE #1 THING THAT SEPARATES TOP LAUNCHES
 Products that reach the Top 3 on launch day all have one thing in common: their founders shared the listing within the first few hours.
 
-Top 3 products earn a permanent badge + a dofollow backlink from our 37+ DR site.
+Top 3 products earn a permanent badge + a dofollow backlink from our 38+ DR site.
 
 Share on X: https://twitter.com/intent/tweet?text=${shareText}&url=${encodeURIComponent(startupUrl)}
 
 ${isFeatured ? `YOUR FEATURED SPOT BENEFITS ARE ACTIVE
-${listing.title} is running with featured placement in the feed — gradient-border card, prime visibility to every visitor for the next 7 days. Your guaranteed dofollow backlink (DR 37+) goes live within 24 hours.
+${listing.title} is running with featured placement in the feed — gradient-border card, prime visibility to every visitor for the next 7 days. Your guaranteed dofollow backlink (DR 38+) goes live within 24 hours.
 ` : `YOUR PREMIUM BENEFITS ARE ACTIVE
-${listing.title} has priority placement and stays on the homepage for 14 days — double the standard run. Your guaranteed dofollow backlink (DR 37+) goes live within 24 hours, and we'll feature you in our next newsletter to 2,000+ subscribers.
+${listing.title} has priority placement and stays on the homepage for 14 days — double the standard run. Your guaranteed dofollow backlink (DR 38+) goes live within 24 hours, and we'll feature you in our next newsletter to 2,000+ subscribers.
 `}
 
 ${blogUrl ? `YOUR BLOG POST IS LIVE
@@ -397,6 +438,175 @@ The SubmitHunt Team
 
   } catch (error) {
     console.error('Error sending email:', error)
+    return false
+  }
+}
+
+// launch_date is YYYY-MM-DD; classify/format in UTC so the weekday never shifts.
+function formatLaunchDate(launchDate: string | null): string {
+  if (!launchDate) return 'your selected launch day'
+  const [y, m, d] = launchDate.split('-').map(Number)
+  return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString('en-US', {
+    weekday: 'long', month: 'long', day: 'numeric', timeZone: 'UTC',
+  })
+}
+
+// Confirmation for a future-dated paid launch: payment received + the exact
+// launch day. No blog link yet (it's generated on launch day) and no upsell —
+// they already paid. The launch-day "you're live" email comes later from
+// send-live-notifications.
+async function sendScheduledConfirmation(listing: any, launchDate: string): Promise<boolean> {
+  try {
+    const resendApiKey = Deno.env.get('RESEND_API_KEY')
+    if (!resendApiKey) {
+      console.log('No Resend API key found, skipping scheduled confirmation')
+      return false
+    }
+    if (!listing.author_email) {
+      console.log(`No email for ${listing.title} — cannot send scheduled confirmation`)
+      return false
+    }
+
+    const startupUrl = `https://submithunt.com/startup/${listing.slug || listing.id}`
+    const isFeatured = listing.plan === 'featured'
+    const planLabel = isFeatured ? 'Featured Spot ($50)' : 'Premium Launch ($20)'
+    const launchDay = formatLaunchDate(launchDate)
+
+    const emailData = {
+      from: 'SubmitHunt <hello@submithunt.com>',
+      to: [listing.author_email],
+      subject: isFeatured
+        ? `Payment received — your Featured Spot for ${listing.title} launches ${launchDay}`
+        : `Payment received — ${listing.title} launches ${launchDay}`,
+      html: `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${listing.title} is scheduled on SubmitHunt</title>
+</head>
+<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #f5f5f5;">
+  <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; margin-top: 20px; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
+
+    <!-- Header -->
+    <div style="background-color: #60a5fa; padding: 30px; text-align: center; border-bottom: 4px solid #000;">
+      <h1 style="margin: 0; color: #000; font-size: 26px; font-weight: bold;">You're booked — ${listing.title} launches ${launchDay}</h1>
+      <p style="margin: 8px 0 0 0; color: #1a1a1a; font-size: 15px;">Payment confirmed. Your spot is locked in for launch day.</p>
+    </div>
+
+    <!-- Main Content -->
+    <div style="padding: 30px;">
+      <p style="font-size: 16px; color: #333; margin-bottom: 20px; line-height: 1.6;">
+        Hey ${listing.author_name || 'there'},
+      </p>
+
+      <p style="font-size: 16px; color: #555; line-height: 1.6; margin-bottom: 0;">
+        Thanks for going ${isFeatured ? 'Featured' : 'Premium'}. Your payment went through and <strong>${listing.title}</strong> is scheduled — here's your launch summary:
+      </p>
+
+      <!-- Summary Card -->
+      <div style="background-color: #f8f9fa; border: 2px solid #e9ecef; border-radius: 8px; padding: 20px; margin: 20px 0;">
+        <h2 style="margin: 0 0 8px 0; color: #333; font-size: 20px;">${listing.title}</h2>
+        <p style="margin: 0 0 15px 0; color: #666; font-size: 14px; line-height: 1.5;">${listing.description?.substring(0, 150) || ''}${listing.description?.length > 150 ? '...' : ''}</p>
+        <table cellpadding="0" cellspacing="0" style="width: 100%; font-size: 14px; margin-bottom: 15px;">
+          <tr>
+            <td style="padding: 5px 0; color: #888; width: 110px;">Plan</td>
+            <td style="padding: 5px 0; color: #333; font-weight: bold;">${planLabel}</td>
+          </tr>
+          <tr>
+            <td style="padding: 5px 0; color: #888;">Launch day</td>
+            <td style="padding: 5px 0; color: #333; font-weight: bold;">${launchDay}, 8:00 AM PST</td>
+          </tr>
+          <tr>
+            <td style="padding: 5px 0; color: #888;">Status</td>
+            <td style="padding: 5px 0; color: #b45309; font-weight: bold;">Scheduled</td>
+          </tr>
+          <tr>
+            <td style="padding: 5px 0; color: #888;">Visibility</td>
+            <td style="padding: 5px 0; color: #333; font-weight: bold;">${isFeatured ? 'Featured placement, 7 days' : 'Homepage, 14 days'}</td>
+          </tr>
+        </table>
+        <a href="${startupUrl}" style="display: inline-block; background-color: #000; color: #fff; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 14px;">Preview your listing</a>
+      </div>
+
+      <!-- What happens next -->
+      <div style="margin: 24px 0;">
+        <h4 style="margin: 0 0 12px 0; color: #333; font-size: 16px;">What happens next</h4>
+        <table style="width: 100%;" cellpadding="0" cellspacing="0">
+          <tr><td style="padding: 5px 0; color: #555; font-size: 14px;">1. ${listing.title} goes live automatically on ${launchDay} at 8 AM PST — nothing more to do</td></tr>
+          <tr><td style="padding: 5px 0; color: #555; font-size: 14px;">2. You'll get an email that morning with your live link + a dedicated SEO blog post about your product</td></tr>
+          <tr><td style="padding: 5px 0; color: #555; font-size: 14px;">3. ${isFeatured ? 'Your Featured placement runs for 7 days from launch' : 'You stay on the homepage for 14 days from launch'}, with your guaranteed dofollow backlink (DR 38+)</td></tr>
+        </table>
+      </div>
+
+      <!-- Prep for launch day -->
+      <div style="background-color: #fef3c7; border-left: 4px solid #f59e0b; border-radius: 0 8px 8px 0; padding: 20px; margin: 25px 0;">
+        <h3 style="margin: 0 0 8px 0; color: #92400e; font-size: 16px;">Use the runway</h3>
+        <p style="margin: 0; color: #78350f; font-size: 14px; line-height: 1.6;">
+          The products that hit the Top 3 line things up before launch day: draft your X post, give a few friends a heads-up to upvote in the first hour, and have your communities ready. We'll email you the moment ${listing.title} is live.
+        </p>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div style="background-color: #f8f9fa; padding: 20px; text-align: center; border-top: 1px solid #e9ecef;">
+      <p style="margin: 0 0 8px 0; color: #666; font-size: 14px;">
+        See you on launch day.
+      </p>
+      <p style="margin: 0; color: #999; font-size: 12px;">
+        <a href="https://submithunt.com" style="color: #60a5fa; text-decoration: none;">SubmitHunt</a> &mdash; Where founders launch and get discovered
+      </p>
+    </div>
+  </div>
+</body>
+</html>
+      `,
+      text: `Payment received — ${listing.title} launches ${launchDay}
+
+Hey ${listing.author_name || 'there'},
+
+Thanks for going ${isFeatured ? 'Featured' : 'Premium'}. Your payment went through and ${listing.title} is scheduled.
+
+YOUR LAUNCH SUMMARY
+- Plan: ${planLabel}
+- Launch day: ${launchDay}, 8:00 AM PST
+- Status: Scheduled
+- Visibility: ${isFeatured ? 'Featured placement, 7 days' : 'Homepage, 14 days'}
+
+Preview your listing: ${startupUrl}
+
+WHAT HAPPENS NEXT
+1. ${listing.title} goes live automatically on ${launchDay} at 8 AM PST — nothing more to do
+2. You'll get an email that morning with your live link + a dedicated SEO blog post about your product
+3. ${isFeatured ? 'Your Featured placement runs for 7 days from launch' : 'You stay on the homepage for 14 days from launch'}, with your guaranteed dofollow backlink (DR 38+)
+
+USE THE RUNWAY
+The products that hit the Top 3 line things up before launch day: draft your X post, give a few friends a heads-up to upvote in the first hour, and have your communities ready. We'll email you the moment ${listing.title} is live.
+
+See you on launch day.
+The SubmitHunt Team
+      `
+    }
+
+    const response = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${resendApiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(emailData),
+    })
+
+    if (!response.ok) {
+      console.error('Resend API error (scheduled confirmation):', await response.text())
+      return false
+    }
+    console.log('Scheduled confirmation sent:', await response.json())
+    return true
+
+  } catch (error) {
+    console.error('Error sending scheduled confirmation:', error)
     return false
   }
 }

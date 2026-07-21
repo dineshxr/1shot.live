@@ -198,7 +198,7 @@ class Dashboard {
 
             <div class="mt-3 flex items-start gap-2 text-xs text-gray-500">
                 <i class="fas fa-link mt-0.5"></i>
-                <span><span class="font-semibold text-gray-600">Optional:</span> add a do-follow SubmitHunt badge to each product's own site to claim a permanent DR 37+ backlink. Skip it and you still launch — you just forfeit the link equity.</span>
+                <span><span class="font-semibold text-gray-600">Optional:</span> add a do-follow SubmitHunt badge to each product's own site to claim a permanent DR 38+ backlink. Skip it and you still launch — you just forfeit the link equity.</span>
             </div>
 
             ${engagementReady
@@ -403,7 +403,7 @@ class Dashboard {
                         <div class="rounded-lg border border-amber-200 bg-amber-50 p-3">
                             <p class="text-[13px] text-amber-800 leading-snug">
                                 <i class="fas fa-triangle-exclamation text-[11px] mr-1"></i>
-                                <strong>No do-follow backlink yet.</strong> Add our badge to your product's site to claim your free DR 37+ backlink and boost your own SEO.
+                                <strong>No do-follow backlink yet.</strong> Add our badge to your product's site to claim your free DR 38+ backlink and boost your own SEO.
                             </p>
                             <button onclick="dashboard.copyBadge(this)"
                                     class="mt-2 inline-flex items-center gap-1.5 text-xs font-semibold text-amber-900 border border-amber-300 bg-white px-2.5 py-1 rounded-lg hover:bg-amber-100 transition-colors">

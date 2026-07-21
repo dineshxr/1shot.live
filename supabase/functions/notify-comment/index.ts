@@ -163,7 +163,7 @@ async function sendCommentNotification(resendApiKey: string, p: {
         <p style="margin: 0 0 6px 0; color: #f59e0b; font-size: 12px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px;">While people are looking</p>
         <h3 style="margin: 0 0 10px 0; color: #fff; font-size: 20px; line-height: 1.3;">Interest like this fades when your listing leaves the homepage</h3>
         <p style="margin: 0 0 16px 0; color: #ccc; font-size: 14px; line-height: 1.6;">
-          Free listings stay on the homepage for 7 days. Premium keeps ${title} there for 14 — twice the window for comments like this one to turn into users — and locks in a guaranteed dofollow backlink from our DR 37+ site.
+          Free listings stay on the homepage for 7 days. Premium keeps ${title} there for 14 — twice the window for comments like this one to turn into users — and locks in a guaranteed dofollow backlink from our DR 38+ site.
         </p>
         <div style="text-align: center;">
           <a href="https://submithunt.com/pricing" style="display: inline-block; background-color: #f59e0b; color: #000; padding: 12px 28px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 14px;">Upgrade to Premium — $20 one-time</a>
@@ -240,7 +240,7 @@ Reply here: ${commentsUrl}
 Founders who reply within a few hours keep the thread alive — and listings with active threads get noticeably more upvotes and repeat visitors.
 ${isPaid ? '' : `
 WHILE PEOPLE ARE LOOKING
-Free listings stay on the homepage for 7 days. Premium keeps ${p.startupTitle} there for 14 — twice the window for comments like this one to turn into users — and locks in a guaranteed dofollow backlink from our DR 37+ site.
+Free listings stay on the homepage for 7 days. Premium keeps ${p.startupTitle} there for 14 — twice the window for comments like this one to turn into users — and locks in a guaranteed dofollow backlink from our DR 38+ site.
 
 Upgrade to Premium ($20 one-time): https://submithunt.com/pricing
 `}

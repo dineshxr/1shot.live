@@ -33,9 +33,38 @@
             padding: 24px;
             background: var(--sh-bg);
             color: var(--sh-text);
+            overflow-x: hidden;
         }
 
+        /* Animated aurora background */
+        .aurora {
+            position: fixed;
+            inset: 0;
+            z-index: -1;
+            overflow: hidden;
+            pointer-events: none;
+        }
+        .aurora span {
+            position: absolute;
+            display: block;
+            width: 42vw; height: 42vw;
+            border-radius: 50%;
+            filter: blur(70px);
+            opacity: 0.5;
+            will-change: transform;
+        }
+        .aurora .a1 { top: -14vw; left: -8vw; background: #fed7aa; animation: drift1 18s ease-in-out infinite; }
+        .aurora .a2 { bottom: -16vw; right: -10vw; background: #fdba74; animation: drift2 22s ease-in-out infinite; }
+        .aurora .a3 { top: 30vh; right: 20vw; background: #ffe4cc; animation: drift3 26s ease-in-out infinite; }
+        @keyframes drift1 { 0%,100% { transform: translate(0,0) scale(1); } 50% { transform: translate(6vw, 5vw) scale(1.15); } }
+        @keyframes drift2 { 0%,100% { transform: translate(0,0) scale(1.1); } 50% { transform: translate(-5vw, -4vw) scale(1); } }
+        @keyframes drift3 { 0%,100% { transform: translate(0,0) scale(1); } 50% { transform: translate(-4vw, 3vw) scale(1.2); } }
+
         .wrap { width: 100%; max-width: 720px; }
+
+        /* Entrance animation helper */
+        .rise { opacity: 0; transform: translateY(14px); animation: rise 0.6s cubic-bezier(0.22, 1, 0.36, 1) forwards; }
+        @keyframes rise { to { opacity: 1; transform: translateY(0); } }
 
         /* Status card */
         .status {
@@ -46,16 +75,32 @@
             border: 1px solid var(--sh-border);
             border-radius: 18px;
             padding: 18px 20px;
-            box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04);
+            box-shadow: 0 4px 20px rgba(16, 24, 40, 0.06);
         }
 
         .status-icon {
+            position: relative;
             width: 44px; height: 44px;
             border-radius: 12px;
             display: flex; align-items: center; justify-content: center;
             flex-shrink: 0;
             background: var(--sh-accent-soft);
             color: var(--sh-accent);
+        }
+        /* Pulsing ring while loading */
+        .status-icon::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            border-radius: 12px;
+            border: 2px solid var(--sh-accent);
+            opacity: 0;
+            animation: pulseRing 1.8s ease-out infinite;
+        }
+        .status-icon--ok::after, .status-icon--err::after { animation: none; }
+        @keyframes pulseRing {
+            0% { transform: scale(1); opacity: 0.5; }
+            100% { transform: scale(1.5); opacity: 0; }
         }
         .status-icon .spinner {
             width: 22px; height: 22px;
@@ -66,15 +111,83 @@
         }
         .status-icon--ok { background: #ecfdf5; color: #059669; }
         .status-icon--err { background: #fef2f2; color: #dc2626; }
+        .status-icon--ok svg, .status-icon--err svg { animation: pop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1); }
         @keyframes spin { to { transform: rotate(360deg); } }
+        @keyframes pop { 0% { transform: scale(0.4); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
 
         .status h1 { font-size: 1.05rem; font-weight: 600; margin: 0; letter-spacing: -0.01em; }
         .status p { font-size: 0.875rem; color: var(--sh-text-muted); margin: 2px 0 0; }
 
+        /* Progress bar */
+        .progress {
+            height: 4px;
+            width: 100%;
+            background: #f1f1f1;
+            border-radius: 999px;
+            overflow: hidden;
+            margin-top: 14px;
+        }
+        .progress-fill {
+            height: 100%;
+            width: 0%;
+            border-radius: 999px;
+            background: linear-gradient(90deg, #fdba74, var(--sh-accent));
+            transition: width 1s linear;
+            position: relative;
+        }
+        .progress-fill::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.55), transparent);
+            animation: shimmer 1.4s linear infinite;
+        }
+        @keyframes shimmer { 0% { transform: translateX(-100%); } 100% { transform: translateX(100%); } }
+
+        /* Trust stats strip */
+        .trust {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+            margin-top: 16px;
+        }
+        .stat {
+            background: var(--sh-surface);
+            border: 1px solid var(--sh-border);
+            border-radius: 14px;
+            padding: 14px 12px;
+            text-align: center;
+            box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04);
+        }
+        .stat .num {
+            font-size: 1.35rem; font-weight: 700; letter-spacing: -0.02em;
+            color: var(--sh-accent); line-height: 1;
+        }
+        .stat .lbl {
+            font-size: 0.7rem; color: var(--sh-text-muted); margin-top: 5px;
+            letter-spacing: 0.01em;
+        }
+
+        /* Trust chips */
+        .chips {
+            display: flex; flex-wrap: wrap; justify-content: center; gap: 8px;
+            margin-top: 16px;
+        }
+        .chip {
+            display: inline-flex; align-items: center; gap: 6px;
+            font-size: 0.74rem; font-weight: 500;
+            color: var(--sh-text-muted);
+            background: var(--sh-surface);
+            border: 1px solid var(--sh-border);
+            border-radius: 999px;
+            padding: 6px 12px;
+        }
+        .chip svg { width: 13px; height: 13px; color: #059669; flex-shrink: 0; }
+
         /* Section heading */
         .lead {
             text-align: center;
-            margin: 28px 0 14px;
+            margin: 26px 0 14px;
         }
         .lead .eyebrow {
             font-size: 0.7rem; font-weight: 600; letter-spacing: 0.08em;
@@ -89,7 +202,7 @@
             gap: 14px;
             align-items: stretch;
         }
-        @media (max-width: 560px) { .compare { grid-template-columns: 1fr; } }
+        @media (max-width: 560px) { .compare { grid-template-columns: 1fr; } .trust { grid-template-columns: repeat(3, 1fr); } }
 
         .card {
             background: var(--sh-surface);
@@ -100,7 +213,19 @@
         .card--after {
             border-color: #fdba74;
             box-shadow: 0 0 0 3px rgba(194, 65, 12, 0.08);
+            position: relative;
+            overflow: hidden;
         }
+        /* Sweeping highlight across the "after" card */
+        .card--after::before {
+            content: '';
+            position: absolute;
+            top: 0; left: -60%;
+            width: 60%; height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(253, 186, 116, 0.18), transparent);
+            animation: sweep 3.6s ease-in-out infinite;
+        }
+        @keyframes sweep { 0% { left: -60%; } 55%,100% { left: 130%; } }
 
         .badge {
             display: inline-block;
@@ -111,26 +236,20 @@
         .badge--before { background: #f5f5f5; color: var(--sh-text-subtle); border: 1px solid var(--sh-border); }
         .badge--after { background: var(--sh-accent-soft); color: var(--sh-accent); border: 1px solid #fed7aa; }
 
-        .card .title { font-size: 0.95rem; font-weight: 600; margin: 12px 0 4px; }
+        .card .title { font-size: 0.95rem; font-weight: 600; margin: 12px 0 4px; position: relative; }
 
-        .dr { display: flex; align-items: baseline; gap: 8px; margin: 4px 0 14px; }
+        .dr { display: flex; align-items: baseline; gap: 8px; margin: 4px 0 14px; position: relative; }
         .dr .val { font-size: 1.6rem; font-weight: 700; letter-spacing: -0.02em; line-height: 1; }
         .dr .muted { color: var(--sh-text-subtle); }
         .dr .arrow { color: var(--sh-text-subtle); font-size: 1.1rem; }
         .dr .accent { color: var(--sh-accent); }
 
-        ul.rows { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 9px; }
+        ul.rows { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 9px; position: relative; }
         ul.rows li { display: flex; align-items: flex-start; gap: 9px; font-size: 0.84rem; }
         .mark { width: 16px; height: 16px; flex-shrink: 0; margin-top: 1px; }
         .row-before { color: var(--sh-text-subtle); }
         .row-after { color: var(--sh-text); }
 
-        .foot {
-            text-align: center;
-            margin-top: 20px;
-            font-size: 0.78rem;
-            color: var(--sh-text-subtle);
-        }
         .continue-row {
             display: flex;
             align-items: center;
@@ -153,29 +272,72 @@
             transition: background 0.15s ease, border-color 0.15s ease;
         }
         .skip-btn:hover { background: #f5f5f5; border-color: #d4d4d8; }
+
+        @media (prefers-reduced-motion: reduce) {
+            .rise, .aurora span, .status-icon::after, .card--after::before,
+            .progress-fill::after, .status-icon--ok svg, .status-icon--err svg {
+                animation: none !important;
+            }
+            .rise { opacity: 1; transform: none; }
+        }
     </style>
 </head>
 
 <body>
+    <div class="aurora"><span class="a1"></span><span class="a2"></span><span class="a3"></span></div>
+
     <div class="wrap">
         <!-- Status -->
-        <div class="status">
+        <div class="status rise" style="animation-delay: 0s;">
             <div id="status-icon" class="status-icon"><div class="spinner"></div></div>
-            <div>
+            <div style="flex:1; min-width:0;">
                 <h1 id="status-heading">Signing you in…</h1>
                 <p id="status-text">Just a moment while we finish up.</p>
+                <div class="progress"><div id="progress-fill" class="progress-fill"></div></div>
             </div>
         </div>
 
+        <!-- Trust stats -->
+        <div class="trust">
+            <div class="stat rise" style="animation-delay: 0.08s;">
+                <div class="num"><span data-count="38">0</span>+</div>
+                <div class="lbl">Domain Rating</div>
+            </div>
+            <div class="stat rise" style="animation-delay: 0.16s;">
+                <div class="num"><span data-count="2000" data-format="comma">0</span>+</div>
+                <div class="lbl">Newsletter subscribers</div>
+            </div>
+            <div class="stat rise" style="animation-delay: 0.24s;">
+                <div class="num">Free</div>
+                <div class="lbl">To launch</div>
+            </div>
+        </div>
+
+        <!-- Trust chips -->
+        <div class="chips rise" style="animation-delay: 0.3s;">
+            <span class="chip">
+                <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M3.5 8.5l3 3 6-7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                Guaranteed dofollow backlink
+            </span>
+            <span class="chip">
+                <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M3.5 8.5l3 3 6-7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                Google-indexed listing page
+            </span>
+            <span class="chip">
+                <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M3.5 8.5l3 3 6-7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                Editorial review
+            </span>
+        </div>
+
         <!-- Before / After value cards -->
-        <div class="lead">
+        <div class="lead rise" style="animation-delay: 0.36s;">
             <span class="eyebrow">While you wait</span>
             <h2>What a SubmitHunt launch does</h2>
         </div>
 
         <div class="compare">
             <!-- Before -->
-            <div class="card">
+            <div class="card rise" style="animation-delay: 0.42s;">
                 <span class="badge badge--before">Before</span>
                 <div class="title">On your own</div>
                 <div class="dr">
@@ -198,13 +360,13 @@
             </div>
 
             <!-- After -->
-            <div class="card card--after">
+            <div class="card card--after rise" style="animation-delay: 0.48s;">
                 <span class="badge badge--after">After</span>
                 <div class="title">On SubmitHunt</div>
                 <div class="dr">
                     <span class="val muted">DR 12</span>
                     <span class="arrow">›</span>
-                    <span class="val accent">37+</span>
+                    <span class="val accent">38+</span>
                 </div>
                 <ul class="rows">
                     <li class="row-after">
@@ -213,7 +375,7 @@
                     </li>
                     <li class="row-after">
                         <svg class="mark" viewBox="0 0 16 16" fill="none" stroke="#059669" stroke-width="2"><path d="M3.5 8.5l3 3 6-7" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                        37+ DR dofollow backlink
+                        38+ DR dofollow backlink
                     </li>
                     <li class="row-after">
                         <svg class="mark" viewBox="0 0 16 16" fill="none" stroke="#059669" stroke-width="2"><path d="M3.5 8.5l3 3 6-7" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -228,6 +390,30 @@
             <button type="button" id="skip-btn" class="skip-btn" style="display:none;">Skip →</button>
         </div>
     </div>
+
+    <!-- Count-up animation for the trust stats -->
+    <script>
+        (function () {
+            const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+            const els = document.querySelectorAll('[data-count]');
+            els.forEach((el) => {
+                const target = parseInt(el.getAttribute('data-count'), 10) || 0;
+                const comma = el.getAttribute('data-format') === 'comma';
+                const fmt = (n) => comma ? n.toLocaleString('en-US') : String(n);
+                if (reduce) { el.textContent = fmt(target); return; }
+                const duration = 1100;
+                let start = null;
+                const step = (ts) => {
+                    if (start === null) start = ts;
+                    const p = Math.min((ts - start) / duration, 1);
+                    const eased = 1 - Math.pow(1 - p, 3);
+                    el.textContent = fmt(Math.round(target * eased));
+                    if (p < 1) requestAnimationFrame(step);
+                };
+                requestAnimationFrame(step);
+            });
+        })();
+    </script>
 
     <script type="importmap">
       {
@@ -249,6 +435,7 @@
         const textEl = document.getElementById('status-text');
         const countdownEl = document.getElementById('countdown-note');
         const skipBtn = document.getElementById('skip-btn');
+        const progressEl = document.getElementById('progress-fill');
 
         const CHECK_SVG = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 13l4 4L19 7" stroke-linecap="round" stroke-linejoin="round"/></svg>';
         const X_SVG = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M6 6l12 12M18 6L6 18" stroke-linecap="round"/></svg>';
@@ -276,18 +463,22 @@
                         }
                     } catch (e) { /* ignore */ }
 
-                    // Keep this success screen up for 10s with a countdown, and
-                    // let the user skip straight through if they want.
+                    // Keep this success screen up for 10s with a countdown +
+                    // progress bar, and let the user skip straight through.
+                    const total = 10;
                     const go = () => { window.location.href = dest; };
                     skipBtn.style.display = '';
                     skipBtn.addEventListener('click', go);
-                    let remaining = 10;
-                    const renderCount = () => { countdownEl.textContent = `Continuing to your launch in ${remaining}s…`; };
-                    renderCount();
+                    let remaining = total;
+                    const render = () => {
+                        countdownEl.textContent = `Continuing to your launch in ${remaining}s…`;
+                        if (progressEl) progressEl.style.width = `${((total - remaining) / total) * 100}%`;
+                    };
+                    render();
                     const iv = setInterval(() => {
                         remaining -= 1;
-                        if (remaining <= 0) { clearInterval(iv); go(); return; }
-                        renderCount();
+                        if (remaining <= 0) { clearInterval(iv); if (progressEl) progressEl.style.width = '100%'; go(); return; }
+                        render();
                     }, 1000);
                 } else {
                     throw new Error('No active session found. Please try signing in again.');
@@ -298,6 +489,7 @@
                 iconEl.innerHTML = X_SVG;
                 headingEl.textContent = 'Sign-in problem';
                 textEl.textContent = error.message || 'There was a problem signing you in.';
+                if (progressEl) progressEl.style.width = '100%';
                 if (countdownEl) countdownEl.textContent = 'Taking you back home…';
                 setTimeout(() => { window.location.href = '/'; }, 5000);
             }

@@ -4,84 +4,176 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Submit Hunt OG Image Generator</title>
+  <title>SubmitHunt OG Image Generator</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
   <style>
-    body,
-    html {
-      margin: 0;
-      padding: 0;
-      height: 100%;
-      font-family: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; }
+
+    :root {
+      --ink: #1c1917;
+      --muted: #78716c;
+      --paper: #fbf4ea;
+      --accent: #c2410c;
+      --accent-hi: #ea580c;
     }
 
-    .og-container {
+    .stage {
       width: 1200px;
       height: 630px;
-      background-color: #4a90e2;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      align-items: center;
-      padding: 40px;
-      box-sizing: border-box;
       position: relative;
       overflow: hidden;
+      background: var(--paper);
+      font-family: 'IBM Plex Sans', -apple-system, 'Helvetica Neue', Arial, sans-serif;
+      color: var(--ink);
+    }
+    /* warm glow + hairline framing */
+    .stage::before {
+      content: '';
+      position: absolute; inset: 0;
+      background: radial-gradient(90% 120% at 100% 0%, rgba(234,88,12,0.16), transparent 55%);
+      pointer-events: none;
+    }
+    .frame {
+      position: absolute; inset: 22px;
+      border: 1.5px solid rgba(28,25,23,0.14);
+      border-radius: 28px;
+      pointer-events: none;
+    }
+    .corner-tag {
+      position: absolute; right: 54px; bottom: 46px;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 18px; font-weight: 600; letter-spacing: 0.04em;
+      color: var(--muted);
     }
 
-    .logo-container {
-      display: flex;
-      align-items: center;
-      margin-bottom: 20px;
+    /* ---------------- Left content ---------------- */
+    .content {
+      position: absolute;
+      left: 72px; top: 0; bottom: 0;
+      width: 640px;
+      display: flex; flex-direction: column; justify-content: center;
+      z-index: 3;
     }
 
-    .explosion {
-      font-size: 100px;
-      margin-right: 20px;
+    .brand { display: flex; align-items: center; gap: 13px; margin-bottom: 34px; }
+    .brand .logo {
+      width: 52px; height: 52px; border-radius: 14px;
+      background: linear-gradient(135deg, #fb923c, #c2410c);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 26px; box-shadow: 0 8px 20px rgba(194,65,12,0.28);
+    }
+    .brand .name { font-size: 27px; font-weight: 700; letter-spacing: -0.01em; }
+    .brand .name span { color: var(--accent); }
+    .brand .tag {
+      margin-left: 4px;
+      font-size: 13px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase;
+      color: var(--accent); background: #fff3e9; border: 1px solid #fcd9bd;
+      padding: 4px 10px; border-radius: 999px;
     }
 
-    .title {
-      font-size: 80px;
-      font-weight: bold;
-      color: #000;
+    .headline {
+      font-size: 68px; font-weight: 800; line-height: 1.02; letter-spacing: -0.03em;
       margin: 0;
     }
+    .headline em { font-style: normal; color: var(--accent); }
 
-    .subtitle {
-      font-size: 36px;
-      color: #000;
-      margin-top: 20px;
-      margin-bottom: 40px;
-      max-width: 80%;
-      text-align: center;
+    .sub {
+      font-size: 25px; line-height: 1.42; color: var(--muted);
+      margin: 26px 0 0; max-width: 540px;
     }
+    .sub b { color: var(--ink); font-weight: 600; }
 
-    .cta {
-      background-color: #FFDD57;
-      color: #000;
-      font-size: 32px;
-      font-weight: bold;
-      padding: 20px 40px;
-      border-radius: 10px;
-      text-align: center;
+    .chips { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 34px; max-width: 560px; }
+    .chip {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: #ffffff; border: 1px solid rgba(28,25,23,0.12);
+      border-radius: 999px; padding: 9px 15px;
+      font-size: 16.5px; font-weight: 600; color: #44403c;
+      box-shadow: 0 1px 2px rgba(28,25,23,0.04);
     }
+    .chip .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); }
 
-    .rocket {
-      font-size: 40px;
-      margin-right: 10px;
+    /* ---------------- Right: DR seal ---------------- */
+    .sealwrap {
+      position: absolute;
+      right: 44px; top: 50%; transform: translateY(-50%);
+      width: 430px; height: 430px;
+      display: flex; align-items: center; justify-content: center;
+      z-index: 2;
     }
+    /* concentric ripples behind the seal */
+    .ripple { position: absolute; border-radius: 50%; border: 1.5px solid rgba(194,65,12,0.16); }
+    .ripple.r1 { width: 430px; height: 430px; }
+    .ripple.r2 { width: 340px; height: 340px; border-color: rgba(194,65,12,0.22); }
+
+    .seal { position: relative; z-index: 2; filter: drop-shadow(0 24px 46px rgba(120,45,10,0.32)); }
   </style>
 </head>
 
 <body>
-  <div class="og-container">
-    <div class="logo-container">
-      <div class="explosion">💥</div>
-      <h1 class="title">Submit Hunt</h1>
+  <div class="stage">
+    <div class="frame"></div>
+
+    <!-- Left content -->
+    <div class="content">
+      <div class="brand">
+        <div class="logo">🚀</div>
+        <div class="name">Submit<span>Hunt</span></div>
+        <div class="tag">Launch platform</div>
+      </div>
+
+      <h1 class="headline">Launch once.<br />Keep the <em>link juice.</em></h1>
+
+      <p class="sub">The Product Hunt alternative where every listing ships a <b>permanent, do-follow backlink</b> from a high-authority domain.</p>
+
+      <div class="chips">
+        <span class="chip"><span class="dot"></span>Free to launch</span>
+        <span class="chip"><span class="dot"></span>Editorial review</span>
+        <span class="chip"><span class="dot"></span>Google-indexed</span>
+      </div>
     </div>
-    <p class="subtitle">Discover Startups and AI projects</p>
-    <div class="cta">
-      <span class="rocket">🚀</span> Launch Today, Get a 37+ DR Backlink
+
+    <!-- DR 38 seal -->
+    <div class="sealwrap">
+      <div class="ripple r1"></div>
+      <div class="ripple r2"></div>
+
+      <svg class="seal" width="392" height="392" viewBox="0 0 392 392" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="disc" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="#fb923c" />
+            <stop offset="0.55" stop-color="#ea580c" />
+            <stop offset="1" stop-color="#9a3412" />
+          </linearGradient>
+          <path id="ring" d="M196,196 m-158,0 a158,158 0 1,1 316,0 a158,158 0 1,1 -316,0" />
+        </defs>
+
+        <!-- outer stamp rings -->
+        <circle cx="196" cy="196" r="190" fill="#fff" stroke="var(--ink)" stroke-width="2.5" />
+        <circle cx="196" cy="196" r="158" fill="none" stroke="rgba(28,25,23,0.28)" stroke-width="1.5" stroke-dasharray="1.5 7" />
+
+        <!-- curved stamp text -->
+        <text font-family="'IBM Plex Sans', sans-serif" font-size="20.5" font-weight="700" letter-spacing="4.4" fill="var(--ink)">
+          <textPath href="#ring" startOffset="0">GUARANTEED&#160;DOFOLLOW&#160;BACKLINK&#160;&#160;&#9733;&#160;&#160;HIGH-AUTHORITY&#160;DOMAIN&#160;&#160;&#9733;&#160;&#160;</textPath>
+        </text>
+
+        <!-- inner disc -->
+        <circle cx="196" cy="196" r="128" fill="url(#disc)" />
+        <circle cx="196" cy="196" r="128" fill="none" stroke="rgba(255,255,255,0.35)" stroke-width="1.5" />
+
+        <!-- center content -->
+        <text x="196" y="150" text-anchor="middle" font-family="'IBM Plex Sans', sans-serif" font-size="26" font-weight="700" letter-spacing="9" fill="rgba(255,255,255,0.9)">DR</text>
+        <text x="199" y="248" text-anchor="middle" font-family="'IBM Plex Sans', sans-serif" font-size="150" font-weight="800" letter-spacing="-3" fill="#ffffff">38</text>
+        <text x="300" y="182" text-anchor="middle" font-family="'IBM Plex Sans', sans-serif" font-size="44" font-weight="800" fill="#ffffff">+</text>
+        <line x1="150" y1="272" x2="242" y2="272" stroke="rgba(255,255,255,0.45)" stroke-width="2" />
+        <text x="196" y="296" text-anchor="middle" font-family="'IBM Plex Sans', sans-serif" font-size="16" font-weight="700" letter-spacing="3.5" fill="rgba(255,255,255,0.92)">DOMAIN RATING</text>
+      </svg>
     </div>
+
+    <div class="corner-tag">submithunt.com</div>
   </div>
 </body>
 

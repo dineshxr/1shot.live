@@ -89,8 +89,20 @@ const PricingPage = () => {
                   <span class="text-gray-700">Badge for top 3 ranking products</span>
                 </li>
                 <li class="flex items-start gap-2.5">
+                  <i class="fas fa-globe text-gray-400 mt-1 text-xs"></i>
+                  <span class="text-gray-700">Indexable listing page</span>
+                </li>
+                <li class="flex items-start gap-2.5">
+                  <i class="fas fa-tags text-gray-400 mt-1 text-xs"></i>
+                  <span class="text-gray-700">Category, tag, and search visibility</span>
+                </li>
+                <li class="flex items-start gap-2.5">
+                  <i class="fas fa-clipboard-check text-gray-400 mt-1 text-xs"></i>
+                  <span class="text-gray-700">Editorial review</span>
+                </li>
+                <li class="flex items-start gap-2.5">
                   <i class="fas fa-circle-check text-green-600 mt-1 text-xs"></i>
-                  <span class="text-green-700 font-semibold">Guaranteed dofollow backlink</span>
+                  <span class="text-green-700 font-semibold">Guaranteed dofollow backlink<a href="#backlink-note" class="text-green-700 no-underline">*</a></span>
                 </li>
                 <li class="flex items-start gap-2.5">
                   <i class="fas fa-clock text-amber-500 mt-1 text-xs"></i>
@@ -129,6 +141,18 @@ const PricingPage = () => {
                 <li class="flex items-start gap-2.5">
                   <i class="fas fa-check text-orange-600 mt-1 text-xs"></i>
                   <span class="text-gray-700">Badge for top 3 ranking products</span>
+                </li>
+                <li class="flex items-start gap-2.5">
+                  <i class="fas fa-globe text-orange-600 mt-1 text-xs"></i>
+                  <span class="text-gray-700">Indexable listing page</span>
+                </li>
+                <li class="flex items-start gap-2.5">
+                  <i class="fas fa-tags text-orange-600 mt-1 text-xs"></i>
+                  <span class="text-gray-700">Category, tag, and search visibility</span>
+                </li>
+                <li class="flex items-start gap-2.5">
+                  <i class="fas fa-clipboard-check text-orange-600 mt-1 text-xs"></i>
+                  <span class="text-gray-700">Editorial review</span>
                 </li>
                 <li class="flex items-start gap-2.5">
                   <i class="fas fa-circle-check text-green-600 mt-1 text-xs"></i>
@@ -170,6 +194,18 @@ const PricingPage = () => {
                   <span class="text-gray-700">High visibility to daily visitors</span>
                 </li>
                 <li class="flex items-start gap-2.5">
+                  <i class="fas fa-globe text-gray-400 mt-1 text-xs"></i>
+                  <span class="text-gray-700">Indexable listing page</span>
+                </li>
+                <li class="flex items-start gap-2.5">
+                  <i class="fas fa-tags text-gray-400 mt-1 text-xs"></i>
+                  <span class="text-gray-700">Category, tag, and search visibility</span>
+                </li>
+                <li class="flex items-start gap-2.5">
+                  <i class="fas fa-clipboard-check text-gray-400 mt-1 text-xs"></i>
+                  <span class="text-gray-700">Editorial review</span>
+                </li>
+                <li class="flex items-start gap-2.5">
                   <i class="fas fa-circle-check text-green-600 mt-1 text-xs"></i>
                   <span class="text-green-700 font-semibold">Guaranteed dofollow backlink</span>
                 </li>
@@ -190,6 +226,11 @@ const PricingPage = () => {
             </div>
           </div>
 
+          <!-- Free plan backlink footnote -->
+          <p id="backlink-note" class="mt-6 max-w-3xl mx-auto text-center text-xs text-gray-500 leading-relaxed">
+            <span class="text-gray-400">*</span> On the free plan, the dofollow backlink requires adding our SubmitHunt badge with a do-follow link back to the directory on your site. Skip the badge and you still launch — your backlink just stays nofollow. Premium and Featured include a guaranteed dofollow backlink with no badge required.
+          </p>
+
           <!-- DR before/after -->
           <${DrComparison} />
 
@@ -205,7 +246,7 @@ const PricingPage = () => {
                   <i class="fas fa-chevron-down text-gray-400 text-xs transition-transform group-open:rotate-180"></i>
                 </summary>
                 <div class="px-6 pb-5 text-sm text-gray-600 leading-relaxed">
-                  A dofollow backlink passes SEO authority from our site (37+ DR) to yours, helping improve your search engine rankings.
+                  A dofollow backlink passes SEO authority from our site (38+ DR) to yours, helping improve your search engine rankings.
                 </div>
               </details>
 
