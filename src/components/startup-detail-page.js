@@ -2,13 +2,17 @@
 import { supabaseClient } from '../lib/supabase-client.js';
 import { addReferralParam } from '../lib/url-utils.js';
 import { trackEvent, ANALYTICS_EVENTS } from '../lib/events.js';
+import { markVisited } from '../lib/engagement.js';
+import { UpvoteButton } from './upvote-button.js';
+import { CommentSection } from './comment-section.js';
 
-export const StartupDetailPage = () => {
+export const StartupDetailPage = ({ user }) => {
   const [startup, setStartup] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [blogPost, setBlogPost] = useState(null);
+  const [userVoted, setUserVoted] = useState(null); // null = still checking
 
   useEffect(() => {
     const fetchStartupDetails = async () => {
@@ -61,7 +65,46 @@ export const StartupDetailPage = () => {
     
     fetchStartupDetails();
   }, []);
-  
+
+  // Find out whether the signed-in user already upvoted this startup, so the
+  // upvote button starts in the right state (the detail-page fetch above has
+  // no per-user vote info, unlike the feed's get_startups_with_votes RPC).
+  useEffect(() => {
+    let cancelled = false;
+    const checkVoteState = async () => {
+      if (!user || !startup) {
+        setUserVoted(user ? null : false);
+        return;
+      }
+      try {
+        const supabase = supabaseClient();
+        const { data, error: voteError } = await supabase.rpc('get_user_upvoted_startups');
+        if (cancelled) return;
+        if (voteError || !Array.isArray(data)) {
+          setUserVoted(false);
+          return;
+        }
+        setUserVoted(data.some(row => row.id === startup.id || row.slug === startup.slug));
+      } catch (e) {
+        if (!cancelled) setUserVoted(false);
+      }
+    };
+    checkVoteState();
+    return () => { cancelled = true; };
+  }, [user, startup && startup.id]);
+
+  // If arriving from a card's "comments" link, scroll to the discussion.
+  useEffect(() => {
+    if (!startup) return;
+    if (typeof window === 'undefined' || window.location.hash !== '#comments') return;
+    const t = setTimeout(() => {
+      const el = document.getElementById('comments');
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 300);
+    return () => clearTimeout(t);
+  }, [startup]);
+
+
   const handleImageError = (e) => {
     e.target.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='225' viewBox='0 0 400 225'%3E%3Crect width='400' height='225' fill='%23f0f0f0'/%3E%3Ctext x='50%25' y='50%25' font-family='Arial' font-size='24' fill='%23999' text-anchor='middle' dominant-baseline='middle'%3EStartup Image%3C/text%3E%3C/svg%3E";
   };
@@ -156,6 +199,7 @@ export const StartupDetailPage = () => {
   
   const handleVisitWebsite = () => {
     if (startup?.url) {
+      markVisited(startup.id);
       trackEvent(ANALYTICS_EVENTS.LINK_CLICK, {
         startupId: startup.id,
         startupName: startup.title,
@@ -251,7 +295,12 @@ export const StartupDetailPage = () => {
         </div>
         
         <div class="p-6">
-          <h1 class="text-3xl font-bold mb-2">${startup.title}</h1>
+          <div class="flex items-start justify-between gap-4 mb-2">
+            <h1 class="text-3xl font-bold">${startup.title}</h1>
+            ${userVoted !== null
+              ? html`<${UpvoteButton} startup=${{ ...startup, user_voted: userVoted }} user=${user} onUpvoteChange=${() => {}} />`
+              : ''}
+          </div>
           <p class="text-lg mb-6">${startup.description || ""}</p>
           
           <div class="mb-6">
@@ -317,7 +366,11 @@ export const StartupDetailPage = () => {
               </div>
             </div>
           `}
-          
+
+          <div id="comments">
+            <${CommentSection} startup=${startup} user=${user} />
+          </div>
+
         </div>
       </div>
     </div>

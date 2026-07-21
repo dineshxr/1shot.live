@@ -453,13 +453,19 @@ async function insertPaidStartupFromMetadata(
   if (!author.email && m.sub_contact_email) author.email = m.sub_contact_email;
   if (!author.email && session.customer_email) author.email = session.customer_email;
 
+  const tags = (m.sub_tags || "").split(",").map((t) => t.trim()).filter(Boolean).slice(0, 5);
+  const cover = m.sub_screenshot || null;
   const baseRow: Record<string, unknown> = {
     title: m.sub_title || m.startup_title || "Untitled",
     url: m.sub_url || "",
+    tagline: m.sub_tagline || null,
     description: m.sub_description || "",
     category: m.sub_category || null,
+    tags: tags.length ? tags : null,
     author,
-    screenshot_url: m.sub_screenshot || null,
+    logo_url: m.sub_logo || null,
+    screenshot_url: cover,
+    images: cover ? [cover] : null,
     plan: product, // 'premium' | 'featured'
     payment_status: "paid",
     is_live: true,

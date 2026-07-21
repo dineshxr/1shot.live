@@ -979,10 +979,11 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
               <div class="border border-gray-300 rounded p-3">
                 <h4 class="font-bold mb-2">🔗 Embed Code</h4>
                 <p class="text-sm text-gray-600 mb-3">Copy and paste this code into your website's HTML.</p>
+                <img src="/badge-light.svg" alt="Featured on Submit Hunt" class="h-11 w-auto mb-3" />
                 <div class="bg-gray-100 p-3 rounded text-xs font-mono mb-3 overflow-x-auto">
                   <code id="embed-code">
-&lt;a href="https://submithunt.com" target="_blank" rel="noopener"&gt;
-  &lt;img src="https://submithunt.com/badge.png" alt="Featured on SubmitHunt" width="150" height="45" /&gt;
+&lt;a href="https://submithunt.com" target="_blank"&gt;
+  &lt;img src="https://submithunt.com/badge-light.svg" alt="Featured on Submit Hunt" width="240" height="66" /&gt;
 &lt;/a&gt;
                   </code>
                 </div>

@@ -17,6 +17,7 @@ export const Header = ({ user }) => {
           <!-- Primary nav -->
           <nav class="hidden md:flex items-center gap-1 text-sm">
             <a href="/" class="px-3 py-1.5 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors">Discover</a>
+            <a href="/directory" class="px-3 py-1.5 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors">Directory</a>
             <a href="/blog" class="px-3 py-1.5 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors">Blog</a>
             <a href="/pricing" class="px-3 py-1.5 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors">Pricing</a>
             <a href="/featured" class="px-3 py-1.5 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors">Featured</a>

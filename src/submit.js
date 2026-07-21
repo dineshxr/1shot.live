@@ -1,6 +1,6 @@
 import { html } from 'htm/preact';
 import { render } from 'preact';
-import { useState, useEffect } from 'preact/hooks';
+import { useState, useEffect, useRef } from 'preact/hooks';
 import { auth } from './lib/auth.js';
 import { LoginModal } from './components/login-modal.js';
 import { SubmitStartupPage } from './components/submit-startup-page.js';
@@ -9,6 +9,7 @@ import { Footer } from './components/footer.js';
 // Make hooks available globally
 window.useState = useState;
 window.useEffect = useEffect;
+window.useRef = useRef;
 window.html = html;
 
 // Analytics event tracking

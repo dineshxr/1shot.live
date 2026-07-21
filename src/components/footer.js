@@ -9,7 +9,7 @@ export const Footer = () => {
               <span class="text-sm font-semibold text-gray-900">SubmitHunt</span>
             </div>
             <p class="text-sm text-gray-500">
-              A directory for startups and AI projects — launch today, get a DR&nbsp;37+ backlink.
+              A directory for startups and AI projects — launch today, get a DR 37+ backlink.
             </p>
           </div>
 
@@ -18,6 +18,7 @@ export const Footer = () => {
               <h4 class="text-xs font-semibold text-gray-900 uppercase tracking-wider mb-3">Product</h4>
               <ul class="space-y-2">
                 <li><a href="/" class="text-gray-600 hover:text-gray-900 transition-colors">Discover</a></li>
+                <li><a href="/directory" class="text-gray-600 hover:text-gray-900 transition-colors">Directory</a></li>
                 <li><a href="/submit" class="text-gray-600 hover:text-gray-900 transition-colors">Submit</a></li>
                 <li><a href="/featured" class="text-gray-600 hover:text-gray-900 transition-colors">Featured</a></li>
                 <li><a href="/pricing" class="text-gray-600 hover:text-gray-900 transition-colors">Pricing</a></li>

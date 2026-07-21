@@ -76,6 +76,12 @@ serve(async (req) => {
 
     const shareText = encodeURIComponent(`I just launched ${startup.title} on @SubmitHunt! Check it out and give it an upvote 🚀`);
 
+    // Free makers can skip the do-follow backlink at submit time. If they did,
+    // keep reminding them they can still claim the free DR 37+ link equity.
+    const badgeEmbed = '<a href="https://submithunt.com" target="_blank"><img src="https://submithunt.com/badge-light.svg" alt="Featured on Submit Hunt" width="240" height="66" /></a>';
+    const badgeEmbedEscaped = badgeEmbed.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    const showBacklinkReminder = !isPaid && !startup.backlink_verified_at;
+
     // Create email HTML
     const emailHtml = `
 <!DOCTYPE html>
@@ -122,7 +128,25 @@ serve(async (req) => {
         </p>
         <a href="https://twitter.com/intent/tweet?text=${shareText}&url=${encodeURIComponent(startupUrl)}" style="display: inline-block; background-color: #000; color: #fff; padding: 10px 20px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 14px;">Share on X</a>
       </div>
-      
+
+      ${showBacklinkReminder ? `
+      <!-- Free do-follow backlink reminder (skipped at submit time) -->
+      <div style="background-color: #eff6ff; border-left: 4px solid #3b82f6; border-radius: 0 8px 8px 0; padding: 20px; margin: 25px 0;">
+        <h3 style="margin: 0 0 8px 0; color: #1e40af; font-size: 16px;">Claim your free DR 37+ backlink</h3>
+        <p style="margin: 0 0 14px 0; color: #1e3a8a; font-size: 14px; line-height: 1.6;">
+          You launched without a do-follow SubmitHunt backlink — so you're not yet getting the DR 37+ link equity that lifts your own SEO. Add our badge to your homepage or footer (keep it do-follow) and it's yours, free.
+        </p>
+        <div style="text-align: center; margin-bottom: 14px;">
+          <img src="https://submithunt.com/badge-light.svg" alt="Featured on Submit Hunt" width="200" style="height: auto;" />
+        </div>
+        <p style="margin: 0 0 6px 0; color: #1e3a8a; font-size: 12px; font-weight: bold;">Paste this on your site:</p>
+        <div style="background: #0b1220; color: #e5e7eb; padding: 12px; border-radius: 6px; font-size: 12px; font-family: monospace; word-break: break-all; line-height: 1.5;">${badgeEmbedEscaped}</div>
+        <div style="text-align: center; margin-top: 16px;">
+          <a href="https://submithunt.com/dashboard" style="display: inline-block; background-color: #3b82f6; color: #fff; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 14px;">Add it from your dashboard</a>
+        </div>
+      </div>
+      ` : ''}
+
       ${!isPaid ? `
       <!-- Upsell for Free Users -->
       <div style="background: #1a1a1a; border-radius: 8px; padding: 28px; margin: 25px 0;">

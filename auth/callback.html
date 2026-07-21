@@ -5,8 +5,24 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="robots" content="noindex, nofollow">
-    <title>Authentication Callback - SubmitHunt</title>
+    <title>Signing you in — SubmitHunt</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
+        :root {
+            --sh-bg: #fafafa;
+            --sh-surface: #ffffff;
+            --sh-border: #e5e7eb;
+            --sh-text: #111827;
+            --sh-text-muted: #6b7280;
+            --sh-text-subtle: #9ca3af;
+            --sh-accent: #c2410c;
+            --sh-accent-soft: #fff7ed;
+        }
+
+        * { box-sizing: border-box; }
+
         body {
             font-family: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             display: flex;
@@ -14,64 +30,203 @@
             align-items: center;
             min-height: 100vh;
             margin: 0;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
+            padding: 24px;
+            background: var(--sh-bg);
+            color: var(--sh-text);
         }
 
-        .container {
-            text-align: center;
-            padding: 2rem;
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 16px;
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.2);
+        .wrap { width: 100%; max-width: 720px; }
+
+        /* Status card */
+        .status {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            background: var(--sh-surface);
+            border: 1px solid var(--sh-border);
+            border-radius: 18px;
+            padding: 18px 20px;
+            box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04);
         }
 
-        .spinner {
-            width: 40px;
-            height: 40px;
-            border: 4px solid rgba(255, 255, 255, 0.3);
-            border-top: 4px solid white;
+        .status-icon {
+            width: 44px; height: 44px;
+            border-radius: 12px;
+            display: flex; align-items: center; justify-content: center;
+            flex-shrink: 0;
+            background: var(--sh-accent-soft);
+            color: var(--sh-accent);
+        }
+        .status-icon .spinner {
+            width: 22px; height: 22px;
+            border: 3px solid #fed7aa;
+            border-top-color: var(--sh-accent);
             border-radius: 50%;
-            animation: spin 1s linear infinite;
-            margin: 0 auto 1rem;
+            animation: spin 0.8s linear infinite;
+        }
+        .status-icon--ok { background: #ecfdf5; color: #059669; }
+        .status-icon--err { background: #fef2f2; color: #dc2626; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .status h1 { font-size: 1.05rem; font-weight: 600; margin: 0; letter-spacing: -0.01em; }
+        .status p { font-size: 0.875rem; color: var(--sh-text-muted); margin: 2px 0 0; }
+
+        /* Section heading */
+        .lead {
+            text-align: center;
+            margin: 28px 0 14px;
+        }
+        .lead .eyebrow {
+            font-size: 0.7rem; font-weight: 600; letter-spacing: 0.08em;
+            text-transform: uppercase; color: var(--sh-accent);
+        }
+        .lead h2 { font-size: 1.25rem; font-weight: 600; margin: 6px 0 0; letter-spacing: -0.01em; }
+
+        /* Before / After cards */
+        .compare {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 14px;
+            align-items: stretch;
+        }
+        @media (max-width: 560px) { .compare { grid-template-columns: 1fr; } }
+
+        .card {
+            background: var(--sh-surface);
+            border: 1px solid var(--sh-border);
+            border-radius: 16px;
+            padding: 18px;
+        }
+        .card--after {
+            border-color: #fdba74;
+            box-shadow: 0 0 0 3px rgba(194, 65, 12, 0.08);
         }
 
-        @keyframes spin {
-            0% {
-                transform: rotate(0deg);
-            }
-
-            100% {
-                transform: rotate(360deg);
-            }
+        .badge {
+            display: inline-block;
+            font-size: 0.65rem; font-weight: 600; letter-spacing: 0.06em;
+            text-transform: uppercase;
+            padding: 3px 9px; border-radius: 999px;
         }
+        .badge--before { background: #f5f5f5; color: var(--sh-text-subtle); border: 1px solid var(--sh-border); }
+        .badge--after { background: var(--sh-accent-soft); color: var(--sh-accent); border: 1px solid #fed7aa; }
 
-        .error {
-            color: #ff6b6b;
-            background: rgba(255, 107, 107, 0.1);
-            padding: 1rem;
-            border-radius: 8px;
-            margin-top: 1rem;
-        }
+        .card .title { font-size: 0.95rem; font-weight: 600; margin: 12px 0 4px; }
 
-        .success {
-            color: #51cf66;
-            background: rgba(81, 207, 102, 0.1);
-            padding: 1rem;
-            border-radius: 8px;
-            margin-top: 1rem;
+        .dr { display: flex; align-items: baseline; gap: 8px; margin: 4px 0 14px; }
+        .dr .val { font-size: 1.6rem; font-weight: 700; letter-spacing: -0.02em; line-height: 1; }
+        .dr .muted { color: var(--sh-text-subtle); }
+        .dr .arrow { color: var(--sh-text-subtle); font-size: 1.1rem; }
+        .dr .accent { color: var(--sh-accent); }
+
+        ul.rows { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 9px; }
+        ul.rows li { display: flex; align-items: flex-start; gap: 9px; font-size: 0.84rem; }
+        .mark { width: 16px; height: 16px; flex-shrink: 0; margin-top: 1px; }
+        .row-before { color: var(--sh-text-subtle); }
+        .row-after { color: var(--sh-text); }
+
+        .foot {
+            text-align: center;
+            margin-top: 20px;
+            font-size: 0.78rem;
+            color: var(--sh-text-subtle);
         }
+        .continue-row {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            margin-top: 20px;
+            font-size: 0.78rem;
+            color: var(--sh-text-subtle);
+        }
+        .skip-btn {
+            font-family: inherit;
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--sh-text);
+            background: var(--sh-surface);
+            border: 1px solid var(--sh-border);
+            border-radius: 10px;
+            padding: 6px 14px;
+            cursor: pointer;
+            transition: background 0.15s ease, border-color 0.15s ease;
+        }
+        .skip-btn:hover { background: #f5f5f5; border-color: #d4d4d8; }
     </style>
 </head>
 
 <body>
-    <div class="container">
-        <div class="spinner"></div>
-        <h2>Completing authentication...</h2>
-        <p>Please wait while we complete your magic link sign-in.</p>
-        <div id="error-message" class="error" style="display: none;"></div>
-        <div id="success-message" class="success" style="display: none;"></div>
+    <div class="wrap">
+        <!-- Status -->
+        <div class="status">
+            <div id="status-icon" class="status-icon"><div class="spinner"></div></div>
+            <div>
+                <h1 id="status-heading">Signing you in…</h1>
+                <p id="status-text">Just a moment while we finish up.</p>
+            </div>
+        </div>
+
+        <!-- Before / After value cards -->
+        <div class="lead">
+            <span class="eyebrow">While you wait</span>
+            <h2>What a SubmitHunt launch does</h2>
+        </div>
+
+        <div class="compare">
+            <!-- Before -->
+            <div class="card">
+                <span class="badge badge--before">Before</span>
+                <div class="title">On your own</div>
+                <div class="dr">
+                    <span class="val muted">DR 12</span>
+                </div>
+                <ul class="rows">
+                    <li class="row-before">
+                        <svg class="mark" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 4l8 8M12 4l-8 8" stroke-linecap="round"/></svg>
+                        Buried past page one
+                    </li>
+                    <li class="row-before">
+                        <svg class="mark" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 4l8 8M12 4l-8 8" stroke-linecap="round"/></svg>
+                        No high-authority backlinks
+                    </li>
+                    <li class="row-before">
+                        <svg class="mark" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 4l8 8M12 4l-8 8" stroke-linecap="round"/></svg>
+                        Hard to get discovered
+                    </li>
+                </ul>
+            </div>
+
+            <!-- After -->
+            <div class="card card--after">
+                <span class="badge badge--after">After</span>
+                <div class="title">On SubmitHunt</div>
+                <div class="dr">
+                    <span class="val muted">DR 12</span>
+                    <span class="arrow">›</span>
+                    <span class="val accent">37+</span>
+                </div>
+                <ul class="rows">
+                    <li class="row-after">
+                        <svg class="mark" viewBox="0 0 16 16" fill="none" stroke="#059669" stroke-width="2"><path d="M3.5 8.5l3 3 6-7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                        Featured on the homepage
+                    </li>
+                    <li class="row-after">
+                        <svg class="mark" viewBox="0 0 16 16" fill="none" stroke="#059669" stroke-width="2"><path d="M3.5 8.5l3 3 6-7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                        37+ DR dofollow backlink
+                    </li>
+                    <li class="row-after">
+                        <svg class="mark" viewBox="0 0 16 16" fill="none" stroke="#059669" stroke-width="2"><path d="M3.5 8.5l3 3 6-7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                        Seen by thousands of founders
+                    </li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="continue-row">
+            <span id="countdown-note">Redirecting you automatically…</span>
+            <button type="button" id="skip-btn" class="skip-btn" style="display:none;">Skip →</button>
+        </div>
     </div>
 
     <script type="importmap">
@@ -85,37 +240,33 @@
     <script type="module">
         import { createClient } from '@supabase/supabase-js';
 
-        // Initialize Supabase client
         const supabaseUrl = 'https://lbayphzxmdtdmrqmeomt.supabase.co';
         const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxiYXlwaHp4bWR0ZG1ycW1lb210Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDA5NTAyNTYsImV4cCI6MjA1NjUyNjI1Nn0.uSt7ll1Gy_TtbHxTyRtkyToZBIbW7ud18X45k5BdzKo';
-
         const supabase = createClient(supabaseUrl, supabaseAnonKey);
+
+        const iconEl = document.getElementById('status-icon');
+        const headingEl = document.getElementById('status-heading');
+        const textEl = document.getElementById('status-text');
+        const countdownEl = document.getElementById('countdown-note');
+        const skipBtn = document.getElementById('skip-btn');
+
+        const CHECK_SVG = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 13l4 4L19 7" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+        const X_SVG = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M6 6l12 12M18 6L6 18" stroke-linecap="round"/></svg>';
 
         async function handleAuthCallback() {
             try {
                 const { data, error } = await supabase.auth.getSession();
-
-                if (error) {
-                    throw error;
-                }
+                if (error) throw error;
 
                 if (data.session) {
-                    // Authentication successful
-                    const successDiv = document.getElementById('success-message');
-                    successDiv.style.display = 'block';
-                    successDiv.textContent = 'Authentication successful! Redirecting...';
-
-                    // Hide spinner and loading text
-                    document.querySelector('.spinner').style.display = 'none';
-                    document.querySelector('h2').textContent = 'Welcome to SubmitHunt!';
-                    document.querySelector('p').textContent = 'You have been successfully authenticated.';
-
-                    console.log('Authentication successful:', data.session.user);
+                    iconEl.className = 'status-icon status-icon--ok';
+                    iconEl.innerHTML = CHECK_SVG;
+                    headingEl.textContent = "You're in 🎉";
+                    textEl.textContent = 'Taking you to your launch…';
 
                     // Return the user to wherever they started (e.g. the submit
                     // form they were filling out), falling back to home. Only
-                    // same-origin relative paths are honored to avoid open
-                    // redirects.
+                    // same-origin relative paths are honored to avoid open redirects.
                     let dest = '/';
                     try {
                         const saved = localStorage.getItem('sh_post_login_redirect');
@@ -125,34 +276,33 @@
                         }
                     } catch (e) { /* ignore */ }
 
-                    // Redirect after a short delay
-                    setTimeout(() => {
-                        window.location.href = dest;
-                    }, 1200);
+                    // Keep this success screen up for 10s with a countdown, and
+                    // let the user skip straight through if they want.
+                    const go = () => { window.location.href = dest; };
+                    skipBtn.style.display = '';
+                    skipBtn.addEventListener('click', go);
+                    let remaining = 10;
+                    const renderCount = () => { countdownEl.textContent = `Continuing to your launch in ${remaining}s…`; };
+                    renderCount();
+                    const iv = setInterval(() => {
+                        remaining -= 1;
+                        if (remaining <= 0) { clearInterval(iv); go(); return; }
+                        renderCount();
+                    }, 1000);
                 } else {
-                    throw new Error('No active session found. The magic link may have expired.');
+                    throw new Error('No active session found. Please try signing in again.');
                 }
             } catch (error) {
                 console.error('Authentication callback error:', error);
-
-                // Hide spinner
-                document.querySelector('.spinner').style.display = 'none';
-                document.querySelector('h2').textContent = 'Authentication Error';
-                document.querySelector('p').textContent = 'There was a problem with your authentication.';
-
-                // Show error message
-                const errorDiv = document.getElementById('error-message');
-                errorDiv.style.display = 'block';
-                errorDiv.textContent = `Authentication failed: ${error.message}`;
-
-                // Redirect to home page after 5 seconds
-                setTimeout(() => {
-                    window.location.href = '/';
-                }, 5000);
+                iconEl.className = 'status-icon status-icon--err';
+                iconEl.innerHTML = X_SVG;
+                headingEl.textContent = 'Sign-in problem';
+                textEl.textContent = error.message || 'There was a problem signing you in.';
+                if (countdownEl) countdownEl.textContent = 'Taking you back home…';
+                setTimeout(() => { window.location.href = '/'; }, 5000);
             }
         }
 
-        // Handle the callback when the page loads
         handleAuthCallback();
     </script>
 </body>

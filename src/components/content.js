@@ -41,13 +41,31 @@ export const Content = ({ user, onStartupsChange, selectedCategory, sortBy, sear
         const filteredData = data?.filter(startup => startup.launch_date <= todayStr) || [];
 
         if (!error && filteredData && filteredData.length > 0) {
-          setStartups(filteredData);
-          setFilteredStartups(filteredData);
-          onStartupsChange?.(filteredData);
+          // Merge in comment counts so cards can show a comment icon + count.
+          // The comments table is sparse, so one lightweight query covers all.
+          let withCounts = filteredData;
+          try {
+            const { data: commentRows } = await supabase
+              .from('comments')
+              .select('startup_id');
+            if (Array.isArray(commentRows)) {
+              const counts = {};
+              commentRows.forEach((r) => {
+                if (r && r.startup_id) counts[r.startup_id] = (counts[r.startup_id] || 0) + 1;
+              });
+              withCounts = filteredData.map((s) => ({ ...s, comment_count: counts[s.id] || 0 }));
+            }
+          } catch (e) {
+            console.log('Comment counts unavailable:', e);
+          }
+
+          setStartups(withCounts);
+          setFilteredStartups(withCounts);
+          onStartupsChange?.(withCounts);
 
           // Group startups by launch date
           const grouped = {};
-          filteredData.forEach(startup => {
+          withCounts.forEach(startup => {
             const dateKey = startup.launch_date;
             if (!dateKey) return;
             if (!grouped[dateKey]) {

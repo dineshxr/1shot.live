@@ -23,6 +23,7 @@ export const ANALYTICS_EVENTS = {
   FORM_SUBMIT: 'form_submit',
   LINK_CLICK: 'link_click',
   SHARE_CLICK: 'share_click',
+  STARTUP_VIEW: 'startup_view',
 };
 
 /**

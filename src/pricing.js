@@ -3,6 +3,7 @@ import { render } from 'preact';
 import { useState, useEffect } from 'preact/hooks';
 import { auth } from './lib/auth.js';
 import { Footer } from './components/footer.js';
+import { DrComparison } from './components/dr-comparison.js';
 
 // Make hooks available globally
 window.useState = useState;
@@ -88,8 +89,8 @@ const PricingPage = () => {
                   <span class="text-gray-700">Badge for top 3 ranking products</span>
                 </li>
                 <li class="flex items-start gap-2.5">
-                  <i class="fas fa-check text-gray-400 mt-1 text-xs"></i>
-                  <span class="text-gray-700">High authority backlink for top 3 ranking products</span>
+                  <i class="fas fa-circle-check text-green-600 mt-1 text-xs"></i>
+                  <span class="text-green-700 font-semibold">Guaranteed dofollow backlink</span>
                 </li>
                 <li class="flex items-start gap-2.5">
                   <i class="fas fa-clock text-amber-500 mt-1 text-xs"></i>
@@ -130,12 +131,12 @@ const PricingPage = () => {
                   <span class="text-gray-700">Badge for top 3 ranking products</span>
                 </li>
                 <li class="flex items-start gap-2.5">
-                  <i class="fas fa-check text-orange-600 mt-1 text-xs"></i>
-                  <span class="text-gray-900 font-medium">Guaranteed high-authority backlink (37+ DR)</span>
+                  <i class="fas fa-circle-check text-green-600 mt-1 text-xs"></i>
+                  <span class="text-green-700 font-semibold">Guaranteed dofollow backlink</span>
                 </li>
                 <li class="flex items-start gap-2.5">
                   <i class="fas fa-bolt text-orange-600 mt-1 text-xs"></i>
-                  <span class="text-gray-700">Skip the queue — launch immediately</span>
+                  <span class="text-gray-900 font-bold">Skip the queue — launch immediately</span>
                 </li>
                 <li class="flex items-start gap-2.5">
                   <i class="fas fa-envelope text-orange-600 mt-1 text-xs"></i>
@@ -169,6 +170,10 @@ const PricingPage = () => {
                   <span class="text-gray-700">High visibility to daily visitors</span>
                 </li>
                 <li class="flex items-start gap-2.5">
+                  <i class="fas fa-circle-check text-green-600 mt-1 text-xs"></i>
+                  <span class="text-green-700 font-semibold">Guaranteed dofollow backlink</span>
+                </li>
+                <li class="flex items-start gap-2.5">
                   <i class="fas fa-border-all text-gray-400 mt-1 text-xs"></i>
                   <span class="text-gray-700">Colorful gradient border on card</span>
                 </li>
@@ -184,6 +189,9 @@ const PricingPage = () => {
               </a>
             </div>
           </div>
+
+          <!-- DR before/after -->
+          <${DrComparison} />
 
           <!-- FAQ Section -->
           <div class="mt-20 max-w-3xl mx-auto">

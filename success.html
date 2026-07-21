@@ -75,13 +75,12 @@
           <p class="text-sm text-gray-600 mb-4">Show your users that you're featured on SubmitHunt!</p>
 
           <div class="bg-gray-50 p-4 rounded-lg mb-4">
-            <img src="./src/submit-hunt-badge.png" alt="SubmitHunt Badge" class="mx-auto mb-3"
-              style="max-width: 200px;">
+            <img src="/badge-light.svg" alt="Featured on Submit Hunt" class="mx-auto mb-3" style="height: 56px;">
           </div>
           <div class="text-left">
             <p class="text-sm font-semibold mb-2">HTML Code:</p>
             <div class="bg-gray-100 p-3 rounded border text-xs font-mono overflow-x-auto">
-              <code>&lt;a href="https://submithunt.com" target="_blank"&gt;&lt;img src="https://submithunt.com/src/submit-hunt-badge.png" alt="Featured on SubmitHunt" style="max-width: 200px;"&gt;&lt;/a&gt;</code>
+              <code>&lt;a href="https://submithunt.com" target="_blank"&gt;&lt;img src="https://submithunt.com/badge-light.svg" alt="Featured on Submit Hunt" width="240" height="66"&gt;&lt;/a&gt;</code>
             </div>
             <button onclick="copyBadgeCode()"
               class="mt-2 px-3 py-1 bg-blue-500 text-white text-xs rounded hover:bg-blue-600">
@@ -139,7 +138,7 @@
 
   <script>
     function copyBadgeCode() {
-      const code = '<a href="https://submithunt.com" target="_blank"><img src="https://submithunt.com/src/submit-hunt-badge.png" alt="Featured on SubmitHunt" style="max-width: 200px;"></a>';
+      const code = '<a href="https://submithunt.com" target="_blank"><img src="https://submithunt.com/badge-light.svg" alt="Featured on Submit Hunt" width="240" height="66"></a>';
       navigator.clipboard.writeText(code).then(() => {
         const button = event.target;
         const originalText = button.textContent;

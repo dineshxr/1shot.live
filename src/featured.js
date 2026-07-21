@@ -15,6 +15,7 @@ import htm from "/vendor/htm.module.js";
 
 // Import components
 import { Footer } from "./components/footer.js";
+import { DrComparison } from "./components/dr-comparison.js";
 import { OnlineVisitors } from "./components/online-visitors.js";
 import { LoginModal } from "./components/login-modal.js";
 import { LaunchCountdown } from "./components/launch-countdown.js";
@@ -308,6 +309,9 @@ const FeaturedPage = () => {
             </div>
           </div>
         </section>
+
+        <!-- DR before/after -->
+        <${DrComparison} />
 
         <!-- FAQ Section -->
         <section class="py-12 sm:py-16">

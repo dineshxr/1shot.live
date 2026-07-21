@@ -6,6 +6,7 @@ import { RightSidebar } from "./right-sidebar.js";
 import { SubmitStartupForm } from "./submit-startup-form.js";
 import { StartupDetailPage } from "./startup-detail-page.js";
 import { LoginModal } from "./login-modal.js";
+import { HowToUpvoteModal } from "./how-to-upvote-modal.js";
 import { BlogPage } from "./blog-page.js";
 import { BlogPostPage } from "./blog-post-page.js";
 import { auth } from "../lib/auth.js";
@@ -15,6 +16,8 @@ import { auth } from "../lib/auth.js";
 export const App = () => {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
+  // {startup, onUpvoteChange} for the "visit before you upvote" guide
+  const [upvoteGuide, setUpvoteGuide] = useState(null);
   // Initialize currentRoute immediately from window.location.pathname
   const [currentRoute, setCurrentRoute] = useState(() => {
     if (typeof window !== 'undefined') {
@@ -78,7 +81,11 @@ export const App = () => {
     window.addEventListener("open-login-modal", () => {
       setIsLoginModalOpen(true);
     });
-    
+
+    // Add listener for the upvote guide dialog (dispatched by UpvoteButton)
+    const openUpvoteGuide = (e) => setUpvoteGuide(e.detail || null);
+    window.addEventListener("open-upvote-guide", openUpvoteGuide);
+
     // Handle routing changes
     const handleRouteChange = () => {
       setCurrentRoute(window.location.pathname);
@@ -92,6 +99,7 @@ export const App = () => {
       window.removeEventListener("open-login-modal", () => {
         setIsLoginModalOpen(true);
       });
+      window.removeEventListener("open-upvote-guide", openUpvoteGuide);
       window.removeEventListener('popstate', handleRouteChange);
     };
   }, []);
@@ -123,7 +131,7 @@ export const App = () => {
         ? html`
           <div class="min-h-screen" style="background-color: var(--sh-bg);">
             <${Header} user=${user} />
-            <${StartupDetailPage} />
+            <${StartupDetailPage} user=${user} />
             <${Footer} />
           </div>
         `
@@ -211,10 +219,18 @@ export const App = () => {
         `
       }
       <${SubmitStartupForm} isOpen=${isFormOpen} onClose=${closeForm} />
-      <${LoginModal} 
-        isOpen=${isLoginModalOpen} 
+      <${LoginModal}
+        isOpen=${isLoginModalOpen}
         onClose=${closeLoginModal}
         onLoginSuccess=${handleLoginSuccess}
+      />
+      <${HowToUpvoteModal}
+        isOpen=${!!upvoteGuide}
+        startup=${upvoteGuide && upvoteGuide.startup}
+        onClose=${() => setUpvoteGuide(null)}
+        onUpvoted=${(data) => {
+          if (upvoteGuide && upvoteGuide.onUpvoteChange) upvoteGuide.onUpvoteChange(data);
+        }}
       />
     </div>
   `;

@@ -1,6 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@14.14.0?target=deno";
-import { verifyTurnstileToken } from "../_shared/lib/verifyTurnstileToken.ts";
 
 const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") as string, {
   apiVersion: "2023-10-16",
@@ -28,21 +27,10 @@ serve(async (req) => {
   }
 
   try {
-    const { product, startupId, startupTitle, userEmail, successUrl, cancelUrl, submission, turnstileToken } = await req.json();
-
-    // Anti-bot: when the client supplies a Turnstile token (new launches from
-    // the submit form), verify it before creating a paid session. Resume-payment
-    // flows may not carry a fresh token; payment itself gates those, so a
-    // missing token is allowed.
-    if (turnstileToken) {
-      const verify = await verifyTurnstileToken(turnstileToken);
-      if (!verify.success) {
-        return new Response(
-          JSON.stringify({ error: "Verification failed. Please complete the challenge and try again." }),
-          { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-    }
+    // Turnstile is NOT used on the paid flow — payment itself gates spam, and
+    // requiring a challenge here only adds a failure point. (Free submissions
+    // still verify Turnstile via the verify-turnstile function.)
+    const { product, startupId, startupTitle, userEmail, successUrl, cancelUrl, submission } = await req.json();
 
     if (!product || !PRICE_IDS[product as keyof typeof PRICE_IDS]) {
       return new Response(
@@ -76,10 +64,13 @@ serve(async (req) => {
       metadata.sub = "1";
       metadata.sub_title = cap(submission.title, 200);
       metadata.sub_url = cap(submission.url, 400);
+      metadata.sub_tagline = cap(submission.tagline, 200);
       metadata.sub_description = cap(submission.description, 500);
       metadata.sub_slug = cap(submission.slug, 80);
       metadata.sub_category = cap(submission.category, 80);
+      metadata.sub_tags = cap(submission.tags, 200);
       metadata.sub_author = cap(submission.author, 500);
+      metadata.sub_logo = cap(submission.logo_url, 500);
       metadata.sub_screenshot = cap(submission.screenshot_url, 500);
       metadata.sub_launch_date = cap(submission.launch_date, 20);
       metadata.sub_contact_email = cap(submission.contact_email, 200);
@@ -94,6 +85,8 @@ serve(async (req) => {
         },
       ],
       mode: mode,
+      // Let customers enter a promo code at checkout (e.g. HACK = 50% off).
+      allow_promotion_codes: true,
       success_url: successUrl || "https://submithunt.com/payment-success?session_id={CHECKOUT_SESSION_ID}",
       cancel_url: cancelUrl || "https://submithunt.com/submit",
       metadata,

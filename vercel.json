@@ -7,13 +7,22 @@
     },
     {
       "src": "api/**/*.js",
-      "use": "@vercel/node"
+      "use": "@vercel/node",
+      "config": { "includeFiles": "index.html" }
     }
   ],
   "rewrites": [
     {
-      "source": "/startup/:path*",
-      "destination": "/index.html"
+      "source": "/sitemap.xml",
+      "destination": "/api/sitemap.js"
+    },
+    {
+      "source": "/directory",
+      "destination": "/api/directory.js"
+    },
+    {
+      "source": "/startup/:slug",
+      "destination": "/api/startup.js?slug=:slug"
     },
     {
       "source": "/blog",

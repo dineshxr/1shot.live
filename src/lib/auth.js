@@ -1,6 +1,19 @@
 import { createClient } from '@supabase/supabase-js';
 import { validateEmail } from './email-validation.js';
 
+// Canonical-host guard: the app and the Google OAuth round-trip must always run
+// on the www origin so the PKCE verifier, the /auth/callback.html page, and the
+// resulting session all live on ONE origin. The apex already 308s to www at the
+// edge; this is a JS backup so a login can never start from the bare apex (which
+// would split the session across origins and look like "sign-in didn't work").
+try {
+  if (typeof window !== 'undefined' && window.location.hostname === 'submithunt.com') {
+    window.location.replace(
+      'https://www.submithunt.com' + window.location.pathname + window.location.search + window.location.hash
+    );
+  }
+} catch (e) { /* ignore */ }
+
 // Supabase client for auth operations - singleton pattern to prevent multiple instances
 const supabaseUrl = window.PUBLIC_ENV?.supabaseUrl || 'https://lbayphzxmdtdmrqmeomt.supabase.co';
 const supabaseKey = window.PUBLIC_ENV?.supabaseKey || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxiYXlwaHp4bWR0ZG1ycW1lb210Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDA5NTAyNTYsImV4cCI6MjA1NjUyNjI1Nn0.uSt7ll1Gy_TtbHxTyRtkyToZBIbW7ud18X45k5BdzKo';
