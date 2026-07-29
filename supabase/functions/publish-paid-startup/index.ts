@@ -40,7 +40,7 @@ serve(async (req) => {
     // Get the startup details
     const { data: startup, error: startupError } = await supabase
       .from('startups')
-      .select('id, title, slug, description, plan, author, launch_date, is_live, payment_status, confirmation_sent_at')
+      .select('id, title, slug, url, description, plan, author, launch_date, is_live, payment_status, confirmation_sent_at')
       .eq('id', startupId)
       .single()
 
@@ -241,6 +241,93 @@ async function generateBlogPost(startupId: string): Promise<string | null> {
   }
 }
 
+// ---------------------------------------------------------------------------
+// Badge embed
+//
+// Paid plans already get a guaranteed dofollow backlink, so the badge isn't what
+// unlocks anything here — it's what makes the listing render correctly on the
+// maker's own site. The snippet must still point at THEIR OWN listing: a shared
+// site-wide href is the bug in the competitor email this was modelled on, where
+// every recipient received one hardcoded product's slug.
+//
+// Deep-linking stays compatible with verify-backlink, which runs each href
+// through normalizeHost() (path/query/fragment stripped) before comparing to
+// submithunt.com. No rel attribute, so the link stays do-follow.
+//
+// Kept file-local (like formatLaunchDate) because each Edge Function deploys
+// independently; the twin copy lives in send-submission-confirmation/index.ts.
+// ---------------------------------------------------------------------------
+
+const BADGE_VARIANTS = [
+  { label: 'Light backgrounds', src: 'https://submithunt.com/badge-light.svg' },
+  { label: 'Dark backgrounds', src: 'https://submithunt.com/badge-dark.svg' },
+]
+
+// Escape #1 of 2: makes an interpolated value safe INSIDE the snippet's own
+// attributes, so a title containing a quote or angle bracket can't break out of
+// alt="" and inject markup onto the maker's page when pasted.
+function escapeAttr(value: string): string {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+}
+
+// Escape #2 of 2: renders the finished snippet as literal, visible code in our
+// own email body. Applied on top of escape #1 — never instead of it.
+function escapeForDisplay(value: string): string {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+}
+
+// utm_source is the maker's own domain, taken from startups.url. Degrades to
+// omitting utm_source entirely when url is missing or unparseable — we never
+// substitute a placeholder or another product's domain.
+function utmSourceFromUrl(rawUrl: string | null | undefined): string {
+  const raw = String(rawUrl ?? '').trim()
+  if (!raw) return ''
+  try {
+    const withScheme = /^[a-z][a-z0-9+.-]*:\/\//i.test(raw) ? raw : `https://${raw}`
+    return new URL(withScheme).hostname.toLowerCase().replace(/^www\./, '')
+  } catch {
+    return ''
+  }
+}
+
+// https://submithunt.com/startup/<slug>?utm_source=<their domain>&utm_medium=badge&utm_campaign=featured
+function badgeListingUrl(listing: any): string {
+  const slug = encodeURIComponent(String(listing?.slug || listing?.id || ''))
+  const params = ['utm_medium=badge', 'utm_campaign=featured']
+  const source = utmSourceFromUrl(listing?.url)
+  if (source) params.unshift(`utm_source=${encodeURIComponent(source)}`)
+  // Plain "&" separators rather than "&amp;": every interpolated part is already
+  // percent-encoded (so nothing can terminate the attribute), none of our fixed
+  // param names can be misread as an HTML entity, and it keeps what the maker
+  // sees identical to what they paste.
+  return `https://submithunt.com/startup/${slug}?${params.join('&')}`
+}
+
+function badgeSnippet(listing: any, src: string): string {
+  return `<a href="${badgeListingUrl(listing)}" target="_blank">` +
+    `<img src="${src}" alt="${escapeAttr(`${listing?.title ?? ''} on SubmitHunt`)}" width="240" height="66" />` +
+    `</a>`
+}
+
+// Both variants as copy-ready code blocks. labelColor keeps the captions legible
+// against whichever callout background the section sits on.
+function badgeSnippetsHtml(listing: any, labelColor: string): string {
+  return BADGE_VARIANTS.map((variant) => `
+        <p style="margin: 14px 0 6px 0; color: ${labelColor}; font-size: 12px; font-weight: bold;">${variant.label}</p>
+        <div style="background: #0b1220; color: #e5e7eb; padding: 12px; border-radius: 6px; font-size: 12px; font-family: monospace; word-break: break-all; line-height: 1.5;">${escapeForDisplay(badgeSnippet(listing, variant.src))}</div>`).join('')
+}
+
+function badgeSnippetsText(listing: any): string {
+  return BADGE_VARIANTS.map((variant) => `${variant.label}:\n${badgeSnippet(listing, variant.src)}`).join('\n\n')
+}
+
 async function sendLiveNotification(listing: any, blogUrl: string | null = null): Promise<boolean> {
   try {
     // Use Resend API for sending emails
@@ -319,7 +406,7 @@ async function sendLiveNotification(listing: any, blogUrl: string | null = null)
           Products that reach the Top 3 on launch day all have one thing in common: their founders shared the listing within the first few hours. The earlier you share, the more momentum you build.
         </p>
         <p style="margin: 0 0 15px 0; color: #92400e; font-size: 14px; font-weight: bold;">
-          Top 3 products earn a permanent badge + a dofollow backlink from our 38+ DR site.
+          Top 3 products earn a permanent badge + a dofollow backlink from our DR 37 site.
         </p>
         <a href="https://twitter.com/intent/tweet?text=${shareText}&url=${encodeURIComponent(startupUrl)}" style="display: inline-block; background-color: #000; color: #fff; padding: 10px 20px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 14px;">Share on X</a>
       </div>
@@ -329,7 +416,7 @@ async function sendLiveNotification(listing: any, blogUrl: string | null = null)
       <div style="background: linear-gradient(135deg, #7c3aed 0%, #5b21b6 100%); border-radius: 8px; padding: 25px; margin: 25px 0;">
         <h3 style="margin: 0 0 10px 0; color: #fff; font-size: 18px;">Your Featured Spot benefits are active</h3>
         <p style="margin: 0; color: #fff; font-size: 14px; line-height: 1.6; opacity: 0.95;">
-          ${listing.title} is running with featured placement in the feed — gradient-border card, prime visibility to every visitor for the next 7 days. Your guaranteed dofollow backlink (DR 38+) goes live within 24 hours.
+          ${listing.title} is running with featured placement in the feed — gradient-border card, prime visibility to every visitor for the next 7 days. Your guaranteed dofollow backlink (DR 37) goes live within 24 hours.
         </p>
       </div>
       ` : `
@@ -337,11 +424,26 @@ async function sendLiveNotification(listing: any, blogUrl: string | null = null)
       <div style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); border-radius: 8px; padding: 25px; margin: 25px 0;">
         <h3 style="margin: 0 0 10px 0; color: #fff; font-size: 18px;">Your Premium benefits are active</h3>
         <p style="margin: 0; color: #fff; font-size: 14px; line-height: 1.6; opacity: 0.95;">
-          ${listing.title} has priority placement and stays on the homepage for 14 days — double the standard run. Your guaranteed dofollow backlink (DR 38+) goes live within 24 hours, and we'll feature you in our next newsletter to 2,000+ subscribers.
+          ${listing.title} has priority placement and stays on the homepage for 14 days — double the standard run. Your guaranteed dofollow backlink (DR 37) goes live within 24 hours, and we'll feature you in our next newsletter to 2,000+ subscribers.
         </p>
       </div>
       `}
-      
+
+      <!-- Badge embed (light + dark) -->
+      <div style="background-color: #f8f9fa; border: 1px solid #e9ecef; border-radius: 8px; padding: 20px; margin: 25px 0;">
+        <h3 style="margin: 0 0 8px 0; color: #333; font-size: 16px;">Add your badge</h3>
+        <p style="margin: 0 0 4px 0; color: #555; font-size: 14px; line-height: 1.6;">
+          Your dofollow backlink is guaranteed either way — the badge is what shows visitors ${escapeForDisplay(listing.title)} is live on SubmitHunt. Both snippets link straight to your own listing.
+        </p>
+        <table cellpadding="0" cellspacing="0" style="width: 100%; margin: 12px 0 0 0;">
+          <tr>
+            <td style="text-align: center; padding: 8px;" width="50%"><img src="https://submithunt.com/badge-light.svg" alt="${escapeAttr(`${listing.title} on SubmitHunt`)}" width="180" style="height: auto;" /></td>
+            <td style="text-align: center; padding: 8px; background-color: #0b1220; border-radius: 6px;" width="50%"><img src="https://submithunt.com/badge-dark.svg" alt="${escapeAttr(`${listing.title} on SubmitHunt`)}" width="180" style="height: auto;" /></td>
+          </tr>
+        </table>
+        ${badgeSnippetsHtml(listing, '#555')}
+      </div>
+
       ${blogUrl ? `
       <!-- Blog Post Link -->
       <div style="background-color: #f0fdf4; border: 1px solid #86efac; border-radius: 8px; padding: 20px; margin: 20px 0;">
@@ -392,15 +494,19 @@ Your product page: ${startupUrl}
 THE #1 THING THAT SEPARATES TOP LAUNCHES
 Products that reach the Top 3 on launch day all have one thing in common: their founders shared the listing within the first few hours.
 
-Top 3 products earn a permanent badge + a dofollow backlink from our 38+ DR site.
+Top 3 products earn a permanent badge + a dofollow backlink from our DR 37 site.
 
 Share on X: https://twitter.com/intent/tweet?text=${shareText}&url=${encodeURIComponent(startupUrl)}
 
 ${isFeatured ? `YOUR FEATURED SPOT BENEFITS ARE ACTIVE
-${listing.title} is running with featured placement in the feed — gradient-border card, prime visibility to every visitor for the next 7 days. Your guaranteed dofollow backlink (DR 38+) goes live within 24 hours.
+${listing.title} is running with featured placement in the feed — gradient-border card, prime visibility to every visitor for the next 7 days. Your guaranteed dofollow backlink (DR 37) goes live within 24 hours.
 ` : `YOUR PREMIUM BENEFITS ARE ACTIVE
-${listing.title} has priority placement and stays on the homepage for 14 days — double the standard run. Your guaranteed dofollow backlink (DR 38+) goes live within 24 hours, and we'll feature you in our next newsletter to 2,000+ subscribers.
+${listing.title} has priority placement and stays on the homepage for 14 days — double the standard run. Your guaranteed dofollow backlink (DR 37) goes live within 24 hours, and we'll feature you in our next newsletter to 2,000+ subscribers.
 `}
+ADD YOUR BADGE
+Your dofollow backlink is guaranteed either way — the badge is what shows visitors ${listing.title} is live on SubmitHunt. Both snippets link straight to your own listing.
+
+${badgeSnippetsText(listing)}
 
 ${blogUrl ? `YOUR BLOG POST IS LIVE
 We've published an SEO-optimized blog post to help drive traffic to your listing:
@@ -536,8 +642,23 @@ async function sendScheduledConfirmation(listing: any, launchDate: string): Prom
         <table style="width: 100%;" cellpadding="0" cellspacing="0">
           <tr><td style="padding: 5px 0; color: #555; font-size: 14px;">1. ${listing.title} goes live automatically on ${launchDay} at 8 AM PST — nothing more to do</td></tr>
           <tr><td style="padding: 5px 0; color: #555; font-size: 14px;">2. You'll get an email that morning with your live link + a dedicated SEO blog post about your product</td></tr>
-          <tr><td style="padding: 5px 0; color: #555; font-size: 14px;">3. ${isFeatured ? 'Your Featured placement runs for 7 days from launch' : 'You stay on the homepage for 14 days from launch'}, with your guaranteed dofollow backlink (DR 38+)</td></tr>
+          <tr><td style="padding: 5px 0; color: #555; font-size: 14px;">3. ${isFeatured ? 'Your Featured placement runs for 7 days from launch' : 'You stay on the homepage for 14 days from launch'}, with your guaranteed dofollow backlink (DR 37)</td></tr>
         </table>
+      </div>
+
+      <!-- Badge embed (light + dark) -->
+      <div style="background-color: #f8f9fa; border: 1px solid #e9ecef; border-radius: 8px; padding: 20px; margin: 25px 0;">
+        <h3 style="margin: 0 0 8px 0; color: #333; font-size: 16px;">Add your badge before launch day</h3>
+        <p style="margin: 0 0 4px 0; color: #555; font-size: 14px; line-height: 1.6;">
+          Your dofollow backlink is guaranteed either way — the badge is what shows visitors ${escapeForDisplay(listing.title)} is on SubmitHunt. Both snippets link straight to your own listing.
+        </p>
+        <table cellpadding="0" cellspacing="0" style="width: 100%; margin: 12px 0 0 0;">
+          <tr>
+            <td style="text-align: center; padding: 8px;" width="50%"><img src="https://submithunt.com/badge-light.svg" alt="${escapeAttr(`${listing.title} on SubmitHunt`)}" width="180" style="height: auto;" /></td>
+            <td style="text-align: center; padding: 8px; background-color: #0b1220; border-radius: 6px;" width="50%"><img src="https://submithunt.com/badge-dark.svg" alt="${escapeAttr(`${listing.title} on SubmitHunt`)}" width="180" style="height: auto;" /></td>
+          </tr>
+        </table>
+        ${badgeSnippetsHtml(listing, '#555')}
       </div>
 
       <!-- Prep for launch day -->
@@ -579,7 +700,12 @@ Preview your listing: ${startupUrl}
 WHAT HAPPENS NEXT
 1. ${listing.title} goes live automatically on ${launchDay} at 8 AM PST — nothing more to do
 2. You'll get an email that morning with your live link + a dedicated SEO blog post about your product
-3. ${isFeatured ? 'Your Featured placement runs for 7 days from launch' : 'You stay on the homepage for 14 days from launch'}, with your guaranteed dofollow backlink (DR 38+)
+3. ${isFeatured ? 'Your Featured placement runs for 7 days from launch' : 'You stay on the homepage for 14 days from launch'}, with your guaranteed dofollow backlink (DR 37)
+
+ADD YOUR BADGE BEFORE LAUNCH DAY
+Your dofollow backlink is guaranteed either way — the badge is what shows visitors ${listing.title} is on SubmitHunt. Both snippets link straight to your own listing.
+
+${badgeSnippetsText(listing)}
 
 USE THE RUNWAY
 The products that hit the Top 3 line things up before launch day: draft your X post, give a few friends a heads-up to upvote in the first hour, and have your communities ready. We'll email you the moment ${listing.title} is live.

@@ -477,18 +477,46 @@ async function insertPaidStartupFromMetadata(
   if (!author.email && session.customer_email) author.email = session.customer_email;
 
   const tags = (m.sub_tags || "").split(",").map((t) => t.trim()).filter(Boolean).slice(0, 5);
-  const cover = m.sub_screenshot || null;
+
+  // Gallery came over as one key per screenshot (sub_img0..sub_img4); fall back
+  // to the single legacy cover key for sessions created before that change.
+  const images: string[] = [];
+  for (let i = 0; i < 5; i++) {
+    const url = m[`sub_img${i}`];
+    if (url) images.push(url);
+  }
+  if (!images.length && m.sub_screenshot) images.push(m.sub_screenshot);
+  const cover = images[0] || null;
+
+  // Descriptions over 500 chars were split across two metadata values.
+  const description = `${m.sub_description || ""}${m.sub_description2 || ""}`;
+
+  const parseJson = (raw: string | undefined): Record<string, unknown> => {
+    if (!raw) return {};
+    try {
+      const parsed = JSON.parse(raw);
+      return parsed && typeof parsed === "object" ? parsed as Record<string, unknown> : {};
+    } catch {
+      return {};
+    }
+  };
+  const details: Record<string, unknown> = { ...parseJson(m.sub_ai), ...parseJson(m.sub_extras) };
+  // Posted as the maker's own comment by the go-live trigger.
+  if (m.sub_comment) details.first_comment = m.sub_comment;
+
   const baseRow: Record<string, unknown> = {
     title: m.sub_title || m.startup_title || "Untitled",
     url: m.sub_url || "",
     tagline: m.sub_tagline || null,
-    description: m.sub_description || "",
+    description,
     category: m.sub_category || null,
     tags: tags.length ? tags : null,
     author,
     logo_url: m.sub_logo || null,
     screenshot_url: cover,
-    images: cover ? [cover] : null,
+    images: images.length ? images : null,
+    demo_video_url: m.sub_video || null,
+    details: Object.keys(details).length ? details : null,
     plan: product, // 'premium' | 'featured'
     payment_status: "paid",
     is_live: isLive,

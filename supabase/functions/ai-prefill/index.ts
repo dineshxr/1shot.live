@@ -10,10 +10,12 @@ const FETCH_TIMEOUT_MS = 9000
 const MAX_BYTES = 3_000_000
 const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions'
 
+// Must stay in sync with src/lib/categories.js — the submit form drops any
+// category the chip list doesn't offer, so a drifted value here is silently lost.
 const CATEGORIES = [
-  'AI/ML', 'SaaS', 'Web App', 'Mobile App', 'Developer Tools', 'Productivity',
-  'Design', 'Marketing', 'E-commerce', 'Social', 'API/Service', 'Gaming',
-  'Health & Fitness', 'Education', 'Chrome Extension', 'Other',
+  'AI/ML', 'SaaS', 'Developer Tools', 'Productivity', 'Design', 'Web App',
+  'Mobile App', 'Chrome Extension', 'API/Service', 'Marketing', 'E-commerce',
+  'Social', 'Education', 'Health & Fitness', 'Gaming', 'Other',
 ]
 
 function json(body: unknown, status = 200): Response {
@@ -159,6 +161,8 @@ async function runLLM(model: string, apiKey: string, ctx: ReturnType<typeof extr
     `tags (array of up to 5 short lowercase keywords), ` +
     `pricing (one of: Free, Freemium, Paid, Subscription, Unknown), ` +
     `targetAudience (string), techStack (array of strings, may be empty), ` +
+    `seoKeyword (string, <=60 chars — the single search phrase someone would type to find a tool like this. ` +
+    `A generic category phrase like "svg to png converter", NOT the brand name and NOT a list), ` +
     `seo ({title, description}), faq (array of up to 4 {question, answer}). ` +
     `If something is unknown, use an empty string or empty array. Do not invent facts.`
   const userMsg = `URL: ${url}\nTITLE: ${ctx.title}\nMETA DESCRIPTION: ${ctx.metaDesc}\n` +
@@ -256,6 +260,7 @@ Deno.serve(async (req) => {
       pricing: ai.pricing || '',
       targetAudience: ai.targetAudience || '',
       techStack: Array.isArray(ai.techStack) ? ai.techStack : [],
+      seoKeyword: typeof ai.seoKeyword === 'string' ? ai.seoKeyword : '',
       seo: ai.seo || { title: ctx.title, description: ctx.metaDesc },
       faq: Array.isArray(ai.faq) ? ai.faq : [],
       // Directly scraped assets — more reliable than the LLM for these.

@@ -211,7 +211,27 @@ export const StartupDetailPage = ({ user }) => {
   
   // Check if we should show navigation arrows
   const hasMultipleImages = startup?.images && startup.images.length > 1;
-  
+
+  // Extras the maker filled in on the submit form. They have no columns of
+  // their own, so they ride in the details jsonb.
+  const details = startup?.details || {};
+  const pricingModel = details.pricing_model || null;
+  const isOpenSource = details.open_source === true;
+  const discount = details.discount || null;
+
+  // Only YouTube and Loom are accepted at submit time; re-derive the embed URL
+  // here rather than trusting a stored embed link.
+  const videoEmbedUrl = (() => {
+    const raw = (startup?.demo_video_url || '').trim();
+    if (!raw) return null;
+    const yt = raw.match(/^https?:\/\/(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)([\w-]{6,20})/i);
+    if (yt) return `https://www.youtube-nocookie.com/embed/${yt[1]}`;
+    const loom = raw.match(/^https?:\/\/(?:www\.)?loom\.com\/share\/([\w-]{8,64})/i);
+    if (loom) return `https://www.loom.com/embed/${loom[1]}`;
+    return null;
+  })();
+
+
   if (loading) {
     return html`
       <div class="container mx-auto px-4 py-8 max-w-6xl">
@@ -302,7 +322,38 @@ export const StartupDetailPage = ({ user }) => {
               : ''}
           </div>
           <p class="text-lg mb-6">${startup.description || ""}</p>
-          
+
+          <!-- Badges the maker set on submit: pricing model, open source, launch deal -->
+          ${(pricingModel || isOpenSource || discount) ? html`
+            <div class="flex flex-wrap items-center gap-2 mb-6">
+              ${pricingModel ? html`<span class="sh-pill"><i class="fas fa-tag text-[10px]"></i> ${pricingModel}</span>` : ''}
+              ${isOpenSource ? html`<span class="sh-pill"><i class="fab fa-github text-[10px]"></i> Open source</span>` : ''}
+              ${discount ? html`
+                <span class="inline-flex items-center gap-1.5 rounded-full border border-orange-200 bg-orange-50 px-3 py-1 text-xs font-semibold text-orange-800">
+                  <i class="fas fa-gift text-[10px]"></i> ${discount}
+                </span>
+              ` : ''}
+            </div>
+          ` : ''}
+
+          ${videoEmbedUrl ? html`
+            <div class="mb-6">
+              <h2 class="text-xl font-bold mb-2">Demo</h2>
+              <div class="relative w-full rounded-xl overflow-hidden border border-gray-200 bg-black" style="aspect-ratio: 16 / 9;">
+                <iframe
+                  src=${videoEmbedUrl}
+                  title=${`${startup.title} demo video`}
+                  class="absolute inset-0 w-full h-full"
+                  frameborder="0"
+                  loading="lazy"
+                  referrerpolicy="strict-origin-when-cross-origin"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowfullscreen
+                ></iframe>
+              </div>
+            </div>
+          ` : ''}
+
           <div class="mb-6">
             <h2 class="text-xl font-bold mb-2">Tags</h2>
             <div class="flex flex-wrap">

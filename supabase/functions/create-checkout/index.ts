@@ -53,6 +53,23 @@ serve(async (req) => {
     const cap = (v: unknown, n = 500): string =>
       (typeof v === "string" ? v : v == null ? "" : JSON.stringify(v)).slice(0, n);
 
+    // Serialize an object into a metadata value, dropping the listed keys from
+    // last to first until it fits. Truncating JSON instead would hand the
+    // webhook an unparseable string and silently lose the whole payload.
+    const fitJson = (obj: Record<string, unknown>, droppable: string[], limit = 500): string => {
+      const working = { ...obj };
+      for (const [k, v] of Object.entries(working)) {
+        if (v == null || v === "" || (Array.isArray(v) && v.length === 0)) delete working[k];
+      }
+      let out = JSON.stringify(working);
+      for (const key of droppable) {
+        if (out.length <= limit) break;
+        delete working[key];
+        out = JSON.stringify(working);
+      }
+      return out.length <= limit ? out : "{}";
+    };
+
     const metadata: Record<string, string> = {
       product,
       startup_id: startupId || "",
@@ -74,6 +91,47 @@ serve(async (req) => {
       metadata.sub_screenshot = cap(submission.screenshot_url, 500);
       metadata.sub_launch_date = cap(submission.launch_date, 20);
       metadata.sub_contact_email = cap(submission.contact_email, 200);
+
+      // Descriptions run to 600 chars in the form; a metadata value stops at
+      // 500, so the tail rides in a second key and the webhook re-joins them.
+      const description = typeof submission.description === "string" ? submission.description : "";
+      if (description.length > 500) metadata.sub_description2 = description.slice(500, 1000);
+
+      metadata.sub_video = cap(submission.demo_video_url, 400);
+
+      // Gallery: one key per screenshot — five joined URLs would blow the cap.
+      const images: string[] = Array.isArray(submission.images) ? submission.images : [];
+      images.slice(0, 5).forEach((url, i) => {
+        if (url) metadata[`sub_img${i}`] = cap(url, 500);
+      });
+
+      // details jsonb, split across two keys: the maker's own answers (short,
+      // must survive) and the AI-extracted extras (long, dropped field by
+      // field if they don't fit).
+      const details = (submission.details || {}) as Record<string, unknown>;
+      metadata.sub_extras = fitJson(
+        {
+          categories: details.categories,
+          seo_keyword: details.seo_keyword,
+          pricing_model: details.pricing_model,
+          open_source: details.open_source === true ? true : undefined,
+          discount: details.discount,
+        },
+        ["discount", "seo_keyword", "categories"],
+      );
+      // 500 == LIMITS.firstComment in the submit form == Stripe's per-value cap.
+      // Anything lower silently truncates a paid maker's first comment mid-word
+      // while the free path stores it in full.
+      metadata.sub_comment = cap(details.first_comment, 500);
+      metadata.sub_ai = fitJson(
+        {
+          pricing: details.pricing,
+          targetAudience: details.targetAudience,
+          socialLinks: details.socialLinks,
+          techStack: details.techStack,
+        },
+        ["techStack", "socialLinks", "targetAudience", "pricing"],
+      );
     }
 
     const sessionParams: Stripe.Checkout.SessionCreateParams = {

@@ -11,13 +11,44 @@ const SITE = 'https://submithunt.com';
 const esc = (s) =>
   String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 
-// SubmitHunt — pinned + highlighted at the top.
+// ---------------------------------------------------------------------------
+// OUTBOUND rel POLICY — read this before touching any anchor on this page.
+//
+//   `dofollow`  : describes the *OTHER* site. It means "if you get listed on
+//                 THAT directory, the backlink THEY give YOU is dofollow".
+//                 It is purely informational content for the reader. It must
+//                 NEVER be used to decide the rel attribute of the links WE
+//                 emit — wiring it up would silently hand submithunt.com's link
+//                 equity to ~30 sites nobody agreed to endorse.
+//
+//   `partner`   : describes *US*. Explicit, per-entry, opt-in. It means "we
+//                 have deliberately agreed to give THIS site a dofollow link
+//                 from submithunt.com". Default is absent/false → nofollow.
+//                 Only add it when the site owner has actually agreed.
+//
+//   `sponsored` : set alongside `partner` when money or a reciprocal deal is
+//                 involved — Google requires rel="sponsored" for paid links.
+//
+// Everything without `partner: true` stays `rel="nofollow noopener"`.
+// ---------------------------------------------------------------------------
+function outboundRel(d) {
+  if (!d || d.partner !== true) return 'nofollow noopener';
+  return d.sponsored === true ? 'sponsored noopener' : 'noopener';
+}
+
+// SubmitHunt — pinned + highlighted at the top. Rendered OUTSIDE the sortable
+// table so no search/filter/sort combination can reorder or hide it. Its own
+// links are internal (/submit) and therefore plain dofollow — no rel needed.
+// dr: 37 — measured against the Ahrefs API on 2026-07-28. Note the rest of the
+// site's marketing copy still says "DR 38+", which is now a point high.
 const FEATURED = {
-  name: 'SubmitHunt', url: SITE, submit: '/submit', dr: 38,
+  name: 'SubmitHunt', url: SITE, submit: '/submit', dr: 37,
   type: 'Startup Directory', pricing: 'Free', dofollow: true,
 };
 
 // Curated submission directories. DR = approximate Ahrefs Domain Rating.
+// `dr: null` = we have not measured it and make no DR claim (renders as "—"
+// and always sorts to the bottom of the DR column, in both directions).
 const DIRECTORIES = [
   { name: 'GitHub', url: 'https://github.com', submit: 'https://github.com/new', dr: 96, type: 'Community', pricing: 'Free', dofollow: true },
   { name: 'Medium', url: 'https://medium.com', submit: 'https://medium.com/new-story', dr: 94, type: 'Media', pricing: 'Free', dofollow: false },
@@ -64,16 +95,66 @@ const DIRECTORIES = [
   { name: 'AI Tool Hunt', url: 'https://www.aitoolhunt.com', submit: 'https://www.aitoolhunt.com/submit', dr: 41, type: 'AI Directory', pricing: 'Free', dofollow: true },
   { name: 'PitchWall', url: 'https://pitchwall.co', submit: 'https://pitchwall.co/submit', dr: 40, type: 'Startup Directory', pricing: 'Free', dofollow: true },
   { name: 'Insanely Cool Tools', url: 'https://insanelycooltools.com', submit: 'https://insanelycooltools.com/submit-a-tool/', dr: 40, type: 'Software Directory', pricing: 'Freemium', dofollow: true },
+
+  // Nick Launches — the ONLY entry with `partner: true`, i.e. the only outbound
+  // link on this page that is dofollow (rel="noopener", no nofollow token).
+  // See outboundRel() above: `partner` is ours, `dofollow` is theirs.
+  //
+  // dr: 68 — independently verified against the Ahrefs API on 2026-07-28, not
+  // copied from their marketing page (which happens to claim the same number).
+  //
+  // dofollow: null on purpose — we have not confirmed whether the backlink they
+  // hand out is dofollow, so the Link column shows "Unverified" rather than an
+  // invented yes/no.
+  {
+    name: 'Nick Launches', url: 'https://nicklaunches.com/', submit: 'https://nicklaunches.com/submit',
+    dr: 68, type: 'Launchpad', pricing: 'Freemium', dofollow: null, partner: true,
+  },
 ];
 
 const TYPES = ['Launchpad', 'Startup Directory', 'Software Directory', 'AI Directory', 'Community', 'Media', 'Design'];
 
+// Sort options. Value format is "<key>-<dir>" and is shared verbatim by the
+// <select> and by the clickable column headers, so the two stay in sync.
+const SORTS = [
+  { v: 'dr-desc', label: 'DR: high → low' },
+  { v: 'dr-asc', label: 'DR: low → high' },
+  { v: 'name-asc', label: 'Name: A → Z' },
+  { v: 'name-desc', label: 'Name: Z → A' },
+  { v: 'type-asc', label: 'Type: A → Z' },
+  { v: 'type-desc', label: 'Type: Z → A' },
+  { v: 'price-asc', label: 'Pricing: Free first' },
+  { v: 'price-desc', label: 'Pricing: Paid first' },
+];
+
+// Pricing sorts by tier, not alphabetically.
+const PRICE_RANK = { Free: 0, Freemium: 1, Paid: 2 };
+
+// Default (and server-rendered) order: DR high → low, unknown DR last.
+function byDrDesc(a, b) {
+  const ax = typeof a.dr === 'number' ? a.dr : null;
+  const bx = typeof b.dr === 'number' ? b.dr : null;
+  // Two unknown-DR entries must still fall through to the name tie-break, or the
+  // server order (array order) and the client order (alphabetical) diverge and
+  // rows visibly jump the moment CLIENT_JS runs. Lower-cased to match the client,
+  // which compares the lower-cased data-name attribute.
+  if (ax === null || bx === null) {
+    return (ax === null ? 1 : 0) - (bx === null ? 1 : 0)
+      || a.name.toLowerCase().localeCompare(b.name.toLowerCase());
+  }
+  return bx - ax || a.name.toLowerCase().localeCompare(b.name.toLowerCase());
+}
+
 const STYLES = `
+/* --hdr = header.site's rendered height (60px row + 1px bottom border). The
+   sticky featured row is offset by it so it parks exactly underneath the
+   sticky site header instead of overlapping it. */
+:root{--hdr:61px}
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;color:#0f172a;background:#f8fafc;line-height:1.5}
 a{color:inherit;text-decoration:none}
 .wrap{max-width:1120px;margin:0 auto;padding:0 20px}
-header.site{background:#fff;border-bottom:1px solid #e5e7eb;position:sticky;top:0;z-index:10}
+header.site{background:#fff;border-bottom:1px solid #e5e7eb;position:sticky;top:0;z-index:30}
 header.site .wrap{display:flex;align-items:center;justify-content:space-between;height:60px}
 .brand{display:flex;align-items:center;gap:9px;font-weight:700;font-size:17px}
 .brand .mark{width:26px;height:26px;border-radius:7px;background:#f97316;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800}
@@ -83,11 +164,17 @@ nav.top a:hover,nav.top a.active{color:#0f172a}
 .hero{padding:46px 0 8px}
 .hero h1{font-size:34px;font-weight:800;letter-spacing:-.02em;margin-bottom:12px}
 .hero p{color:#475569;max-width:760px;font-size:16px}
-.feat{margin:26px 0 8px;background:linear-gradient(180deg,#fff7ed,#fff);border:2px solid #fdba74;border-radius:16px;padding:22px 24px;display:flex;align-items:center;justify-content:space-between;gap:20px;flex-wrap:wrap}
+/* Pinned SubmitHunt listing. The wrapper is what sticks: it carries a solid
+   page-coloured background so table rows scroll cleanly UNDER the card and
+   never peek through its rounded corners. z-index sits above the table but
+   below header.site (30) so the card tucks under the site header. */
+.featwrap{position:sticky;top:var(--hdr);z-index:20;background:#f8fafc;padding:14px 0 10px;margin:12px 0 2px}
+.feat{background:linear-gradient(180deg,#fff7ed,#fff);background-color:#fff7ed;border:2px solid #fdba74;border-radius:16px;padding:20px 24px;display:flex;align-items:center;justify-content:space-between;gap:20px;flex-wrap:wrap;box-shadow:0 10px 22px -16px rgba(15,23,42,.5)}
 .feat .l{display:flex;align-items:center;gap:16px}
 .feat .mark{width:52px;height:52px;border-radius:14px;background:#f97316;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:26px}
 .feat h2{font-size:20px;font-weight:800;display:flex;align-items:center;gap:10px}
-.feat .badge{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:#9a3412;background:#ffedd5;border:1px solid #fdba74;border-radius:9999px;padding:3px 10px}
+.feat .badge{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:#9a3412;background:#ffedd5;border:1px solid #fdba74;border-radius:9999px;padding:3px 10px;white-space:nowrap}
+.feat .badge.own{color:#475569;background:#f1f5f9;border-color:#e2e8f0;font-weight:600;text-transform:none;letter-spacing:0}
 .feat p{color:#7c2d12;font-size:14px;margin-top:3px}
 .feat .meta{color:#9a3412;font-size:13px;margin-top:6px;display:flex;gap:14px;flex-wrap:wrap}
 .feat .submit{background:#f97316;color:#fff;font-weight:700;padding:12px 22px;border-radius:10px;font-size:15px;white-space:nowrap}
@@ -97,9 +184,17 @@ nav.top a:hover,nav.top a.active{color:#0f172a}
 .controls input{flex:1;min-width:200px}
 .controls input:focus,.controls select:focus{outline:none;border-color:#f97316}
 .count{font-size:13px;color:#64748b;margin-left:auto}
-.panel{background:#fff;border:1px solid #e5e7eb;border-radius:14px;overflow:hidden}
+/* overflow-x:auto so a table wider than the screen scrolls inside the panel
+   instead of scrolling the whole page sideways (which on mobile also pushed the
+   sortable column headers off-screen). */
+.panel{background:#fff;border:1px solid #e5e7eb;border-radius:14px;overflow:hidden;overflow-x:auto;-webkit-overflow-scrolling:touch}
 table{width:100%;border-collapse:collapse;font-size:14px}
 thead th{text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:#94a3b8;font-weight:600;padding:13px 16px;border-bottom:1px solid #eef2f6;white-space:nowrap}
+thead th.sortable{cursor:pointer;-webkit-user-select:none;user-select:none}
+thead th.sortable:hover{color:#475569;background:#fbfcfe}
+thead th.sortable:focus-visible{outline:2px solid #f97316;outline-offset:-2px}
+thead th[aria-sort=ascending],thead th[aria-sort=descending]{color:#0f172a}
+thead th .ind{color:#f97316;font-size:9px;margin-left:4px;display:inline-block;min-width:8px}
 tbody td{padding:12px 16px;border-bottom:1px solid #f1f5f9;vertical-align:middle}
 tbody tr:last-child td{border-bottom:none}
 tbody tr:hover{background:#fcfdff}
@@ -112,7 +207,8 @@ tbody tr:hover{background:#fcfdff}
 .type{display:inline-block;background:#f1f5f9;color:#475569;border-radius:9999px;padding:3px 11px;font-size:12px;white-space:nowrap}
 .pill{display:inline-block;border-radius:9999px;padding:2px 9px;font-size:12px;font-weight:600}
 .free{background:#dcfce7;color:#166534}.freemium{background:#e0f2fe;color:#075985}.paid{background:#f1f5f9;color:#475569}
-.do{color:#166534;font-weight:600}.no{color:#94a3b8}
+.do{color:#166534;font-weight:600}.no{color:#94a3b8}.unk{color:#94a3b8;font-style:italic}
+.na{color:#cbd5e1;font-weight:600}
 .visit,.sub{font-weight:600;white-space:nowrap}
 .visit{color:#475569}.visit:hover{color:#0f172a}
 .sub{color:#f97316}.sub:hover{text-decoration:underline}
@@ -123,38 +219,131 @@ tbody tr:hover{background:#fcfdff}
 footer.site{background:#fff;border-top:1px solid #e5e7eb;margin-top:40px}
 footer.site .wrap{padding:28px 20px;display:flex;flex-wrap:wrap;gap:18px;justify-content:space-between;font-size:13px;color:#64748b}
 footer.site a{color:#475569}footer.site a:hover{color:#0f172a}
-@media(max-width:760px){.col-type,.col-price{display:none}.hero h1{font-size:26px}.feat{flex-direction:column;align-items:flex-start}}
+/* Mobile: keep the pinned card sticky but make it SHORT, so it never eats the
+   viewport. Same --hdr offset works because header.site keeps its 60px row. */
+@media(max-width:760px){
+.col-type,.col-price{display:none}
+.hero h1{font-size:26px}
+.featwrap{padding:10px 0 8px;margin:8px 0 2px}
+.feat{padding:12px 14px;gap:12px;border-radius:12px;flex-wrap:nowrap;align-items:center}
+/* min-width:0 on BOTH the flex item and its inner text column — without the
+   inner one the title block keeps its content width, overflows, and the CTA
+   (a later flex sibling) paints over the tail of the heading at <=380px. */
+.feat .l{gap:11px;min-width:0;flex:1 1 auto}
+.feat .l>div{min-width:0}
+.feat .mark{width:38px;height:38px;font-size:19px;border-radius:10px;flex:none}
+.feat h2{font-size:15px;gap:7px;flex-wrap:wrap;min-width:0}
+.feat .badge{font-size:10px;padding:2px 8px}
+.feat p,.feat .meta{display:none}
+/* The full nav (4 links + CTA) is wider than a phone, which made the whole page
+   scroll sideways. Drop the secondary links and keep the CTA. */
+nav.top a:not(.cta){display:none}
+nav.top a.cta{margin-left:0}
+/* Keep the "our own site" disclosure on mobile — it is what stops a pinned,
+   sticky, self-owned row from reading as an impartial #1 ranking. Shrink it
+   rather than hiding it. */
+.feat .badge.own{font-size:9px;padding:1px 6px}
+.feat .submit{padding:9px 13px;font-size:13px;border-radius:9px;flex:none}
+}
+/* Narrow phones: the full CTA label no longer fits beside the title. */
+@media(max-width:400px){
+.feat .submit{padding:8px 11px;font-size:12px}
+.feat .submit .long{display:none}
+}
+/* Short viewports: a sticky header + sticky featured card would eat most of the
+   screen, so stop pinning. 760px (not 520) because at 600px tall the card can
+   still take ~46% of the viewport once the CTA wraps. */
+@media(max-height:760px){.featwrap{position:static}}
 `;
 
 function row(d, i) {
-  const cls = 'free';
   const pricingCls = d.pricing === 'Free' ? 'free' : d.pricing === 'Paid' ? 'paid' : 'freemium';
+  const prank = PRICE_RANK[d.pricing] == null ? 1 : PRICE_RANK[d.pricing];
+
+  // Their behaviour towards us — informational only, NOT our rel attribute.
+  const link = d.dofollow === true ? 'dofollow' : d.dofollow === false ? 'nofollow' : 'unknown';
+  const linkCell =
+    link === 'dofollow'
+      ? '<span class="do">Dofollow</span>'
+      : link === 'nofollow'
+        ? '<span class="no">Nofollow</span>'
+        : '<span class="unk" title="We have not verified what kind of link this site gives out.">Unverified</span>';
+
+  // Our behaviour towards them — driven ONLY by the explicit `partner` opt-in.
+  const rel = outboundRel(d);
+
+  const hasDr = typeof d.dr === 'number';
+  const drCell = hasDr
+    ? `<b>${d.dr}</b><span class="bar" style="width:${Math.round(d.dr / 1.6)}px"></span>`
+    : '<b class="na" title="We have not measured this domain, so we make no DR claim.">&mdash;</b>';
+
   return (
-    `<tr data-name="${esc(d.name.toLowerCase())}" data-type="${esc(d.type)}" data-dr="${d.dr}" data-link="${d.dofollow ? 'dofollow' : 'nofollow'}" data-search="${esc((d.name + ' ' + d.type).toLowerCase())}">` +
+    `<tr data-name="${esc(d.name.toLowerCase())}" data-type="${esc(d.type)}" data-dr="${hasDr ? d.dr : ''}" data-prank="${prank}" data-link="${link}" data-search="${esc((d.name + ' ' + d.type + ' ' + d.pricing).toLowerCase())}">` +
     `<td class="rank">${i + 1}</td>` +
-    `<td><a class="nm" href="${esc(d.url)}" target="_blank" rel="nofollow noopener">${esc(d.name)}</a></td>` +
+    `<td><a class="nm" href="${esc(d.url)}" target="_blank" rel="${rel}">${esc(d.name)}</a></td>` +
     `<td class="col-type"><span class="type">${esc(d.type)}</span></td>` +
-    `<td class="dr"><b>${d.dr}</b><span class="bar" style="width:${Math.round(d.dr / 1.6)}px"></span></td>` +
+    `<td class="dr">${drCell}</td>` +
     `<td class="col-price"><span class="pill ${pricingCls}">${esc(d.pricing)}</span></td>` +
-    `<td>${d.dofollow ? '<span class="do">Dofollow</span>' : '<span class="no">Nofollow</span>'}</td>` +
-    `<td><a class="visit" href="${esc(d.url)}" target="_blank" rel="nofollow noopener">Visit ↗</a></td>` +
-    `<td><a class="sub" href="${esc(d.submit)}" target="_blank" rel="nofollow noopener">Submit ↗</a></td>` +
+    `<td>${linkCell}</td>` +
+    `<td><a class="visit" href="${esc(d.url)}" target="_blank" rel="${rel}">Visit ↗</a></td>` +
+    `<td><a class="sub" href="${esc(d.submit)}" target="_blank" rel="${rel}">Submit ↗</a></td>` +
     `</tr>`
   );
 }
 
+// Progressive enhancement only. The table is server-rendered already sorted by
+// DR (high → low), so the page is fully usable with JS disabled.
+// NOTE: `rows` is scoped to #dt tbody. The pinned SubmitHunt card lives outside
+// the table on purpose, so nothing below can reorder, filter or hide it.
+// ES5 only (no arrow functions, no let/const) to match the rest of the file.
 const CLIENT_JS =
-  "(function(){var rows=Array.prototype.slice.call(document.querySelectorAll('#dt tbody tr'));" +
+  "(function(){" +
+  "var tb=document.querySelector('#dt tbody');if(!tb)return;" +
+  "var rows=Array.prototype.slice.call(tb.querySelectorAll('tr'));" +
   "var s=document.getElementById('q'),tp=document.getElementById('tp'),lk=document.getElementById('lk'),so=document.getElementById('so'),inf=document.getElementById('inf'),emp=document.getElementById('empty');" +
-  "function apply(){var q=(s.value||'').toLowerCase().trim(),t=tp.value,l=lk.value,sort=so.value,vis=[];" +
-  "rows.forEach(function(r){var ok=true;if(t!=='all'&&r.getAttribute('data-type')!==t)ok=false;if(l!=='all'&&r.getAttribute('data-link')!==l)ok=false;if(q&&r.getAttribute('data-search').indexOf(q)===-1)ok=false;r.style.display=ok?'':'none';if(ok)vis.push(r);});" +
-  "vis.sort(function(a,b){if(sort==='name')return a.getAttribute('data-name').localeCompare(b.getAttribute('data-name'));return (+b.getAttribute('data-dr'))-(+a.getAttribute('data-dr'));});" +
-  "var tb=document.querySelector('#dt tbody');vis.forEach(function(r,i){tb.appendChild(r);r.querySelector('.rank').textContent=(i+1);});" +
-  "inf.textContent=vis.length+' director'+(vis.length===1?'y':'ies');emp.style.display=vis.length?'none':'block';}" +
-  "s.addEventListener('input',apply);tp.addEventListener('change',apply);lk.addEventListener('change',apply);so.addEventListener('change',apply);apply();})();";
+  "var heads=Array.prototype.slice.call(document.querySelectorAll('#dt thead th[data-key]'));" +
+  "var key='dr',dir='desc';" +
+  // Unknown DR ('' in data-dr) always sinks to the bottom, in BOTH directions.
+  "function drOf(r){var v=r.getAttribute('data-dr');return v===''||v===null?null:+v;}" +
+  "function cmp(a,b){var r=0;" +
+  "if(key==='dr'){var xa=drOf(a),xb=drOf(b);" +
+  "if(xa===null||xb===null){r=(xa===null?1:0)-(xb===null?1:0);}" +
+  "else{r=dir==='desc'?(xb-xa):(xa-xb);}}" +
+  "else if(key==='price'){r=(+a.getAttribute('data-prank'))-(+b.getAttribute('data-prank'));if(dir==='desc')r=-r;}" +
+  "else{r=(a.getAttribute('data-'+key)||'').localeCompare(b.getAttribute('data-'+key)||'');if(dir==='desc')r=-r;}" +
+  "if(r===0){var da=drOf(a),db=drOf(b);r=(db===null?-1:db)-(da===null?-1:da);}" +
+  "if(r===0){r=a.getAttribute('data-name').localeCompare(b.getAttribute('data-name'));}" +
+  "return r;}" +
+  "function marks(){for(var i=0;i<heads.length;i++){var h=heads[i],ind=h.querySelector('.ind');" +
+  "if(h.getAttribute('data-key')===key){h.setAttribute('aria-sort',dir==='asc'?'ascending':'descending');if(ind)ind.textContent=dir==='asc'?'\\u25B2':'\\u25BC';}" +
+  "else{h.setAttribute('aria-sort','none');if(ind)ind.textContent='';}}}" +
+  "function apply(){var q=(s.value||'').toLowerCase().trim(),t=tp.value,l=lk.value,vis=[],i,r,ok;" +
+  "for(i=0;i<rows.length;i++){r=rows[i];ok=true;" +
+  "if(t!=='all'&&r.getAttribute('data-type')!==t)ok=false;" +
+  "if(l!=='all'&&r.getAttribute('data-link')!==l)ok=false;" +
+  "if(q&&r.getAttribute('data-search').indexOf(q)===-1)ok=false;" +
+  "r.style.display=ok?'':'none';if(ok)vis.push(r);}" +
+  "vis.sort(cmp);" +
+  "for(i=0;i<vis.length;i++){tb.appendChild(vis[i]);var rk=vis[i].querySelector('.rank');if(rk)rk.textContent=(i+1);}" +
+  "inf.textContent=vis.length+' director'+(vis.length===1?'y':'ies');" +
+  "emp.style.display=vis.length?'none':'block';marks();}" +
+  "function setSort(k,d){key=k;dir=d;if(so&&so.value!==k+'-'+d)so.value=k+'-'+d;apply();}" +
+  // Honour a value the browser restored (back/bfcache) before the first paint.
+  "if(so&&so.value&&so.value.indexOf('-')>0){var iv=so.value.split('-');key=iv[0];dir=iv[1];}" +
+  "if(so)so.addEventListener('change',function(){var p=so.value.split('-');setSort(p[0],p[1]);});" +
+  "for(var hi=0;hi<heads.length;hi++){(function(el){" +
+  "var k=el.getAttribute('data-key'),df=el.getAttribute('data-def')||'asc';" +
+  "function go(){setSort(k,k===key?(dir==='asc'?'desc':'asc'):df);}" +
+  "el.addEventListener('click',go);" +
+  "el.addEventListener('keydown',function(e){var c=e.keyCode||e.which;if(c===13||c===32){e.preventDefault();go();}});" +
+  "})(heads[hi]);}" +
+  "s.addEventListener('input',apply);tp.addEventListener('change',apply);lk.addEventListener('change',apply);" +
+  "apply();})();";
 
 export default async function handler(req, res) {
-  const sorted = DIRECTORIES.slice().sort((a, b) => b.dr - a.dr);
+  // Server-rendered order == the default sort (DR high → low). Keep these in
+  // sync with CLIENT_JS so a no-JS visitor sees the correct default ordering.
+  const sorted = DIRECTORIES.slice().sort(byDrDesc);
   const canonical = `${SITE}/directory`;
   const title = `Startup & SaaS Submission Directories — Ranked by DR (${sorted.length + 1}) | SubmitHunt`;
   const desc = `The best directories to submit your startup or SaaS in 2026, ranked by Domain Rating. Start with SubmitHunt — a free listing and a dofollow backlink — then work down the list.`;
@@ -163,7 +352,10 @@ export default async function handler(req, res) {
     { '@context': 'https://schema.org', '@type': 'CollectionPage', name: title, description: desc, url: canonical, isPartOf: { '@type': 'WebSite', name: 'SubmitHunt', url: `${SITE}/` } },
     {
       '@context': 'https://schema.org', '@type': 'ItemList',
-      itemListElement: [FEATURED, ...sorted].slice(0, 30).map((d, i) => ({ '@type': 'ListItem', position: i + 1, name: d.name, url: d.url })),
+      numberOfItems: sorted.length + 1,
+      // Mirrors the rendered page exactly: pinned SubmitHunt first, then the
+      // table in its default DR order.
+      itemListElement: [FEATURED, ...sorted].map((d, i) => ({ '@type': 'ListItem', position: i + 1, name: d.name, url: d.url })),
     },
     {
       '@context': 'https://schema.org', '@type': 'BreadcrumbList',
@@ -175,7 +367,18 @@ export default async function handler(req, res) {
   ];
 
   const typeOptions = TYPES.map((t) => `<option value="${esc(t)}">${esc(t)}</option>`).join('');
+  const sortOptions = SORTS.map(
+    (o) => `<option value="${esc(o.v)}"${o.v === 'dr-desc' ? ' selected' : ''}>${esc(o.label)}</option>`,
+  ).join('');
   const rowsHtml = sorted.map((d, i) => row(d, i)).join('');
+
+  // Sortable column headers. `data-def` is the direction a fresh click on that
+  // header uses; clicking the already-active header flips it. DR ships
+  // pre-marked descending because that is the server-rendered order.
+  const th = (key, label, def, cls) =>
+    `<th class="sortable${cls ? ' ' + cls : ''}" data-key="${key}" data-def="${def}" tabindex="0" ` +
+    `aria-sort="${key === 'dr' ? 'descending' : 'none'}" title="Sort by ${esc(label)}">${esc(label)}` +
+    `<span class="ind">${key === 'dr' ? '&#9660;' : ''}</span></th>`;
 
   const html =
     `<!DOCTYPE html><html lang="en"><head>` +
@@ -197,22 +400,29 @@ export default async function handler(req, res) {
     `<main class="wrap">` +
     `<div class="hero"><h1>Startup &amp; SaaS Submission Directories</h1>` +
     `<p>${sorted.length + 1} of the best places to submit your startup or SaaS for backlinks and traffic — ranked by Ahrefs Domain Rating (DR). Submit to the high-DR ones first for the strongest SEO boost.</p></div>` +
-    // Featured SubmitHunt
-    `<div class="feat"><div class="l"><div class="mark">S</div><div>` +
-    `<h2>SubmitHunt <span class="badge">Start here</span></h2>` +
-    `<p>Free listing, a dofollow DR ${FEATURED.dr} backlink, and your launch in front of thousands of founders &amp; early adopters.</p>` +
-    `<div class="meta"><span>DR ${FEATURED.dr}</span><span>${FEATURED.type}</span><span>Free</span><span class="do">Dofollow</span></div>` +
-    `</div></div><a class="submit" href="/submit">Submit your startup →</a></div>` +
+    // Featured SubmitHunt — pinned, sticky, and deliberately OUTSIDE #dt so it
+    // can never be reordered, filtered or hidden by the controls below. Badged
+    // as our own listing so it reads as a placement, not an impartial ranking.
+    `<div class="featwrap"><div class="feat"><div class="l"><div class="mark">S</div><div>` +
+    `<h2>SubmitHunt <span class="badge">Featured</span> <span class="badge own">Our own site</span></h2>` +
+    `<p>Free listing, a dofollow DR ${FEATURED.dr} backlink, and your launch in front of founders &amp; early adopters.</p>` +
+    `<div class="meta"><span>DR ${FEATURED.dr}</span><span>${esc(FEATURED.type)}</span><span>Free</span><span class="do">Dofollow</span></div>` +
+    `</div></div><a class="submit" href="/submit">Submit<span class="long"> your startup</span> →</a></div></div>` +
     // Controls
     `<div class="controls"><input id="q" type="search" placeholder="Search directories…" aria-label="Search directories" />` +
     `<select id="tp" aria-label="Filter by type"><option value="all">All types</option>${typeOptions}</select>` +
-    `<select id="lk" aria-label="Filter by link type"><option value="all">All links</option><option value="dofollow">Dofollow</option><option value="nofollow">Nofollow</option></select>` +
-    `<select id="so" aria-label="Sort"><option value="dr">Highest DR</option><option value="name">Name A–Z</option></select>` +
-    `<span class="count" id="inf"></span></div>` +
+    `<select id="lk" aria-label="Filter by link type"><option value="all">All links</option><option value="dofollow">Dofollow</option><option value="nofollow">Nofollow</option><option value="unknown">Unverified</option></select>` +
+    `<select id="so" aria-label="Sort by">${sortOptions}</select>` +
+    `<span class="count" id="inf" aria-live="polite"></span></div>` +
     // Table
-    `<div class="panel"><table id="dt"><thead><tr><th>#</th><th>Directory</th><th class="col-type">Type</th><th>DR</th><th class="col-price">Pricing</th><th>Link</th><th>Visit</th><th>Submit</th></tr></thead>` +
+    `<div class="panel"><table id="dt"><thead><tr><th scope="col">#</th>` +
+    th('name', 'Directory', 'asc') +
+    th('type', 'Type', 'asc', 'col-type') +
+    th('dr', 'DR', 'desc') +
+    th('price', 'Pricing', 'asc', 'col-price') +
+    `<th scope="col">Link</th><th scope="col">Visit</th><th scope="col">Submit</th></tr></thead>` +
     `<tbody>${rowsHtml}</tbody></table><div id="empty">No directories match your filters.</div></div>` +
-    `<p class="note">DR (Domain Rating) values are approximate and updated periodically. Always review each directory's guidelines before submitting.</p>` +
+    `<p class="note">DR (Domain Rating) values are approximate and updated periodically. A “—” in the DR column means we have not measured that domain and make no DR claim for it; “Unverified” in the Link column means we have not confirmed what kind of backlink that site gives out. Always review each directory's guidelines before submitting.</p>` +
     // SEO copy
     `<section class="seo"><h2>How to use this directory list</h2>` +
     `<p>Submitting your startup to directories is one of the fastest ways to earn your first backlinks, referral traffic, and a brand presence in search. Work down this list from the highest Domain Rating, prioritising <strong>dofollow</strong> directories that pass SEO value. Start with <a href="/submit" style="color:#f97316">SubmitHunt</a> for a free dofollow listing, then read our guides on <a href="/blog/list-your-startup" style="color:#f97316">listing your startup</a>, <a href="/blog/saas-directory-submission" style="color:#f97316">SaaS directory submission</a>, and <a href="/blog/startup-link-submission" style="color:#f97316">startup link submission</a>.</p>` +

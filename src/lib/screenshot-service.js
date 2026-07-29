@@ -3,6 +3,11 @@
  * Uses the Microlink API to capture screenshots of websites
  */
 
+// The project has exactly one storage bucket. This used to point at a
+// 'screenshots' bucket that was never created, so every auto-capture upload
+// threw and the submit form silently fell back to no listing image.
+const STORAGE_BUCKET = 'startup-assets';
+
 /**
  * Ensure the screenshot_url column exists in the startups table
  * 
@@ -142,7 +147,7 @@ export const uploadScreenshot = async (supabase, screenshotUrl, slug) => {
     
     // Upload to Supabase storage
     const { data, error } = await supabase.storage
-      .from('screenshots')
+      .from(STORAGE_BUCKET)
       .upload(filePath, imageBlob, {
         contentType: 'image/png',
         cacheControl: '3600',
@@ -155,7 +160,7 @@ export const uploadScreenshot = async (supabase, screenshotUrl, slug) => {
     
     // Get the public URL
     const { data: publicUrlData } = supabase.storage
-      .from('screenshots')
+      .from(STORAGE_BUCKET)
       .getPublicUrl(filePath);
     
     const publicUrl = publicUrlData.publicUrl;

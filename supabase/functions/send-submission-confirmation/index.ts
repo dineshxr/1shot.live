@@ -40,7 +40,7 @@ serve(async (req) => {
 
     const { data: startup, error } = await supabase
       .from('startups')
-      .select('id, title, slug, description, plan, author, launch_date, is_live, archived, backlink_verified_at, confirmation_sent_at')
+      .select('id, title, slug, url, description, plan, author, launch_date, is_live, archived, backlink_verified_at, confirmation_sent_at')
       .eq('id', startup_id)
       .single()
 
@@ -101,13 +101,96 @@ function formatLaunchDate(launchDate: string | null): string {
   })
 }
 
+// ---------------------------------------------------------------------------
+// Badge embed
+//
+// The snippet we hand a maker must point at THEIR OWN listing, never a shared
+// site-wide link — a generic href is the bug in the competitor email this was
+// modelled on, where every recipient got one hardcoded product's slug.
+//
+// Deep-linking is safe for the do-follow check: verify-backlink runs each href
+// through normalizeHost(), which strips path/query/fragment before comparing to
+// submithunt.com, so /startup/<slug>?utm_... still verifies. The snippet also
+// carries no rel attribute, so it stays do-follow.
+//
+// Kept file-local (like formatLaunchDate) because each Edge Function deploys
+// independently; the twin copy lives in publish-paid-startup/index.ts.
+// ---------------------------------------------------------------------------
+
+const BADGE_VARIANTS = [
+  { label: 'Light backgrounds', src: 'https://submithunt.com/badge-light.svg' },
+  { label: 'Dark backgrounds', src: 'https://submithunt.com/badge-dark.svg' },
+]
+
+// Escape #1 of 2: makes an interpolated value safe INSIDE the snippet's own
+// attributes, so a title containing a quote or angle bracket can't break out of
+// alt="" and inject markup onto the maker's page when pasted.
+function escapeAttr(value: string): string {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+}
+
+// Escape #2 of 2: renders the finished snippet as literal, visible code in our
+// own email body. Applied on top of escape #1 — never instead of it.
+function escapeForDisplay(value: string): string {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+}
+
+// utm_source is the maker's own domain, taken from startups.url. Degrades to
+// omitting utm_source entirely when url is missing or unparseable — we never
+// substitute a placeholder or another product's domain.
+function utmSourceFromUrl(rawUrl: string | null | undefined): string {
+  const raw = String(rawUrl ?? '').trim()
+  if (!raw) return ''
+  try {
+    const withScheme = /^[a-z][a-z0-9+.-]*:\/\//i.test(raw) ? raw : `https://${raw}`
+    return new URL(withScheme).hostname.toLowerCase().replace(/^www\./, '')
+  } catch {
+    return ''
+  }
+}
+
+// https://submithunt.com/startup/<slug>?utm_source=<their domain>&utm_medium=badge&utm_campaign=featured
+function badgeListingUrl(listing: any): string {
+  const slug = encodeURIComponent(String(listing?.slug || listing?.id || ''))
+  const params = ['utm_medium=badge', 'utm_campaign=featured']
+  const source = utmSourceFromUrl(listing?.url)
+  if (source) params.unshift(`utm_source=${encodeURIComponent(source)}`)
+  // Plain "&" separators rather than "&amp;": every interpolated part is already
+  // percent-encoded (so nothing can terminate the attribute), none of our fixed
+  // param names can be misread as an HTML entity, and it keeps what the maker
+  // sees identical to what they paste.
+  return `https://submithunt.com/startup/${slug}?${params.join('&')}`
+}
+
+function badgeSnippet(listing: any, src: string): string {
+  return `<a href="${badgeListingUrl(listing)}" target="_blank">` +
+    `<img src="${src}" alt="${escapeAttr(`${listing?.title ?? ''} on SubmitHunt`)}" width="240" height="66" />` +
+    `</a>`
+}
+
+// Both variants as copy-ready code blocks. labelColor keeps the captions legible
+// against whichever callout background the section sits on.
+function badgeSnippetsHtml(listing: any, labelColor: string): string {
+  return BADGE_VARIANTS.map((variant) => `
+        <p style="margin: 14px 0 6px 0; color: ${labelColor}; font-size: 12px; font-weight: bold;">${variant.label}</p>
+        <div style="background: #0b1220; color: #e5e7eb; padding: 12px; border-radius: 6px; font-size: 12px; font-family: monospace; word-break: break-all; line-height: 1.5;">${escapeForDisplay(badgeSnippet(listing, variant.src))}</div>`).join('')
+}
+
+function badgeSnippetsText(listing: any): string {
+  return BADGE_VARIANTS.map((variant) => `${variant.label}:\n${badgeSnippet(listing, variant.src)}`).join('\n\n')
+}
+
 async function sendConfirmationEmail(resendApiKey: string, startup: any, authorEmail: string): Promise<boolean> {
   const launchDay = formatLaunchDate(startup.launch_date)
   const authorName = startup.author?.name
   const showBadgeReminder = !startup.backlink_verified_at
-
-  const badgeEmbed = '<a href="https://submithunt.com" target="_blank"><img src="https://submithunt.com/badge-light.svg" alt="Featured on Submit Hunt" width="240" height="66" /></a>'
-  const badgeEmbedEscaped = badgeEmbed.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 
   const emailData = {
     from: 'SubmitHunt <hello@submithunt.com>',
@@ -173,27 +256,40 @@ async function sendConfirmationEmail(resendApiKey: string, startup: any, authorE
       ${showBadgeReminder ? `
       <!-- Badge reminder (skipped at submit time) -->
       <div style="background-color: #eff6ff; border-left: 4px solid #3b82f6; border-radius: 0 8px 8px 0; padding: 20px; margin: 25px 0;">
-        <h3 style="margin: 0 0 8px 0; color: #1e40af; font-size: 16px;">Don't leave your free DR 38+ backlink on the table</h3>
+        <h3 style="margin: 0 0 8px 0; color: #1e40af; font-size: 16px;">Don't leave your free DR 37 backlink on the table</h3>
         <p style="margin: 0 0 14px 0; color: #1e3a8a; font-size: 14px; line-height: 1.6;">
-          You skipped the badge step. Add our badge to your homepage or footer (keep it do-follow) before launch day and your listing becomes <strong>permanent</strong> — and your backlink from our DR 38+ site stays <strong>dofollow</strong>. Free either way.
+          You skipped the badge step. Add our badge to your homepage or footer (keep it do-follow) before launch day and your listing becomes <strong>permanent</strong> — and your backlink from our DR 37 site stays <strong>dofollow</strong>. Free either way.
         </p>
-        <div style="text-align: center; margin-bottom: 14px;">
-          <img src="https://submithunt.com/badge-light.svg" alt="Featured on Submit Hunt" width="200" style="height: auto;" />
-        </div>
-        <p style="margin: 0 0 6px 0; color: #1e3a8a; font-size: 12px; font-weight: bold;">Paste this on your site:</p>
-        <div style="background: #0b1220; color: #e5e7eb; padding: 12px; border-radius: 6px; font-size: 12px; font-family: monospace; word-break: break-all; line-height: 1.5;">${badgeEmbedEscaped}</div>
+        <table cellpadding="0" cellspacing="0" style="width: 100%; margin-bottom: 6px;">
+          <tr>
+            <td style="text-align: center; padding: 8px;" width="50%"><img src="https://submithunt.com/badge-light.svg" alt="${escapeAttr(`${startup.title} on SubmitHunt`)}" width="180" style="height: auto;" /></td>
+            <td style="text-align: center; padding: 8px; background-color: #0b1220; border-radius: 6px;" width="50%"><img src="https://submithunt.com/badge-dark.svg" alt="${escapeAttr(`${startup.title} on SubmitHunt`)}" width="180" style="height: auto;" /></td>
+          </tr>
+        </table>
+        <p style="margin: 14px 0 0 0; color: #1e3a8a; font-size: 12px; font-weight: bold;">Paste whichever suits your site — both link straight to your own listing:</p>
+        ${badgeSnippetsHtml(startup, '#1e3a8a')}
         <div style="text-align: center; margin-top: 16px;">
           <a href="https://submithunt.com/dashboard" style="display: inline-block; background-color: #3b82f6; color: #fff; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 14px;">Verify it from your dashboard</a>
         </div>
       </div>
       ` : ''}
 
+      <!-- While you wait -->
+      <div style="margin: 25px 0;">
+        <h4 style="margin: 0 0 12px 0; color: #333; font-size: 16px;">While you wait</h4>
+        <table style="width: 100%;" cellpadding="0" cellspacing="0">
+          <tr><td style="padding: 6px 0; color: #555; font-size: 14px;">&#9744; Draft your launch-day post now, so it's ready to send the moment ${escapeForDisplay(startup.title)} goes live</td></tr>
+          <tr><td style="padding: 6px 0; color: #555; font-size: 14px;">&#9744; Tell the people who'd genuinely find ${escapeForDisplay(startup.title)} useful — the daily Top 3 is decided purely by total upvotes on launch day</td></tr>
+          <tr><td style="padding: 6px 0; color: #555; font-size: 14px;">&#9744; Double-check your screenshots and tagline — they're the first thing visitors judge</td></tr>
+        </table>
+      </div>
+
       <!-- Skip-the-queue upsell -->
       <div style="background: #1a1a1a; border-radius: 8px; padding: 26px; margin: 25px 0;">
         <p style="margin: 0 0 6px 0; color: #f59e0b; font-size: 12px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px;">Don't want to wait?</p>
         <h3 style="margin: 0 0 12px 0; color: #fff; font-size: 21px; line-height: 1.3;">Skip the queue — launch ${startup.title} today</h3>
         <p style="margin: 0 0 18px 0; color: #ccc; font-size: 14px; line-height: 1.6;">
-          Premium launches go live immediately instead of waiting for a free slot — and stay on the homepage for 14 days instead of 7, with a guaranteed dofollow backlink from our DR 38+ site and a spot in our newsletter to 2,000+ subscribers.
+          Premium launches go live immediately instead of waiting for a free slot — and stay on the homepage for 14 days instead of 7, with a guaranteed dofollow backlink from our DR 37 site and a spot in our newsletter to 2,000+ subscribers.
         </p>
         <div style="text-align: center;">
           <a href="https://submithunt.com/pricing" style="display: inline-block; background-color: #f59e0b; color: #000; padding: 13px 30px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 15px;">Upgrade to Premium — $20 one-time</a>
@@ -230,16 +326,22 @@ WHAT HAPPENS NEXT
 2. You'll get an email with your live listing link + a dedicated SEO blog post about your product
 3. You stay on the homepage for 7 days — Top 3 by upvotes on launch day earns a permanent badge + dofollow backlink
 
-${showBadgeReminder ? `DON'T LEAVE YOUR FREE DR 38+ BACKLINK ON THE TABLE
-You skipped the badge step. Add our badge to your homepage or footer (keep it do-follow) before launch day and your listing becomes permanent — and your backlink from our DR 38+ site stays dofollow. Free either way.
+${showBadgeReminder ? `DON'T LEAVE YOUR FREE DR 37 BACKLINK ON THE TABLE
+You skipped the badge step. Add our badge to your homepage or footer (keep it do-follow) before launch day and your listing becomes permanent — and your backlink from our DR 37 site stays dofollow. Free either way.
 
-Paste this on your site:
-${badgeEmbed}
+Paste whichever suits your site — both link straight to your own listing:
+
+${badgeSnippetsText(startup)}
 
 Verify it from your dashboard: https://submithunt.com/dashboard
 
-` : ''}DON'T WANT TO WAIT?
-Premium launches go live immediately instead of waiting for a free slot — and stay on the homepage for 14 days instead of 7, with a guaranteed dofollow backlink from our DR 38+ site and a spot in our newsletter to 2,000+ subscribers.
+` : ''}WHILE YOU WAIT
+- Draft your launch-day post now, so it's ready to send the moment ${startup.title} goes live
+- Tell the people who'd genuinely find ${startup.title} useful — the daily Top 3 is decided purely by total upvotes on launch day
+- Double-check your screenshots and tagline — they're the first thing visitors judge
+
+DON'T WANT TO WAIT?
+Premium launches go live immediately instead of waiting for a free slot — and stay on the homepage for 14 days instead of 7, with a guaranteed dofollow backlink from our DR 37 site and a spot in our newsletter to 2,000+ subscribers.
 
 Upgrade to Premium ($20 one-time): https://submithunt.com/pricing
 

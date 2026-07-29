@@ -191,6 +191,201 @@ html, body {
   .sh-drop--in { animation: none; opacity: 1; }
 }
 
+/* ------------------------------------------------------------------ */
+/* Forms — ONE input system for the whole site.                       */
+/* Use these instead of ad-hoc utility stacks so every field looks    */
+/* identical: .sh-label (+ .sh-req), .sh-input / .sh-select /         */
+/* .sh-textarea, .sh-help, .sh-counter, .sh-switch, .sh-chip.         */
+/* ------------------------------------------------------------------ */
+.sh-label {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--sh-text);
+  margin-bottom: 0.375rem;
+}
+.sh-req::after { content: " *"; color: var(--sh-accent); }
+
+.sh-input,
+.sh-select,
+.sh-textarea {
+  appearance: none;
+  width: 100%;
+  background: #ffffff;
+  border: 1px solid var(--sh-border-strong);
+  border-radius: 10px;
+  padding: 0.625rem 0.75rem;
+  font-size: 0.875rem;
+  line-height: 1.45;
+  color: var(--sh-text);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.sh-input::placeholder,
+.sh-textarea::placeholder { color: var(--sh-text-subtle); }
+.sh-input:focus,
+.sh-select:focus,
+.sh-textarea:focus {
+  outline: none;
+  border-color: #111827;
+  box-shadow: 0 0 0 3px rgba(17, 24, 39, 0.08);
+}
+.sh-select {
+  padding-right: 2.25rem;
+  background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.75rem center;
+}
+.sh-textarea { resize: vertical; min-height: 6rem; line-height: 1.55; }
+
+/* Room for a leading symbol (the "@" on the X handle field). Needed as its own
+   class because .sh-input sets `padding` shorthand and this stylesheet loads
+   after Tailwind, so a utility like pl-7 would lose the cascade. */
+.sh-input--prefix { padding-left: 1.75rem; }
+
+.sh-help { font-size: 0.75rem; color: var(--sh-text-subtle); margin-top: 0.375rem; line-height: 1.45; }
+.sh-counter {
+  font-variant-numeric: tabular-nums;
+  font-size: 0.6875rem;
+  font-weight: 500;
+  color: var(--sh-text-subtle);
+  flex-shrink: 0;
+}
+.sh-counter--warn { color: #b45309; }
+.sh-counter--max { color: #b91c1c; }
+
+/* iOS-style switch: <label class="sh-switch"><input type="checkbox"/><span class="sh-switch-track"></span><span class="sh-switch-thumb"></span></label> */
+.sh-switch {
+  position: relative;
+  display: inline-block;
+  width: 40px;
+  height: 22px;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+.sh-switch input { position: absolute; inset: 0; opacity: 0; margin: 0; cursor: pointer; }
+.sh-switch-track {
+  position: absolute;
+  inset: 0;
+  border-radius: 9999px;
+  background: #e5e7eb;
+  transition: background 0.18s ease;
+  pointer-events: none;
+}
+.sh-switch-thumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 18px;
+  height: 18px;
+  border-radius: 9999px;
+  background: #ffffff;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+  transition: transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1);
+  pointer-events: none;
+}
+.sh-switch input:checked ~ .sh-switch-track { background: var(--sh-accent); }
+.sh-switch input:checked ~ .sh-switch-thumb { transform: translateX(18px); }
+.sh-switch input:focus-visible ~ .sh-switch-track { box-shadow: 0 0 0 3px rgba(194, 65, 12, 0.25); }
+
+/* Selectable category chip */
+.sh-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  background: #ffffff;
+  color: #374151;
+  border: 1px solid var(--sh-border);
+  border-radius: 9999px;
+  padding: 0.375rem 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease, transform 0.12s ease;
+}
+.sh-chip:hover { border-color: var(--sh-border-strong); background: var(--sh-surface-muted); }
+.sh-chip:active { transform: scale(0.96); }
+.sh-chip--on { background: var(--sh-accent); border-color: var(--sh-accent); color: #ffffff; }
+.sh-chip--on:hover { background: var(--sh-accent-hover); border-color: var(--sh-accent-hover); }
+.sh-chip:disabled { opacity: 0.45; cursor: not-allowed; }
+.sh-chip:disabled:hover { background: #ffffff; border-color: var(--sh-border); transform: none; }
+
+/* Dashed upload target */
+.sh-dropzone {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1.5px dashed var(--sh-border-strong);
+  border-radius: 12px;
+  background: var(--sh-bg);
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease;
+  color: var(--sh-text-subtle);
+}
+.sh-dropzone:hover { border-color: var(--sh-accent); background: var(--sh-accent-soft); color: var(--sh-accent); }
+
+/* Screenshot preview tile (16:9) with hover remove button */
+.sh-thumb {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid var(--sh-border);
+  background: var(--sh-surface-muted);
+}
+.sh-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.sh-thumb-x {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 22px;
+  height: 22px;
+  border-radius: 9999px;
+  background: rgba(17, 24, 39, 0.72);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  border: none;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+.sh-thumb:hover .sh-thumb-x,
+.sh-thumb-x:focus-visible { opacity: 1; }
+/* Touch devices have no hover, so a hover-only control would be invisible
+   (though still tappable). Always show it where hover doesn't exist. */
+@media (hover: none) {
+  .sh-thumb-x { opacity: 1; }
+}
+.sh-thumb-tag {
+  position: absolute;
+  left: 4px;
+  bottom: 4px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #ffffff;
+  background: rgba(17, 24, 39, 0.6);
+  border-radius: 6px;
+  padding: 2px 6px;
+  /* The plain "Cover" badge is decorative and must not swallow clicks meant for
+     the tile beneath it. The interactive variant below opts back in — do NOT
+     put a <button> on the bare class, it would be unclickable. */
+  pointer-events: none;
+}
+.sh-thumb-tag--btn {
+  pointer-events: auto;
+  cursor: pointer;
+  border: none;
+  font-family: inherit;
+}
+.sh-thumb-tag--btn:hover { background: rgba(194, 65, 12, 0.92); }
+
 /* Pills / tags */
 .sh-pill {
   display: inline-flex;

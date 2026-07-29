@@ -5,8 +5,99 @@ import { createCheckoutSession } from '../lib/stripe.js';
 import { config } from '../config.js';
 import { getFreeSubmissionStatus, verifyBacklink, BADGE_LIGHT_EMBED, BADGE_DARK_EMBED } from '../lib/backlink.js';
 import { aiPrefill, fetchDomainRating, uploadAsset } from '../lib/prefill.js';
+import { CATEGORIES, MAX_CATEGORIES, PRICING_MODELS } from '../lib/categories.js';
 
 /* global html, useState, useEffect, useRef */
+
+// Field limits. These are the contract between the form, the DB and the Stripe
+// metadata cap (500 chars per value) — don't raise one without checking the
+// paid path in create-checkout / stripe-webhook still round-trips the value.
+const LIMITS = {
+  name: 40,
+  tagline: 60,
+  description: 600,
+  seoKeyword: 100,
+  firstComment: 500,
+  discount: 60,
+};
+
+const MAX_SCREENSHOTS = 5;
+const MAX_LOGO_BYTES = 2 * 1024 * 1024;       // 2 MB
+const MAX_SCREENSHOT_BYTES = 10 * 1024 * 1024; // 10 MB
+const ALLOWED_IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp', 'image/gif'];
+
+// ---------------------------------------------------------------------------
+// Step 2 social proof
+//
+// Every number below was MEASURED from the production database on 2026-07-28:
+// 1,661 products submitted / 1,476 currently live, 1,365 distinct makers, and
+// 345 published SEO articles. DR 38 is the Ahrefs Domain Rating for
+// submithunt.com (the same figure used everywhere else on the site).
+//
+// Do NOT estimate, extrapolate, or round up — if you can't count it, don't show
+// it. These go stale, so re-count against production and update this list
+// periodically (quarterly is plenty).
+//
+// There is deliberately NO page-views tile: startups.views is never incremented,
+// so we have no page-view data at all. Don't add one until it's really tracked.
+const LAUNCH_STATS = [
+  { value: '1,476', label: 'Products live', hint: 'of 1,661 submitted' },
+  { value: '1,365', label: 'Makers launched here', hint: 'distinct maker accounts' },
+  { value: '345', label: 'SEO articles published', hint: 'on submithunt.com' },
+  { value: '37', label: 'Domain Rating', hint: 'Ahrefs, submithunt.com' },
+];
+
+// submithunt.com's own Ahrefs Domain Rating, measured 2026-07-28. Used wherever
+// we state our DR as a fact. Re-check it before quoting it in new copy — DR
+// drifts, and the site's older "DR 38+" copy is already a point above this.
+const SITE_DR = 37;
+
+// Real maker quotes ONLY. This must stay empty until the owner pastes in quotes
+// he has actually received AND has permission to publish, each with the real
+// name/handle of the person who said it. The whole section renders nothing while
+// this array is empty — never seed it with placeholder or invented testimonials.
+const TESTIMONIALS = [];
+
+// The one source of truth for what each plan costs, used by the plan cards and
+// the running total. These match the live Stripe prices — changing a number here
+// does NOT change what Stripe charges.
+const PLAN_PRICE_USD = { free: 0, premium: 20, featured: 50 };
+
+// Which plan is pre-selected when a maker first reaches step 2.
+//
+// This is a MERCHANDISING choice, not a technical one: Premium is our
+// recommended plan, so it starts selected instead of Free. It is overridden by
+// (a) an explicit ?plan= URL param and (b) a restored localStorage draft, and
+// Free stays one click away on the same screen — nothing is hidden and no one
+// reaches Stripe without clicking a clearly priced "Continue to payment".
+// To go back to Free-by-default, set this to 'free'. That's the whole change.
+const DEFAULT_PLAN = 'premium';
+
+// A live "12/40" counter that warns as the maker approaches the cap. Rendered
+// on the right of the field's label so it never shifts the input.
+const counter = (value, max) => {
+  const len = (value || '').length;
+  const tone = len >= max ? ' sh-counter--max' : (len > max * 0.85 ? ' sh-counter--warn' : '');
+  return html`<span class="sh-counter${tone}">${len}/${max}</span>`;
+};
+
+// Accept a full profile URL or a bare handle and return the bare handle.
+const normalizeHandle = (input) => {
+  const raw = (input || '').trim();
+  if (!raw) return '';
+  return raw
+    .replace(/^https?:\/\/(www\.)?(x|twitter)\.com\//i, '')
+    .replace(/^@/, '')
+    .split(/[/?#]/)[0]
+    .slice(0, 40);
+};
+
+// YouTube / Loom only — anything else is rejected rather than embedded blind.
+const isSupportedVideoUrl = (url) => {
+  const u = (url || '').trim();
+  if (!u) return true; // optional
+  return /^https?:\/\/(www\.)?(youtube\.com\/watch\?v=|youtu\.be\/|(www\.)?loom\.com\/share\/)/i.test(u);
+};
 
 // localStorage key for an unpaid paid-plan submission awaiting Stripe payment.
 // Lets us show a persistent "not submitted yet" state if the user abandons
@@ -100,13 +191,23 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
     tagline: "",
     description: "",
     slug: "",
-    category: "",
+    category: "",       // primary category — categories[0], kept for DB/browse compat
+    categories: [],     // up to MAX_CATEGORIES, stored in details.categories
+    seoKeyword: "",     // the one search term this listing should target
     tags: "",        // comma-separated in the form, split to array on insert
     linkedin: "",
     github: "",
     logoUrl: "",     // public URL (AI-extracted or uploaded)
-    coverUrl: "",    // cover/screenshot public URL
-    plan: "free",
+    coverUrl: "",    // legacy single cover — superseded by screenshots[]
+    screenshots: [], // up to MAX_SCREENSHOTS public URLs; [0] is the social share image
+    videoUrl: "",    // optional YouTube / Loom demo
+    openSource: false,
+    pricingModel: "",
+    discount: "",    // optional discount/promo shown as a badge on the listing
+    firstComment: "",// posted as the maker's comment when the product goes live
+    // Merchandising default — see DEFAULT_PLAN. A ?plan= param and a restored
+    // draft both override this in the mount effect below.
+    plan: DEFAULT_PLAN,
     launchDate: ""
   });
   const [aiDetails, setAiDetails] = useState(null); // extra AI fields (pricing, audience, tech stack, faq, seo)
@@ -116,6 +217,13 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
   const [drAnim, setDrAnim] = useState(0);          // 0..1 count-up progress
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [uploadingCover, setUploadingCover] = useState(false);
+  const [showSlugEditor, setShowSlugEditor] = useState(false);
+  // Discount is a toggle that reveals a text field; the toggle state has to be
+  // separate so an empty-but-open field doesn't collapse on every keystroke.
+  const [discountOn, setDiscountOn] = useState(false);
+  // Per-field validation messages, keyed by field name, so step 1 can point at
+  // the field that's wrong instead of only showing one banner at the top.
+  const [fieldErrors, setFieldErrors] = useState({});
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(false);
@@ -131,7 +239,7 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
   const [freeStatus, setFreeStatus] = useState(null);
   const [checkingStatus, setCheckingStatus] = useState(false);
   const [wasLocked, setWasLocked] = useState(false); // saw the unlock panel this visit
-  // Backlink: an OPTIONAL final step. A do-follow badge earns a DR 38+ backlink,
+  // Backlink: an OPTIONAL final step. A do-follow badge earns a DR 37 backlink,
   // but the maker can skip it (skipBacklink) and launch without — they just
   // forfeit the link equity (and we keep reminding them on the dashboard + in
   // the launch email).
@@ -144,7 +252,6 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
   const [autoFilling, setAutoFilling] = useState(false);
   const [autoFilled, setAutoFilled] = useState(false);
   const [loadingDates, setLoadingDates] = useState(false);
-  const [timeLeft, setTimeLeft] = useState(15 * 60); // Urgency timer: 15 minutes in seconds
   const [pendingSubmission, setPendingSubmission] = useState(null); // unpaid paid-plan draft awaiting payment
   const [turnstileToken, setTurnstileToken] = useState(null); // Cloudflare Turnstile token (anti-bot)
   const [turnstileUnavailable, setTurnstileUnavailable] = useState(false); // widget couldn't load (e.g. blocked)
@@ -332,6 +439,9 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
   // (a full-page redirect), then let an explicit ?plan= param win — e.g. when
   // arriving from pricing/featured. This is what lets users pick up exactly
   // where they left off after signing in instead of re-typing everything.
+  //
+  // Plan precedence, highest first: ?plan= param → restored draft → DEFAULT_PLAN.
+  // The spread order below is what encodes that, so don't reorder it.
   useEffect(() => {
     let restored = null;
     try {
@@ -349,7 +459,23 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
     const validPlan = ['free', 'premium', 'featured'].includes(planParam) ? planParam : null;
 
     if (restored || validPlan) {
-      setFormData(prev => ({ ...prev, ...(restored || {}), ...(validPlan ? { plan: validPlan } : {}) }));
+      setFormData(prev => {
+        const next = { ...prev, ...(restored || {}), ...(validPlan ? { plan: validPlan } : {}) };
+        // Drafts saved before the multi-category / gallery fields existed carry
+        // a single `category` and `coverUrl` — lift them into the new shape so
+        // a returning maker doesn't find those fields blank.
+        if (!Array.isArray(next.categories)) next.categories = next.category ? [next.category] : [];
+        if (!Array.isArray(next.screenshots)) next.screenshots = next.coverUrl ? [next.coverUrl] : [];
+        for (const key of ['seoKeyword', 'videoUrl', 'pricingModel', 'discount', 'firstComment']) {
+          if (typeof next[key] !== 'string') next[key] = '';
+        }
+        next.openSource = !!next.openSource;
+        // A corrupt/legacy draft must never leave an unknown plan selected —
+        // fall back to the default rather than rendering with no plan at all.
+        if (!['free', 'premium', 'featured'].includes(next.plan)) next.plan = DEFAULT_PLAN;
+        return next;
+      });
+      if (restored && restored.discount) setDiscountOn(true);
     }
   }, []);
 
@@ -452,13 +578,21 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
   // entry point into a paid plan (the ?plan= deep link and a restored draft, not
   // just the plan cards). Refreshes the window first so a tab left open across
   // midnight can't offer a stale "soonest" date.
+  //
+  // The plan/date checks happen INSIDE the updater, not against the render-time
+  // formData. Premium is now the default plan (DEFAULT_PLAN), so this effect
+  // fires on mount — in the same commit as the draft-restore effect above. If it
+  // read the render-time values it would stamp a paid weekday onto a restored
+  // FREE draft, leaving a date selected that isn't in the free slot grid.
   useEffect(() => {
     if (formData.plan !== 'premium' && formData.plan !== 'featured') return;
     const fresh = buildPaidLaunchDates();
     setPaidLaunchDates(fresh);
-    if (!formData.launchDate || !fresh.some(d => d.value === formData.launchDate)) {
-      setFormData(prev => ({ ...prev, launchDate: fresh[0]?.value || '' }));
-    }
+    setFormData(prev => {
+      if (prev.plan !== 'premium' && prev.plan !== 'featured') return prev;
+      if (prev.launchDate && fresh.some(d => d.value === prev.launchDate)) return prev;
+      return { ...prev, launchDate: fresh[0]?.value || '' };
+    });
   }, [formData.plan]);
 
   // Fetch the unlock status when the user lands on the plan step (page 2), and
@@ -491,14 +625,6 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
     if (freeStatus && !freeStatus.eligible) setWasLocked(true);
   }, [freeStatus]);
 
-  // Countdown timer effect for urgency
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setTimeLeft(prev => prev > 0 ? prev - 1 : 0);
-    }, 1000);
-    return () => clearInterval(timer);
-  }, []);
-
   const generateSlug = (name) => {
     if (!name) return '';
     return name
@@ -516,6 +642,10 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
   const handleChange = (e) => {
     const { name, value } = e.target;
 
+    // Typing in a field clears its own error — the message shouldn't linger
+    // while the maker is actively fixing it.
+    setFieldErrors((prev) => (prev[name] ? { ...prev, [name]: null } : prev));
+
     if (name === 'projectName' && value) {
       setFormData((prev) => ({
         ...prev,
@@ -525,6 +655,25 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
     } else {
       setFormData((prev) => ({ ...prev, [name]: value }));
     }
+  };
+
+  // Categories are a chip multi-select capped at MAX_CATEGORIES. The first one
+  // picked stays the primary (written to startups.category) so browsing and
+  // filtering keep working unchanged; the rest live in details.categories.
+  const toggleCategory = (value) => {
+    setFieldErrors((prev) => (prev.categories ? { ...prev, categories: null } : prev));
+    setFormData((prev) => {
+      const current = prev.categories || [];
+      const next = current.includes(value)
+        ? current.filter((c) => c !== value)
+        : (current.length >= MAX_CATEGORIES ? current : [...current, value]);
+      return { ...prev, categories: next, category: next[0] || '' };
+    });
+  };
+
+  const setField = (name, value) => {
+    setFieldErrors((prev) => (prev[name] ? { ...prev, [name]: null } : prev));
+    setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
   // AI-Powered Form Prefill: send the URL to the ai-prefill Edge Function
@@ -546,16 +695,28 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
       }
       setFormData((prev) => {
         const next = { ...prev };
-        if (data.name && !prev.projectName) next.projectName = String(data.name).slice(0, 80);
-        if (data.tagline && !prev.tagline) next.tagline = String(data.tagline).slice(0, 80);
-        if (data.description && !prev.description) next.description = String(data.description).slice(0, 280);
-        if (data.category && !prev.category) next.category = data.category;
+        if (data.name && !prev.projectName) next.projectName = String(data.name).slice(0, LIMITS.name);
+        if (data.tagline && !prev.tagline) next.tagline = String(data.tagline).slice(0, LIMITS.tagline);
+        if (data.description && !prev.description) next.description = String(data.description).slice(0, LIMITS.description);
+        if (data.category && !(prev.categories || []).length) {
+          // Only accept a category the chip list actually offers, so the AI can
+          // never write a value the browse filters don't know about.
+          const known = CATEGORIES.find((c) => c.value === data.category);
+          if (known) { next.categories = [known.value]; next.category = known.value; }
+        }
         if (Array.isArray(data.tags) && data.tags.length && !prev.tags) next.tags = data.tags.slice(0, 5).join(', ');
+        if (data.pricing && !prev.pricingModel && PRICING_MODELS.some((p) => p.value === data.pricing)) {
+          next.pricingModel = data.pricing;
+        }
         if (data.logo && !prev.logoUrl) next.logoUrl = data.logo;
-        if (data.cover && !prev.coverUrl) next.coverUrl = data.cover;
+        if (data.cover && !(prev.screenshots || []).length) next.screenshots = [data.cover];
+        if (data.seoKeyword && !prev.seoKeyword) {
+          next.seoKeyword = String(data.seoKeyword).slice(0, LIMITS.seoKeyword);
+        }
         const s = data.socialLinks || {};
+        if (s.youtube && !prev.videoUrl && isSupportedVideoUrl(s.youtube)) next.videoUrl = s.youtube;
         if (s.x && !prev.xProfile) {
-          const handle = String(s.x).replace(/\/+$/, '').split('/').pop();
+          const handle = normalizeHandle(String(s.x));
           if (handle) next.xProfile = handle;
         }
         if (s.linkedin && !prev.linkedin) next.linkedin = s.linkedin;
@@ -596,24 +757,93 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
     }
   };
 
-  // Upload a logo or cover image the user picked; store the public URL.
-  const handleAssetUpload = async (e, kind) => {
+  // Reject anything that isn't a reasonable image before it reaches storage —
+  // the bucket has no MIME or size limits of its own, so this is the only gate.
+  const rejectFile = (file, maxBytes, label) => {
+    const type = (file.type || '').toLowerCase();
+    if (type && !ALLOWED_IMAGE_TYPES.includes(type)) {
+      return `${label} must be a PNG, JPG, WebP or GIF.`;
+    }
+    if (file.size > maxBytes) {
+      return `${label} is ${(file.size / 1024 / 1024).toFixed(1)} MB — the limit is ${Math.round(maxBytes / 1024 / 1024)} MB.`;
+    }
+    return null;
+  };
+
+  // Upload the logo the user picked; store the public URL.
+  const handleLogoUpload = async (e) => {
     const file = e.target.files && e.target.files[0];
+    e.target.value = ''; // let the same file be re-picked after an error
     if (!file) return;
-    const setBusy = kind === 'logo' ? setUploadingLogo : setUploadingCover;
-    setBusy(true);
-    setPrefillError(null);
+
+    const invalid = rejectFile(file, MAX_LOGO_BYTES, 'Logo');
+    if (invalid) { setFieldErrors((prev) => ({ ...prev, logoUrl: invalid })); return; }
+
+    setUploadingLogo(true);
+    setFieldErrors((prev) => ({ ...prev, logoUrl: null }));
     try {
-      const res = await uploadAsset(file, kind);
-      if (res.error) { setPrefillError(res.error); return; }
-      setFormData((prev) => ({ ...prev, [kind === 'logo' ? 'logoUrl' : 'coverUrl']: res.url }));
+      const res = await uploadAsset(file, 'logo');
+      if (res.error) { setFieldErrors((prev) => ({ ...prev, logoUrl: res.error })); return; }
+      setFormData((prev) => ({ ...prev, logoUrl: res.url }));
     } finally {
-      setBusy(false);
+      setUploadingLogo(false);
     }
   };
 
-  // Projected DR with a SubmitHunt do-follow backlink (marketing estimate).
-  const projectedDr = drValue != null ? Math.min(98, drValue + Math.max(6, Math.round((100 - drValue) * 0.18))) : null;
+  // Upload one or more screenshots, appending up to MAX_SCREENSHOTS. The first
+  // one doubles as the listing card image and the social share image.
+  const handleScreenshotUpload = async (e) => {
+    const picked = Array.from(e.target.files || []);
+    e.target.value = '';
+    if (!picked.length) return;
+
+    const room = MAX_SCREENSHOTS - (formData.screenshots || []).length;
+    if (room <= 0) {
+      setFieldErrors((prev) => ({ ...prev, screenshots: `You can add up to ${MAX_SCREENSHOTS} screenshots.` }));
+      return;
+    }
+
+    const files = picked.slice(0, room);
+    const skipped = picked.length - files.length;
+    setUploadingCover(true);
+    setFieldErrors((prev) => ({ ...prev, screenshots: null }));
+    try {
+      const problems = [];
+      for (const file of files) {
+        const invalid = rejectFile(file, MAX_SCREENSHOT_BYTES, file.name || 'Screenshot');
+        if (invalid) { problems.push(invalid); continue; }
+        const res = await uploadAsset(file, 'screenshot');
+        if (res.error) { problems.push(res.error); continue; }
+        setFormData((prev) => ({
+          ...prev,
+          screenshots: [...(prev.screenshots || []), res.url].slice(0, MAX_SCREENSHOTS),
+        }));
+      }
+      if (skipped > 0) problems.push(`${skipped} file${skipped > 1 ? 's were' : ' was'} skipped — ${MAX_SCREENSHOTS} screenshots max.`);
+      if (problems.length) setFieldErrors((prev) => ({ ...prev, screenshots: problems.join(' ') }));
+    } finally {
+      setUploadingCover(false);
+    }
+  };
+
+  const removeScreenshot = (index) => {
+    setFieldErrors((prev) => ({ ...prev, screenshots: null }));
+    setFormData((prev) => ({
+      ...prev,
+      screenshots: (prev.screenshots || []).filter((_, i) => i !== index),
+    }));
+  };
+
+  // Promote a screenshot to first position — it becomes the card + social image.
+  const makePrimaryScreenshot = (index) => {
+    setFormData((prev) => {
+      const list = [...(prev.screenshots || [])];
+      if (index <= 0 || index >= list.length) return prev;
+      const [picked] = list.splice(index, 1);
+      return { ...prev, screenshots: [picked, ...list] };
+    });
+  };
+
 
   // Count-up animation (0..1) that drives the DR cards' numbers + bars.
   useEffect(() => {
@@ -690,20 +920,39 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
         return;
       }
 
-      if (!formData.url) {
-        setError("Please enter a valid URL");
-        return;
+      // Collect every problem at once and pin each to its field, so the maker
+      // fixes the whole step in one pass instead of one error at a time.
+      const problems = {};
+      if (!formData.url.trim()) {
+        problems.url = 'Add the link to your product.';
+      } else if (!/^https?:\/\//i.test(formData.url.trim())) {
+        problems.url = 'The URL needs to start with http:// or https://';
+      }
+      if (!formData.projectName.trim()) problems.projectName = 'Your product needs a name.';
+      if (!formData.tagline.trim()) problems.tagline = 'A one-line tagline is what people read first.';
+      if (!formData.description.trim()) {
+        problems.description = 'Tell people what your product does.';
+      } else if (formData.description.trim().length < 40) {
+        problems.description = 'Add a bit more — at least 40 characters.';
+      }
+      if (!(formData.categories || []).length) problems.categories = 'Pick at least one category.';
+      if (!formData.logoUrl) problems.logoUrl = 'Add a logo — it appears on every listing card.';
+      if (!formData.xProfile.trim()) problems.xProfile = 'Your X handle links the launch back to you.';
+      if (!isSupportedVideoUrl(formData.videoUrl)) problems.videoUrl = 'Only YouTube and Loom links are supported.';
+      if (formData.firstComment.trim() && formData.firstComment.trim().length < 5) {
+        problems.firstComment = 'Comments need at least 5 characters.';
       }
 
-      if (!formData.url.startsWith('http://') && !formData.url.startsWith('https://')) {
-        setError("Please enter a valid URL starting with http:// or https://");
+      if (Object.keys(problems).length) {
+        setFieldErrors(problems);
+        setError('Please fix the highlighted fields before continuing.');
+        // Scroll to the first field that needs attention.
+        const firstId = Object.keys(problems)[0];
+        const el = document.getElementById(firstId) || document.getElementById(`field-${firstId}`);
+        if (el && el.scrollIntoView) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
         return;
       }
-
-      if (!formData.xProfile) {
-        setError("Please enter your X username");
-        return;
-      }
+      setFieldErrors({});
 
       // Slug is auto-derived; never block the user on it. Backfill if empty.
       if (!formData.slug) {
@@ -836,6 +1085,9 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
       }
       if (!formData.projectName) throw new Error("Please enter a project name");
       if (!formData.category) throw new Error("Please select a category for your startup");
+      if (!isSupportedVideoUrl(formData.videoUrl)) {
+        throw new Error("Demo video must be a YouTube or Loom link.");
+      }
 
       // Slug is auto-derived and must NEVER block submission or surface as an
       // error. Backfill from the name/URL if somehow empty; uniqueness is
@@ -854,7 +1106,12 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
       // move on to the insert + Stripe redirect even if Microlink is down.
       let screenshotUrl = null;
       const SCREENSHOT_TIMEOUT_MS = 6000;
-      try {
+      const hasOwnScreenshots = (formData.screenshots || []).length > 0;
+      // The maker supplied their own screenshots — don't spend 6s capturing one
+      // we'd immediately discard.
+      if (hasOwnScreenshots) {
+        console.info('[submit] skipping auto-screenshot — maker uploaded their own');
+      } else try {
         console.info('[submit] capturing screenshot (max 6s)');
         const screenshotPromise = (async () => {
           const capturedScreenshotUrl = await captureScreenshot(formData.url, {
@@ -898,11 +1155,38 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
       console.info('[submit] preparing submission data');
       const authUser = window.auth.getCurrentUser();
       const contactEmail = formData.contactEmail || authUser?.email || '';
+      const handle = normalizeHandle(formData.xProfile);
       let authorInfo = {
-        name: formData.xProfile.replace('@', ''),
-        profile_url: `https://x.com/${formData.xProfile.replace('@', '')}`,
-        avatar: `https://unavatar.io/twitter/${formData.xProfile.replace('@', '')}`,
+        name: handle,
+        profile_url: `https://x.com/${handle}`,
+        avatar: `https://unavatar.io/twitter/${handle}`,
         email: contactEmail
+      };
+
+      // Gallery: the maker's own screenshots win, then an AI-extracted cover,
+      // then the auto-captured one. images[0] is the card + social share image.
+      const gallery = (formData.screenshots || []).filter(Boolean);
+      const fallbackCover = formData.coverUrl || screenshotUrl || null;
+      const images = gallery.length ? gallery : (fallbackCover ? [fallbackCover] : []);
+      const coverImage = images[0] || null;
+
+      // Everything the startups table has no column for rides along in the
+      // details jsonb — the AI extras plus what the maker filled in by hand.
+      const detailsObj = {
+        ...(aiDetails || {}),
+        categories: formData.categories || [],
+        seo_keyword: formData.seoKeyword.trim() || null,
+        pricing_model: formData.pricingModel || null,
+        open_source: !!formData.openSource,
+        discount: formData.discount.trim() || null,
+        // Posted as the maker's own comment the moment the product goes live.
+        first_comment: formData.firstComment.trim() || null,
+        socialLinks: {
+          ...((aiDetails && aiDetails.socialLinks) || {}),
+          ...(handle ? { x: `https://x.com/${handle}` } : {}),
+          ...(formData.linkedin ? { linkedin: formData.linkedin } : {}),
+          ...(formData.github ? { github: formData.github } : {}),
+        },
       };
 
       // On the free plan, only honor a launch date that's an actually-available
@@ -962,7 +1246,10 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
           tags: (formData.tags || '').split(',').map(t => t.trim()).filter(Boolean).slice(0, 5).join(','),
           author: authorInfo,
           logo_url: formData.logoUrl || '',
-          screenshot_url: formData.coverUrl || screenshotUrl || '',
+          screenshot_url: coverImage || '',
+          images,
+          demo_video_url: formData.videoUrl.trim() || '',
+          details: detailsObj,
           plan: formData.plan,
           launch_date: resolvedLaunchDate,
           contact_email: contactEmail,
@@ -1033,16 +1320,6 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
       console.info('[submit] inserting free startup row');
       const tagsArray = (formData.tags || '')
         .split(',').map(t => t.trim()).filter(Boolean).slice(0, 5);
-      const coverImage = formData.coverUrl || screenshotUrl || null;
-      const detailsObj = {
-        ...(aiDetails || {}),
-        socialLinks: {
-          ...((aiDetails && aiDetails.socialLinks) || {}),
-          ...(formData.xProfile ? { x: `https://x.com/${formData.xProfile.replace('@', '')}` } : {}),
-          ...(formData.linkedin ? { linkedin: formData.linkedin } : {}),
-          ...(formData.github ? { github: formData.github } : {}),
-        },
-      };
       const baseRow = {
         title: formData.projectName,
         url: formData.url,
@@ -1053,7 +1330,8 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
         author: authorInfo,
         logo_url: formData.logoUrl || null,
         screenshot_url: coverImage,
-        images: coverImage ? [coverImage] : null,
+        images: images.length ? images : null,
+        demo_video_url: formData.videoUrl.trim() || null,
         details: detailsObj,
         plan: formData.plan,
         payment_status: 'paid',
@@ -1187,7 +1465,7 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
           <div class="mt-6 p-5 border border-orange-200 rounded-2xl bg-orange-50/40">
             <h3 class="font-semibold text-gray-900 mb-3 flex items-center">
               <i class="fas fa-award mr-2 text-orange-600"></i>
-              Get your badge & keep your 38+ DR backlink
+              Get your badge & keep your DR 37 backlink
             </h3>
             <div class="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-xl">
               <p class="text-sm text-amber-900">Add our badge to your website to make your listing <strong>permanent</strong> and keep your backlink as <strong>dofollow</strong>.</p>
@@ -1237,13 +1515,53 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
     `;
   }
 
+  // Inline, per-field validation message.
+  const fieldError = (name) => (fieldErrors[name]
+    ? html`<p class="text-xs text-red-600 mt-1.5 flex items-start gap-1.5"><i class="fas fa-circle-exclamation mt-0.5"></i><span>${fieldErrors[name]}</span></p>`
+    : '');
+  // Red border on a field that failed validation.
+  const errCls = (name) => (fieldErrors[name] ? ' !border-red-400' : '');
+
+  // getDelayText() returns either a duration ("1 week") or a status string
+  // ("Loading...", "No slots available"), so wrap it for prose contexts where
+  // "next one in No slots available" would read wrong.
+  const freeWaitPhrase = () => {
+    const t = getDelayText();
+    if (t === 'Loading...') return 'checking availability…';
+    if (t === 'No slots available') return 'no free slots open right now';
+    return `about ${t}`;
+  };
+
+  // Running total for the selected plan, shown above the submit button.
+  const selectedPrice = PLAN_PRICE_USD[formData.plan] ?? 0;
+  const selectedPlanLabel = formData.plan === 'featured' ? 'Featured spot'
+    : (formData.plan === 'premium' ? 'Premium launch' : 'Free launch');
+  // One plain-English line describing exactly what the submit button does next.
+  // Free = queued for the chosen date, nothing charged. Paid = Stripe first,
+  // and (per handleSubmit) nothing is written to the database until it clears.
+  const submitSummary = () => {
+    if (formData.plan === 'free') {
+      return formData.launchDate
+        ? `No payment. Your launch is queued for ${formatLaunchLabel(formData.launchDate)} and goes live that morning.`
+        : 'No payment. Pick a launch date above and your launch is queued for that day.';
+    }
+    const day = formData.launchDate ? formatLaunchLabel(formData.launchDate) : 'your chosen weekday';
+    const when = formData.launchDate && formData.launchDate === pstDateStr()
+      ? 'goes live right after payment'
+      : `is scheduled for ${day}`;
+    return `You'll be sent to Stripe to pay $${selectedPrice} once. Nothing is published until payment clears — then your launch ${when}.`;
+  };
+
   // Main form
   return html`
-    <div class="max-w-5xl mx-auto px-4 py-10 md:py-14">
-      <div class="bg-white border border-gray-200 rounded-2xl shadow-sm p-6 md:p-10">
+    <!-- Step 1 is a single column of form cards, so it reads better narrow;
+         step 2's three plan cards need the wider container. Both steps are
+         sectioned white cards on the page background — no outer card wrapper. -->
+    <div class="${currentPage === 1 ? 'max-w-3xl' : 'max-w-5xl'} mx-auto px-4 py-10 md:py-14">
+      <div>
         <div class="mb-6">
-          <h2 class="text-2xl sm:text-3xl font-semibold tracking-tight text-gray-900 mb-2">Submit your startup</h2>
-          <p class="text-gray-500">Launch your project on the best Product Hunt alternative.</p>
+          <h2 class="text-2xl sm:text-3xl font-semibold tracking-tight text-gray-900 mb-2">Launch your product</h2>
+          <p class="text-gray-500">Tell us about your product. You can come back to edit before going live.</p>
         </div>
 
         <!-- Step indicator -->
@@ -1266,7 +1584,7 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
             <i class="fas fa-rocket text-sm"></i>
           </div>
           <div class="text-sm">
-            <p class="font-medium text-gray-900">Submit your startup, get a 38+ DR backlink</p>
+            <p class="font-medium text-gray-900">Submit your startup, get a DR 37 backlink</p>
             <p class="text-gray-600 mt-0.5">Join hundreds of founders who chose SubmitHunt.</p>
           </div>
         </div>
@@ -1303,18 +1621,25 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
 
         <form onSubmit=${handleSubmit}>
           ${currentPage === 1 ? html`
-            <div class="max-w-2xl mx-auto space-y-4">
-              <!-- AI-Powered Form Prefill -->
-              <div class="rounded-2xl border border-indigo-200 bg-gradient-to-b from-indigo-50/70 to-white p-4 sm:p-5">
-                <div class="flex items-start gap-3 mb-3">
-                  <div class="w-9 h-9 rounded-xl bg-white border border-indigo-200 flex items-center justify-center text-indigo-600 shrink-0">
-                    <i class="fas fa-wand-magic-sparkles"></i>
-                  </div>
-                  <div>
-                    <p class="font-semibold text-gray-900 text-sm">Turn your URL into a listing</p>
-                    <p class="text-xs text-gray-600 mt-0.5"><span class="font-medium text-gray-700">AI prepares the draft. You review it before submitting.</span> Enter your website URL and AI fills almost every field — name, tagline, description, categories, tags, pricing, target audience, tech stack, social links, SEO metadata, FAQ, and more. Logo & cover come from your site icons / structured data; social links are extracted from the page.</p>
-                  </div>
+            <div class="space-y-5">
+              <!-- ============ Product details ============ -->
+              <section class="bg-white border border-gray-200 rounded-2xl shadow-sm p-5 sm:p-6 space-y-5">
+                <div>
+                  <h3 class="text-lg font-semibold tracking-tight text-gray-900">Product details</h3>
+                  <p class="text-sm text-gray-500 mt-0.5">Your story, website, categories, and whether the product is open source.</p>
                 </div>
+
+                <!-- AI-Powered Form Prefill -->
+                <div class="rounded-xl border border-dashed border-indigo-300 bg-indigo-50/40 p-4">
+                  <div class="flex items-start gap-3 mb-3">
+                    <div class="w-8 h-8 rounded-lg bg-white border border-indigo-200 flex items-center justify-center text-indigo-600 shrink-0">
+                      <i class="fas fa-wand-magic-sparkles text-sm"></i>
+                    </div>
+                    <div class="min-w-0">
+                      <p class="font-semibold text-gray-900 text-sm">AI-powered form prefill</p>
+                      <p class="text-xs text-gray-600 mt-0.5">Paste your URL and we'll fill the form automatically — name, tagline, description, categories, pricing, logo, cover and social links.</p>
+                    </div>
+                  </div>
 
                 <div class="flex flex-col lg:flex-row gap-3 lg:items-start">
                   <div class="flex-1 min-w-0">
@@ -1324,9 +1649,8 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
                         value=${formData.url}
                         onInput=${handleChange}
                         onBlur=${() => lookupDomainRating(formData.url)}
-                        class="flex-1 px-3 py-2.5 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                        class="sh-input flex-1${errCls('url')}"
                         placeholder="https://mystartup.com"
-                        required
                       />
                       <button
                         type="button"
@@ -1339,29 +1663,35 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
                           : html`<i class="fas fa-wand-magic-sparkles text-xs"></i> Prefill with AI`}
                       </button>
                     </div>
-                    ${autoFilled ? html`<p class="text-xs text-emerald-600 mt-1.5 flex items-center gap-1"><i class="fas fa-check"></i> Prefilled from your site — review and edit below.</p>` : ''}
+                    ${autoFilled
+                      ? html`<p class="text-xs text-emerald-600 mt-1.5 flex items-center gap-1"><i class="fas fa-check"></i> Filled in empty fields. Review before publishing.</p>`
+                      : html`<p class="sh-help">Fills empty fields only — anything you've typed is left alone.</p>`}
+                    ${fieldError('url')}
                     ${prefillError ? html`<p class="text-xs text-red-600 mt-1.5">${prefillError}</p>` : ''}
                   </div>
 
-                  <!-- Domain Rating: current → projected, animated -->
+                  <!-- Domain Rating. We show the maker's MEASURED DR (a real Ahrefs
+                       lookup) next to ours — both are facts. We deliberately do NOT
+                       project a post-launch DR: no one can predict what a single
+                       backlink does to a domain's rating, and the old "With us"
+                       tile invented that number from a formula. -->
                   ${(drLoading || drValue != null) ? html`
                     <div class="flex items-stretch gap-2 shrink-0">
                       ${drLoading && drValue == null ? html`
                         <div class="rounded-xl border border-gray-200 bg-white px-3 py-2 flex items-center gap-2 text-xs text-gray-500"><i class="fas fa-spinner fa-spin"></i> Checking DR…</div>
                       ` : html`
                         <div class="rounded-xl border border-gray-200 bg-white px-3 py-2 text-center w-[80px]">
-                          <p class="text-[9px] font-semibold uppercase tracking-wider text-gray-400">DR now</p>
+                          <p class="text-[9px] font-semibold uppercase tracking-wider text-gray-400">Your DR</p>
                           <p class="text-2xl font-bold text-gray-900 tabular-nums leading-tight">${Math.round((drValue || 0) * drAnim)}</p>
                           <div class="h-1 rounded-full bg-gray-100 mt-1 overflow-hidden"><div class="h-full bg-gray-400" style="width:${(drValue || 0) * drAnim}%"></div></div>
                         </div>
-                        <div class="flex flex-col items-center justify-center text-emerald-600 px-0.5">
-                          <i class="fas fa-arrow-trend-up text-sm"></i>
-                          <span class="text-[10px] font-bold tabular-nums">+${(projectedDr || 0) - (drValue || 0)}</span>
+                        <div class="flex flex-col items-center justify-center text-gray-300 px-0.5">
+                          <i class="fas fa-link text-sm"></i>
                         </div>
                         <div class="rounded-xl border border-emerald-200 bg-emerald-50/60 px-3 py-2 text-center w-[80px]">
-                          <p class="text-[9px] font-semibold uppercase tracking-wider text-emerald-600">With us</p>
-                          <p class="text-2xl font-bold text-emerald-700 tabular-nums leading-tight">${Math.round((projectedDr || 0) * drAnim)}</p>
-                          <div class="h-1 rounded-full bg-emerald-100 mt-1 overflow-hidden"><div class="h-full bg-emerald-500" style="width:${(projectedDr || 0) * drAnim}%"></div></div>
+                          <p class="text-[9px] font-semibold uppercase tracking-wider text-emerald-600">Our DR</p>
+                          <p class="text-2xl font-bold text-emerald-700 tabular-nums leading-tight">${Math.round(SITE_DR * drAnim)}</p>
+                          <div class="h-1 rounded-full bg-emerald-100 mt-1 overflow-hidden"><div class="h-full bg-emerald-500" style="width:${SITE_DR * drAnim}%"></div></div>
                         </div>
                       `}
                     </div>
@@ -1369,189 +1699,376 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
                 </div>
               </div>
 
-              <div>
-                <label class="block text-black font-bold mb-2" for="projectName">Startup Name</label>
-                <input
-                  type="text"
-                  id="projectName"
-                  name="projectName"
-                  placeholder="My Awesome Startup"
-                  value=${formData.projectName}
-                  onInput=${handleChange}
-                  class="w-full px-3 py-2 border-2 border-black focus:outline-none focus:ring-2 focus:ring-blue-400"
-                  required
-                />
-              </div>
-
-              <div>
-                <label class="block text-black font-bold mb-2" for="tagline">Tagline</label>
-                <input
-                  type="text"
-                  id="tagline"
-                  name="tagline"
-                  placeholder="One-line pitch for your product"
-                  value=${formData.tagline}
-                  onInput=${handleChange}
-                  maxlength="80"
-                  class="w-full px-3 py-2 border-2 border-black focus:outline-none focus:ring-2 focus:ring-blue-400"
-                />
-              </div>
-
-              <div>
-                <label class="block text-black font-bold mb-2" for="slug">Slug</label>
-                <input
-                  type="text"
-                  id="slug"
-                  name="slug"
-                  value=${formData.slug}
-                  onInput=${handleChange}
-                  class="w-full px-3 py-2 border-2 border-black focus:outline-none focus:ring-2 focus:ring-blue-400"
-                  placeholder="my-awesome-startup"
-                  required
-                />
-                <p class="text-sm text-gray-500 mt-1">URL identifier for your startup</p>
-              </div>
-
-              <div>
-                <label class="block text-black font-bold mb-2" for="description">Description</label>
-                <input
-                  type="text"
-                  id="description"
-                  name="description"
-                  value=${formData.description}
-                  onInput=${handleChange}
-                  class="w-full px-3 py-2 border-2 border-black focus:outline-none focus:ring-2 focus:ring-blue-400"
-                  placeholder="A short description of the startup"
-                />
-              </div>
-
-              <div>
-                <label class="block text-black font-bold mb-2" for="category">Category</label>
-                <select
-                  id="category"
-                  name="category"
-                  value=${formData.category}
-                  onChange=${handleChange}
-                  class="w-full px-3 py-2 border-2 border-black focus:outline-none focus:ring-2 focus:ring-blue-400 bg-white"
-                  required
-                >
-                  <option value="">Select a category</option>
-                  <option value="AI/ML">🤖 AI/ML</option>
-                  <option value="Other">📦 Other</option>
-                  <option value="Design">🎨 Design</option>
-                  <option value="Web App">🌐 Web App</option>
-                  <option value="SaaS">⚡ SaaS</option>
-                  <option value="Gaming">🎮 Gaming</option>
-                  <option value="Developer Tools">👨‍💻 Developer Tools</option>
-                  <option value="Productivity">📊 Productivity</option>
-                  <option value="Social">👥 Social</option>
-                  <option value="API/Service">🔗 API/Service</option>
-                  <option value="Marketing">📈 Marketing</option>
-                  <option value="E-commerce">🛒 E-commerce</option>
-                  <option value="Health & Fitness">🏃‍♂️ Health & Fitness</option>
-                  <option value="Education">📚 Education</option>
-                  <option value="Chrome Extension">🧩 Chrome Extension</option>
-                  <option value="Mobile App">📱 Mobile App</option>
-                </select>
-              </div>
-
-              <div>
-                <label class="block text-black font-bold mb-2" for="tags">Tags</label>
-                <input
-                  type="text"
-                  id="tags"
-                  name="tags"
-                  value=${formData.tags}
-                  onInput=${handleChange}
-                  class="w-full px-3 py-2 border-2 border-black focus:outline-none focus:ring-2 focus:ring-blue-400"
-                  placeholder="ai, productivity, saas"
-                />
-                <p class="text-sm text-gray-500 mt-1">Comma-separated, up to 5 — shown on your card.</p>
-              </div>
-
-              <!-- Logo & cover upload (saved and used on the listing card) -->
-              <div class="grid sm:grid-cols-2 gap-4">
-                <div>
-                  <label class="block text-black font-bold mb-2">Logo</label>
-                  <div class="flex items-center gap-3">
-                    <div class="w-14 h-14 rounded-xl border-2 border-black bg-gray-50 flex items-center justify-center overflow-hidden shrink-0">
-                      ${formData.logoUrl ? html`<img src=${formData.logoUrl} alt="Logo preview" class="w-full h-full object-contain" />` : html`<i class="fas fa-image text-gray-300"></i>`}
-                    </div>
-                    <label class="cursor-pointer px-3 py-2 rounded-lg border border-gray-300 text-xs font-semibold text-gray-700 hover:bg-gray-50 flex items-center gap-1.5">
-                      ${uploadingLogo ? html`<i class="fas fa-spinner fa-spin"></i> Uploading…` : html`<i class="fas fa-upload"></i> ${formData.logoUrl ? 'Replace' : 'Upload logo'}`}
-                      <input type="file" accept="image/*" class="hidden" onChange=${(e) => handleAssetUpload(e, 'logo')} />
+                <!-- Name + tagline: the two lines every card and search result shows -->
+                <div class="grid sm:grid-cols-2 gap-4">
+                  <div>
+                    <label class="sh-label" for="projectName">
+                      <span class="sh-req">Product name</span>
+                      ${counter(formData.projectName, LIMITS.name)}
                     </label>
+                    <input
+                      type="text" id="projectName" name="projectName"
+                      placeholder="Acme"
+                      value=${formData.projectName}
+                      onInput=${handleChange}
+                      maxlength=${LIMITS.name}
+                      class="sh-input${errCls('projectName')}"
+                    />
+                    ${fieldError('projectName')}
+                  </div>
+                  <div>
+                    <label class="sh-label" for="tagline">
+                      <span class="sh-req">One-line tagline</span>
+                      ${counter(formData.tagline, LIMITS.tagline)}
+                    </label>
+                    <input
+                      type="text" id="tagline" name="tagline"
+                      placeholder="Everything you need to agree"
+                      value=${formData.tagline}
+                      onInput=${handleChange}
+                      maxlength=${LIMITS.tagline}
+                      class="sh-input${errCls('tagline')}"
+                    />
+                    ${fieldError('tagline')}
                   </div>
                 </div>
+
                 <div>
-                  <label class="block text-black font-bold mb-2">Cover / screenshot</label>
-                  <div class="flex items-center gap-3">
-                    <div class="w-20 h-14 rounded-xl border-2 border-black bg-gray-50 flex items-center justify-center overflow-hidden shrink-0">
-                      ${formData.coverUrl ? html`<img src=${formData.coverUrl} alt="Cover preview" class="w-full h-full object-cover" />` : html`<i class="fas fa-image text-gray-300"></i>`}
-                    </div>
-                    <label class="cursor-pointer px-3 py-2 rounded-lg border border-gray-300 text-xs font-semibold text-gray-700 hover:bg-gray-50 flex items-center gap-1.5">
-                      ${uploadingCover ? html`<i class="fas fa-spinner fa-spin"></i> Uploading…` : html`<i class="fas fa-upload"></i> ${formData.coverUrl ? 'Replace' : 'Upload cover'}`}
-                      <input type="file" accept="image/*" class="hidden" onChange=${(e) => handleAssetUpload(e, 'cover')} />
-                    </label>
+                  <label class="sh-label" for="description">
+                    <span class="sh-req">Product description</span>
+                    ${counter(formData.description, LIMITS.description)}
+                  </label>
+                  <textarea
+                    id="description" name="description"
+                    value=${formData.description}
+                    onInput=${handleChange}
+                    maxlength=${LIMITS.description}
+                    rows="5"
+                    class="sh-textarea${errCls('description')}"
+                    placeholder="What does your product do, who is it for, and what makes it different?"
+                  ></textarea>
+                  ${fieldError('description')}
+                </div>
+
+                <div>
+                  <label class="sh-label" for="seoKeyword">
+                    <span>What do people search for to find a tool like yours?</span>
+                    ${counter(formData.seoKeyword, LIMITS.seoKeyword)}
+                  </label>
+                  <input
+                    type="text" id="seoKeyword" name="seoKeyword"
+                    value=${formData.seoKeyword}
+                    onInput=${handleChange}
+                    maxlength=${LIMITS.seoKeyword}
+                    class="sh-input"
+                    placeholder="e.g. svg to png converter"
+                  />
+                  <p class="sh-help">Optional. One search term this page should target — not your brand name, and not a list.</p>
+                </div>
+
+                <div>
+                  <label class="sh-label" for="websiteUrl"><span class="sh-req">Website URL</span></label>
+                  <input
+                    type="url" id="websiteUrl" name="url"
+                    value=${formData.url}
+                    onInput=${handleChange}
+                    onBlur=${() => lookupDomainRating(formData.url)}
+                    class="sh-input${errCls('url')}"
+                    placeholder="https://mystartup.com"
+                  />
+                  <div class="flex flex-wrap items-center gap-x-2 gap-y-1 mt-1.5">
+                    <p class="text-xs text-gray-400">
+                      Your listing: <span class="font-mono text-gray-500">submithunt.com/startup/${formData.slug || 'your-product'}</span>
+                    </p>
+                    <button type="button" onClick=${() => setShowSlugEditor(!showSlugEditor)} class="text-xs font-semibold text-gray-600 hover:text-gray-900 underline underline-offset-2">
+                      ${showSlugEditor ? 'Done' : 'Edit'}
+                    </button>
                   </div>
-                  <p class="text-sm text-gray-500 mt-1">Shown as your listing image.</p>
+                  ${showSlugEditor ? html`
+                    <input
+                      type="text" id="slug" name="slug"
+                      value=${formData.slug}
+                      onInput=${handleChange}
+                      class="sh-input mt-2"
+                      placeholder="my-awesome-startup"
+                    />
+                  ` : ''}
                 </div>
-              </div>
 
-              <!-- Socials -->
-              <div class="grid sm:grid-cols-3 gap-4">
-                <div>
-                  <label class="block text-black font-bold mb-2" for="xProfile">X Username</label>
-                  <input
-                    type="text" id="xProfile" name="xProfile"
-                    value=${formData.xProfile}
-                    onInput=${handleChange}
-                    class="w-full px-3 py-2 border-2 border-black focus:outline-none focus:ring-2 focus:ring-blue-400"
-                    placeholder="jack"
-                    required
-                  />
+                <div id="field-categories">
+                  <label class="sh-label">
+                    <span class="sh-req">Categories</span>
+                    <span class="sh-counter${(formData.categories || []).length >= MAX_CATEGORIES ? ' sh-counter--max' : ''}">${(formData.categories || []).length}/${MAX_CATEGORIES}</span>
+                  </label>
+                  <div class="flex flex-wrap gap-1.5">
+                    ${CATEGORIES.map((cat) => {
+      const on = (formData.categories || []).includes(cat.value);
+      const full = (formData.categories || []).length >= MAX_CATEGORIES;
+      return html`
+                        <button
+                          type="button"
+                          onClick=${() => toggleCategory(cat.value)}
+                          disabled=${!on && full}
+                          class="sh-chip${on ? ' sh-chip--on' : ''}"
+                          aria-pressed=${on ? 'true' : 'false'}
+                        >${cat.emoji} ${cat.value}</button>`;
+    })}
+                  </div>
+                  <p class="sh-help">Pick up to ${MAX_CATEGORIES}. The first one you pick is your primary category.</p>
+                  ${fieldError('categories')}
                 </div>
-                <div>
-                  <label class="block text-black font-bold mb-2" for="linkedin">LinkedIn</label>
-                  <input
-                    type="text" id="linkedin" name="linkedin"
-                    value=${formData.linkedin}
-                    onInput=${handleChange}
-                    class="w-full px-3 py-2 border-2 border-black focus:outline-none focus:ring-2 focus:ring-blue-400"
-                    placeholder="linkedin.com/company/…"
-                  />
-                </div>
-                <div>
-                  <label class="block text-black font-bold mb-2" for="github">GitHub</label>
-                  <input
-                    type="text" id="github" name="github"
-                    value=${formData.github}
-                    onInput=${handleChange}
-                    class="w-full px-3 py-2 border-2 border-black focus:outline-none focus:ring-2 focus:ring-blue-400"
-                    placeholder="github.com/…"
-                  />
-                </div>
-              </div>
 
-              <div class="flex justify-end gap-2 pt-4">
+                <div>
+                  <label class="sh-label" for="tags"><span>Tags</span></label>
+                  <input
+                    type="text" id="tags" name="tags"
+                    value=${formData.tags}
+                    onInput=${handleChange}
+                    class="sh-input"
+                    placeholder="ai, productivity, saas"
+                  />
+                  <p class="sh-help">Optional. Comma-separated, up to 5 — shown on your listing card.</p>
+                </div>
+
+                <label class="flex items-center justify-between gap-4 rounded-xl border border-gray-200 px-4 py-3 cursor-pointer hover:border-gray-300 transition-colors">
+                  <span class="min-w-0">
+                    <span class="block text-sm font-semibold text-gray-900">Open source</span>
+                    <span class="block text-xs text-gray-500 mt-0.5">Is your product open source?</span>
+                  </span>
+                  <span class="sh-switch">
+                    <input type="checkbox" checked=${formData.openSource} onChange=${(e) => setField('openSource', e.target.checked)} />
+                    <span class="sh-switch-track"></span>
+                    <span class="sh-switch-thumb"></span>
+                  </span>
+                </label>
+              </section>
+
+              <!-- ============ Media ============ -->
+              <section class="bg-white border border-gray-200 rounded-2xl shadow-sm p-5 sm:p-6 space-y-5">
+                <div>
+                  <h3 class="text-lg font-semibold tracking-tight text-gray-900">Media</h3>
+                  <p class="text-sm text-gray-500 mt-0.5">Logo, gallery, social handle, and an optional demo video.</p>
+                </div>
+
+                <div id="field-logoUrl">
+                  <label class="sh-label"><span class="sh-req">Logo</span></label>
+                  <div class="flex items-center gap-3">
+                    <label class="sh-dropzone w-20 h-20 shrink-0 overflow-hidden ${fieldErrors.logoUrl ? '!border-red-400' : ''}">
+                      ${uploadingLogo
+                        ? html`<i class="fas fa-spinner fa-spin"></i>`
+                        : (formData.logoUrl
+                            ? html`<img src=${formData.logoUrl} alt="Logo preview" class="w-full h-full object-contain bg-white" />`
+                            : html`<i class="fas fa-image text-lg"></i>`)}
+                      <input type="file" accept="image/png,image/jpeg,image/webp,image/gif" class="hidden" onChange=${handleLogoUpload} />
+                    </label>
+                    <div class="min-w-0">
+                      <label class="sh-btn-ghost text-sm cursor-pointer">
+                        <i class="fas fa-upload text-xs"></i> ${formData.logoUrl ? 'Replace logo' : 'Upload logo'}
+                        <input type="file" accept="image/png,image/jpeg,image/webp,image/gif" class="hidden" onChange=${handleLogoUpload} />
+                      </label>
+                      <p class="sh-help">Square, 512×512 or larger. PNG, JPG, WebP or GIF, up to 2 MB.<br/>Non-square logos get cropped to a square from the center.</p>
+                    </div>
+                  </div>
+                  ${fieldError('logoUrl')}
+                </div>
+
+                <div id="field-screenshots">
+                  <label class="sh-label">
+                    <span>Screenshots</span>
+                    <span class="sh-counter${(formData.screenshots || []).length >= MAX_SCREENSHOTS ? ' sh-counter--max' : ''}">${(formData.screenshots || []).length}/${MAX_SCREENSHOTS}</span>
+                  </label>
+                  <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                    ${(formData.screenshots || []).map((url, i) => html`
+                      <div class="sh-thumb">
+                        <img src=${url} alt=${`Screenshot ${i + 1}`} />
+                        ${i === 0
+                          ? html`<span class="sh-thumb-tag">Cover</span>`
+                          : html`<button type="button" onClick=${() => makePrimaryScreenshot(i)} class="sh-thumb-tag sh-thumb-tag--btn" title="Use as cover">Make cover</button>`}
+                        <button type="button" class="sh-thumb-x" onClick=${() => removeScreenshot(i)} aria-label=${`Remove screenshot ${i + 1}`}>
+                          <i class="fas fa-xmark"></i>
+                        </button>
+                      </div>
+                    `)}
+                    ${(formData.screenshots || []).length < MAX_SCREENSHOTS ? html`
+                      <label class="sh-dropzone aspect-video ${fieldErrors.screenshots ? '!border-red-400' : ''}">
+                        ${uploadingCover
+                          ? html`<i class="fas fa-spinner fa-spin"></i>`
+                          : html`<i class="fas fa-image text-lg"></i>`}
+                        <input type="file" accept="image/png,image/jpeg,image/webp,image/gif" multiple class="hidden" onChange=${handleScreenshotUpload} />
+                      </label>
+                    ` : ''}
+                  </div>
+                  <p class="sh-help">
+                    Landscape 16:9, 1920×1080 or larger. PNG, JPG, WebP or GIF, up to 10 MB each.<br/>
+                    Anything that isn't 16:9 is cropped from the center, so phone screenshots lose most of their height — put them on a 16:9 background instead.<br/>
+                    The first screenshot is also your social share image, so lead with the best one. Leave this empty and we'll capture your homepage automatically.
+                  </p>
+                  ${fieldError('screenshots')}
+                </div>
+
+                <div>
+                  <label class="sh-label" for="xProfile"><span class="sh-req">X / Twitter username</span></label>
+                  <div class="relative">
+                    <span class="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-400 pointer-events-none">@</span>
+                    <input
+                      type="text" id="xProfile" name="xProfile"
+                      value=${formData.xProfile}
+                      onInput=${handleChange}
+                      onBlur=${(e) => setField('xProfile', normalizeHandle(e.target.value))}
+                      class="sh-input sh-input--prefix${errCls('xProfile')}"
+                      placeholder="username"
+                    />
+                  </div>
+                  <p class="sh-help">Paste your profile URL or just the handle — we'll clean it up. Used for your listing's author avatar.</p>
+                  ${fieldError('xProfile')}
+                </div>
+
+                <div class="grid sm:grid-cols-2 gap-4">
+                  <div>
+                    <label class="sh-label" for="linkedin"><span>LinkedIn</span></label>
+                    <input
+                      type="text" id="linkedin" name="linkedin"
+                      value=${formData.linkedin}
+                      onInput=${handleChange}
+                      class="sh-input"
+                      placeholder="linkedin.com/company/…"
+                    />
+                  </div>
+                  <div>
+                    <label class="sh-label" for="github"><span>GitHub</span></label>
+                    <input
+                      type="text" id="github" name="github"
+                      value=${formData.github}
+                      onInput=${handleChange}
+                      class="sh-input"
+                      placeholder="github.com/…"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label class="sh-label" for="videoUrl"><span>Demo video</span></label>
+                  <input
+                    type="url" id="videoUrl" name="videoUrl"
+                    value=${formData.videoUrl}
+                    onInput=${handleChange}
+                    class="sh-input${errCls('videoUrl')}"
+                    placeholder="https://youtube.com/watch?v=… or https://loom.com/share/…"
+                  />
+                  <p class="sh-help">Optional. YouTube or Loom URL — it plays on your listing page.</p>
+                  ${fieldError('videoUrl')}
+                </div>
+              </section>
+
+              <!-- ============ Pricing & launch extras ============ -->
+              <section class="bg-white border border-gray-200 rounded-2xl shadow-sm p-5 sm:p-6 space-y-5">
+                <div>
+                  <h3 class="text-lg font-semibold tracking-tight text-gray-900">Pricing & launch extras</h3>
+                  <p class="text-sm text-gray-500 mt-0.5">How your product is priced, an optional deal, and your opening comment.</p>
+                </div>
+
+                <div>
+                  <label class="sh-label" for="pricingModel"><span>Pricing</span></label>
+                  <select id="pricingModel" name="pricingModel" value=${formData.pricingModel} onChange=${handleChange} class="sh-select">
+                    <option value="">Select pricing…</option>
+                    ${PRICING_MODELS.map((p) => html`<option value=${p.value} selected=${formData.pricingModel === p.value}>${p.label}</option>`)}
+                  </select>
+                  <p class="sh-help">Optional. Shown as a badge so people know what to expect before they click.</p>
+                </div>
+
+                <div class="rounded-xl border border-gray-200 overflow-hidden">
+                  <label class="flex items-center justify-between gap-4 px-4 py-3 cursor-pointer">
+                    <span class="min-w-0">
+                      <span class="block text-sm font-semibold text-gray-900">Launch discount</span>
+                      <span class="block text-xs text-gray-500 mt-0.5">Offer something to people who find you here.</span>
+                    </span>
+                    <span class="sh-switch">
+                      <input
+                        type="checkbox"
+                        checked=${!!formData.discount || discountOn}
+                        onChange=${(e) => { setDiscountOn(e.target.checked); if (!e.target.checked) setField('discount', ''); }}
+                      />
+                      <span class="sh-switch-track"></span>
+                      <span class="sh-switch-thumb"></span>
+                    </span>
+                  </label>
+                  ${(discountOn || formData.discount) ? html`
+                    <div class="px-4 pb-4 pt-1 border-t border-gray-100">
+                      <label class="sh-label mt-3" for="discount">
+                        <span>Discount badge</span>
+                        ${counter(formData.discount, LIMITS.discount)}
+                      </label>
+                      <input
+                        type="text" id="discount" name="discount"
+                        value=${formData.discount}
+                        onInput=${handleChange}
+                        maxlength=${LIMITS.discount}
+                        class="sh-input"
+                        placeholder="e.g. 30% off for 3 months with code HUNT30"
+                      />
+                    </div>
+                  ` : ''}
+                </div>
+
+                <div>
+                  <label class="sh-label" for="firstComment">
+                    <span>Write the first comment</span>
+                    ${counter(formData.firstComment, LIMITS.firstComment)}
+                  </label>
+                  <textarea
+                    id="firstComment" name="firstComment"
+                    value=${formData.firstComment}
+                    onInput=${handleChange}
+                    maxlength=${LIMITS.firstComment}
+                    rows="4"
+                    class="sh-textarea${errCls('firstComment')}"
+                    placeholder="Share why you built this and what you'd love feedback on…"
+                  ></textarea>
+                  <p class="sh-help">Optional. We post this as your comment the moment your product goes live.</p>
+                  ${fieldError('firstComment')}
+                </div>
+              </section>
+
+              <div class="flex justify-end gap-2">
                 <a href="/" class="sh-btn-ghost">Cancel</a>
                 <button
                   type="button"
                   onClick=${goToNextPage}
-                  class="sh-btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
+                  class="sh-btn-accent disabled:opacity-50 disabled:cursor-not-allowed"
                   disabled=${loading}
                 >
-                  Continue to Publication <i class="fas fa-arrow-right text-xs"></i>
+                  Continue to plan & launch <i class="fas fa-arrow-right text-xs"></i>
                 </button>
               </div>
             </div>
           ` : html`
             <!-- Page 2: Plan Selection -->
-            <div class="space-y-6">
-              <div>
-                <h3 class="text-xl font-semibold tracking-tight text-gray-900">Choose your launch plan</h3>
-                <p class="text-sm text-gray-500 mt-1">Every plan comes with a high-authority dofollow backlink.</p>
-              </div>
+            <div class="space-y-5">
+              <!-- ============ Social proof ============
+                   Numbers come from LAUNCH_STATS, measured from production.
+                   Never add a stat here that isn't actually counted. -->
+              <section class="bg-white border border-gray-200 rounded-2xl shadow-sm p-5 sm:p-6">
+                <div>
+                  <h3 class="text-lg font-semibold tracking-tight text-gray-900">Real users, real traction</h3>
+                  <p class="text-sm text-gray-500 mt-0.5">Counted from our own database on 28 July 2026 — no rounded-up vanity numbers.</p>
+                </div>
+                <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mt-5">
+                  ${LAUNCH_STATS.map((stat) => html`
+                    <div class="rounded-xl border border-gray-200 bg-gray-50/60 px-4 py-4">
+                      <p class="text-2xl sm:text-3xl font-semibold tracking-tight text-gray-900 tabular-nums leading-none">${stat.value}</p>
+                      <p class="text-sm font-medium text-gray-700 mt-2">${stat.label}</p>
+                      <p class="text-xs text-gray-400 mt-0.5">${stat.hint}</p>
+                    </div>
+                  `)}
+                </div>
+              </section>
+
+              <!-- ============ Plans ============ -->
+              <section class="bg-white border border-gray-200 rounded-2xl shadow-sm p-5 sm:p-6">
+                <div class="mb-5">
+                  <h3 class="text-lg font-semibold tracking-tight text-gray-900">Choose how you launch</h3>
+                  <p class="text-sm text-gray-500 mt-0.5">Every plan gets you a listing and a backlink. Paid plans skip the queue and the unlock steps.</p>
+                </div>
 
               <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <!-- Free Plan -->
@@ -1571,8 +2088,9 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
 
                   <div class="px-5 pb-5 flex-1 flex flex-col">
                     <div class="text-sm text-gray-500 mb-1">Standard Launch</div>
-                    <div class="flex items-baseline mb-1">
-                      <span class="text-3xl font-semibold tracking-tight text-gray-900">Free</span>
+                    <div class="flex items-baseline gap-1 mb-1">
+                      <span class="text-3xl font-semibold tracking-tight text-gray-900">$${PLAN_PRICE_USD.free}</span>
+                      <span class="text-gray-500 text-sm">forever</span>
                     </div>
                     <div class="text-xs text-gray-500 mb-5">No payment method needed</div>
 
@@ -1593,9 +2111,24 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
                         <i class="fas fa-check text-gray-400 mt-1 text-xs"></i>
                         <span class="text-gray-700 text-sm">Badge for top 3 ranking</span>
                       </div>
-                      <div class="flex items-start gap-2.5 mt-3 pt-3 border-t border-gray-200">
-                        <i class="fas fa-clock text-amber-500 mt-1 text-xs"></i>
-                        <span class="text-amber-700 text-sm font-medium">Launch in ${getDelayText()}</span>
+                      <div class="flex items-start gap-2.5">
+                        <i class="fas fa-check text-gray-400 mt-1 text-xs"></i>
+                        <span class="text-gray-700 text-sm">Do-follow backlink if you add our badge to your site</span>
+                      </div>
+
+                      <!-- The honest trade-off, spelled out rather than buried:
+                           these are the real requirements the free path enforces
+                           (the unlock checklist and the 6-slots-a-day queue). -->
+                      <div class="mt-3 pt-3 border-t border-gray-200 space-y-2">
+                        <p class="text-[11px] font-semibold uppercase tracking-wider text-gray-400">What it asks of you</p>
+                        <div class="flex items-start gap-2.5">
+                          <i class="fas fa-arrow-up text-gray-400 mt-1 text-xs"></i>
+                          <span class="text-gray-600 text-sm">Upvote 3 products and comment on 1</span>
+                        </div>
+                        <div class="flex items-start gap-2.5">
+                          <i class="fas fa-clock text-amber-500 mt-1 text-xs"></i>
+                          <span class="text-amber-700 text-sm font-medium">Wait for a free slot — ${freeWaitPhrase()}</span>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -1606,8 +2139,10 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
                   class="bg-white rounded-2xl border ${formData.plan === 'premium' ? 'border-orange-500 ring-2 ring-orange-200' : 'border-orange-300'} transition-all flex flex-col overflow-hidden relative"
                 >
                   <div class="absolute -top-2.5 left-1/2 -translate-x-1/2">
+                    <!-- "Recommended", not "Most popular": 1,618 of 1,661 launches are free,
+                         so a popularity claim on a paid plan would be false. -->
                     <span class="inline-flex items-center text-[10px] font-semibold uppercase tracking-wider text-white bg-orange-600 px-3 py-0.5 rounded-full">
-                      Most popular
+                      Recommended
                     </span>
                   </div>
 
@@ -1620,7 +2155,7 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
                   <div class="px-5 pb-5 flex-1 flex flex-col">
                     <div class="text-sm text-gray-500 mb-1">Premium Launch</div>
                     <div class="flex items-baseline gap-1 mb-1">
-                      <span class="text-3xl font-semibold tracking-tight text-gray-900">$20</span>
+                      <span class="text-3xl font-semibold tracking-tight text-gray-900">$${PLAN_PRICE_USD.premium}</span>
                       <span class="text-gray-500 text-sm">/ launch</span>
                     </div>
                     <div class="text-xs text-gray-500 mb-5">One-time payment</div>
@@ -1632,37 +2167,6 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
                     >
                       ${formData.plan === 'premium' ? html`<i class="fas fa-check text-xs"></i> Selected` : html`Choose Premium <i class="fas fa-arrow-right text-xs"></i>`}
                     </button>
-
-                    ${formData.plan === 'premium' ? html`
-                      <!-- Early Bird Urgency Section -->
-                      <div class="mb-4 p-3 bg-orange-50/60 border border-orange-200 rounded-xl">
-                        <div class="flex items-center gap-2 mb-2">
-                          <span class="text-orange-800 font-semibold text-xs">🔥 Early Bird Special</span>
-                        </div>
-                        <div class="flex items-center justify-between gap-3 mb-2">
-                          <div class="flex gap-1">
-                            <div class="w-8 h-8 bg-gray-200 border border-gray-300 rounded-md flex items-center justify-center" title="Taken">
-                              <i class="fas fa-check text-gray-500 text-xs"></i>
-                            </div>
-                            <div class="w-8 h-8 bg-white border border-orange-300 rounded-md flex items-center justify-center animate-pulse" title="Available">
-                              <i class="fas fa-star text-orange-600 text-xs"></i>
-                            </div>
-                            <div class="w-8 h-8 bg-white border border-orange-300 rounded-md flex items-center justify-center animate-pulse" title="Available">
-                              <i class="fas fa-star text-orange-600 text-xs"></i>
-                            </div>
-                          </div>
-                          <div class="flex-1 min-w-0">
-                            <div class="text-orange-800 font-semibold text-xs">2 of 3 slots left today</div>
-                            <div class="text-orange-700 text-[11px]">Offer expires soon</div>
-                          </div>
-                        </div>
-                        <div class="bg-white border border-orange-200 rounded-md px-2 py-1 text-center">
-                          <div class="text-xs font-semibold text-orange-700 tabular-nums">
-                            ⏰ ${String(Math.floor(timeLeft / 60)).padStart(2, '0')}:${String(timeLeft % 60).padStart(2, '0')}
-                          </div>
-                        </div>
-                      </div>
-                    ` : ''}
 
                     <div class="space-y-2.5 flex-1">
                       <div class="flex items-start gap-2.5">
@@ -1685,6 +2189,27 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
                         <i class="fas fa-envelope text-orange-600 mt-1 text-xs"></i>
                         <span class="text-gray-700 text-sm">Featured in newsletter</span>
                       </div>
+
+                      <!-- Replaces the old "2 of 3 slots left today" + 15-minute
+                           countdown. Both were fabricated: the slot count was
+                           hardcoded and the timer restarted on every page load.
+                           These three lines are the REAL differences vs the free
+                           plan, enforced by this very form. -->
+                      <div class="mt-3 pt-3 border-t border-orange-100 space-y-2">
+                        <p class="text-[11px] font-semibold uppercase tracking-wider text-orange-500">What you skip vs free</p>
+                        <div class="flex items-start gap-2.5">
+                          <i class="fas fa-xmark text-orange-400 mt-1 text-xs"></i>
+                          <span class="text-gray-600 text-sm">No upvote/comment unlock steps</span>
+                        </div>
+                        <div class="flex items-start gap-2.5">
+                          <i class="fas fa-xmark text-orange-400 mt-1 text-xs"></i>
+                          <span class="text-gray-600 text-sm">No queue wait — pick any weekday, or launch today</span>
+                        </div>
+                        <div class="flex items-start gap-2.5">
+                          <i class="fas fa-xmark text-orange-400 mt-1 text-xs"></i>
+                          <span class="text-gray-600 text-sm">No badge required on your site to keep the link do-follow</span>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -1702,7 +2227,7 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
                   <div class="px-5 pb-5 flex-1 flex flex-col">
                     <div class="text-sm text-gray-500 mb-1">Premium Placement</div>
                     <div class="flex items-baseline gap-1 mb-1">
-                      <span class="text-3xl font-semibold tracking-tight text-gray-900">$50</span>
+                      <span class="text-3xl font-semibold tracking-tight text-gray-900">$${PLAN_PRICE_USD.featured}</span>
                       <span class="text-gray-500 text-sm">one-time</span>
                     </div>
                     <div class="text-xs text-gray-500 mb-5">7 days featured, no subscription</div>
@@ -1722,7 +2247,7 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
                       </div>
                       <div class="flex items-start gap-2.5">
                         <i class="fas fa-check text-gray-400 mt-1 text-xs"></i>
-                        <span class="text-gray-700 text-sm">High visibility to daily visitors</span>
+                        <span class="text-gray-700 text-sm">Pinned to the top of the feed for 7 days</span>
                       </div>
                       <div class="flex items-start gap-2.5">
                         <i class="fas fa-circle-check text-green-600 mt-1 text-xs"></i>
@@ -1736,22 +2261,41 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
                         <i class="fas fa-check text-gray-400 mt-1 text-xs"></i>
                         <span class="text-gray-700 text-sm">One-time payment, no subscription</span>
                       </div>
+
+                      <!-- Same honest framing as Premium: only differences this
+                           form actually enforces. -->
+                      <div class="mt-3 pt-3 border-t border-gray-200 space-y-2">
+                        <p class="text-[11px] font-semibold uppercase tracking-wider text-gray-400">What you skip vs free</p>
+                        <div class="flex items-start gap-2.5">
+                          <i class="fas fa-xmark text-gray-400 mt-1 text-xs"></i>
+                          <span class="text-gray-600 text-sm">No unlock steps, no queue, no badge requirement</span>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
               </div>
-              
+
+                <p class="text-xs text-gray-400 mt-4">
+                  Free is a real option — it stays selectable above and costs nothing.
+                  Premium starts selected because it's our recommended plan; you're only
+                  charged after you click a priced payment button.
+                </p>
+              </section>
+
               ${(formData.plan === 'premium' || formData.plan === 'featured') && paidLaunchDates.length > 0 ? (() => {
     const todayStr = pstDateStr();
     const soonest = paidLaunchDates[0];
     const latest = paidLaunchDates[paidLaunchDates.length - 1];
     const launchesToday = formData.launchDate === todayStr;
     return html`
-                <div class="mt-2 rounded-2xl border border-orange-200 bg-orange-50/40 p-5">
-                  <h3 class="text-lg font-bold text-gray-900 mb-1 flex items-center gap-2"><i class="fas fa-calendar-day text-orange-500"></i> Choose your launch day</h3>
-                  <p class="text-gray-600 text-sm mb-4">
-                    Your ${formData.plan === 'featured' ? 'Featured Spot' : 'Premium launch'} goes live at <strong>8 AM PST</strong> on the weekday you pick — launch now, or schedule any weekday through ${formatLaunchLabel(latest.value, { month: 'long', day: 'numeric' })}.
-                  </p>
+                <section class="bg-white border border-gray-200 rounded-2xl shadow-sm p-5 sm:p-6">
+                  <div class="mb-4">
+                    <h3 class="text-lg font-semibold tracking-tight text-gray-900">Choose your launch day</h3>
+                    <p class="text-sm text-gray-500 mt-0.5">
+                      Your ${formData.plan === 'featured' ? 'Featured Spot' : 'Premium launch'} goes live at <strong>8 AM PST</strong> on the weekday you pick — launch now, or schedule any weekday through ${formatLaunchLabel(latest.value, { month: 'long', day: 'numeric' })}.
+                    </p>
+                  </div>
 
                   <div class="grid grid-cols-5 gap-2 mb-4">
                     ${paidLaunchDates.slice(0, 10).map((d, i) => {
@@ -1785,13 +2329,13 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
                   </div>
 
                   ${formData.launchDate ? html`
-                    <p class="text-sm text-gray-600 mt-3 pt-3 border-t border-orange-100">
+                    <p class="text-sm text-gray-600 mt-3 pt-3 border-t border-gray-100">
                       Launch day: <span class="text-gray-900 font-semibold">${formatLaunchLabel(formData.launchDate)}, 8:00 AM PST</span>
                       ${launchesToday
         ? html`<span class="block sm:inline sm:ml-1 text-emerald-600 font-medium">— goes live right after payment.</span>`
         : html`<span class="block sm:inline sm:ml-1 text-gray-500">— we'll hold your listing until then, then launch it automatically.</span>`}
                     </p>` : ''}
-                </div>
+                </section>
     `;
   })() : ''}
 
@@ -1899,10 +2443,12 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
               ` : ''}
 
               ${formData.plan === 'free' && freeUnlocked ? html`
-                <div>
-                  <h3 class="text-xl font-bold text-black mb-2">📅 Choose Your Launch Date</h3>
-                  <p class="text-gray-600 text-sm mb-4">Startups launch at 8 AM EST, Monday-Friday. Max 6 free slots per day.</p>
-                  
+                <section class="bg-white border border-gray-200 rounded-2xl shadow-sm p-5 sm:p-6">
+                  <div class="mb-4">
+                    <h3 class="text-lg font-semibold tracking-tight text-gray-900">Choose your launch date</h3>
+                    <p class="text-sm text-gray-500 mt-0.5">Startups launch at 8 AM EST, Monday–Friday. Max 6 free slots per day.</p>
+                  </div>
+
                   ${loadingDates ? html`
                     <div class="flex items-center justify-center py-8">
                       <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
@@ -1940,7 +2486,7 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
 
                   ${availableLaunchDates.some(d => !d.freeAvailable) ? html`
                     <div class="mt-3 rounded-xl border border-orange-200 bg-gradient-to-r from-orange-50 to-amber-50 p-3 flex flex-wrap items-center justify-between gap-3">
-                      <p class="text-sm text-orange-900"><strong>High visibility days are FULL.</strong> Don't wait in the free queue.</p>
+                      <p class="text-sm text-orange-900"><strong>Some upcoming days are already full on the free plan.</strong> Paid launches aren't limited by the free slot queue.</p>
                       <button
                         type="button"
                         onClick=${() => selectPlan('premium')}
@@ -1950,11 +2496,11 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
                       </button>
                     </div>
                   ` : ''}
-                </div>
+                </section>
               ` : ''}
 
               <!-- Optional final step: do-follow backlink (after slot selection).
-                   Recommended — earns a DR 38+ do-follow backlink — but skippable
+                   Recommended — earns a DR 37 do-follow backlink — but skippable
                    via the toggle below. The DB gate no longer requires it. -->
               ${formData.plan === 'free' && freeUnlocked ? html`
                 <div class="border ${backlinkVerified ? 'border-emerald-200' : (skipBacklink ? 'border-amber-200' : 'border-gray-200')} rounded-2xl overflow-hidden">
@@ -1964,7 +2510,7 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
                     </div>
                     <div class="flex-1 min-w-0">
                       <p class="font-semibold text-gray-900 text-sm">Add a do-follow backlink <span class="font-normal text-gray-400">— recommended</span></p>
-                      <p class="text-sm text-gray-500 mt-0.5">Place our badge on your homepage or footer to claim a permanent <strong>DR 38+ do-follow backlink</strong> — and earn a <span class="inline-flex items-center gap-1 font-semibold text-amber-700"><svg viewBox="0 0 24 24" class="w-[15px] h-[15px]"><circle cx="12" cy="12" r="11" fill="#f59e0b"/><path fill="#fff" d="M10.28 16.4l-3.3-3.3 1.4-1.4 1.9 1.9 4.95-4.95 1.4 1.4z"/></svg>gold verified checkmark</span> next to your listing. Skip it and you launch without either.</p>
+                      <p class="text-sm text-gray-500 mt-0.5">Place our badge on your homepage or footer to claim a permanent <strong>DR 37 do-follow backlink</strong> — and earn a <span class="inline-flex items-center gap-1 font-semibold text-amber-700"><svg viewBox="0 0 24 24" class="w-[15px] h-[15px]"><circle cx="12" cy="12" r="11" fill="#f59e0b"/><path fill="#fff" d="M10.28 16.4l-3.3-3.3 1.4-1.4 1.9 1.9 4.95-4.95 1.4 1.4z"/></svg>gold verified checkmark</span> next to your listing. Skip it and you launch without either.</p>
                     </div>
                     ${backlinkVerified ? html`<span class="w-7 h-7 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-600 flex items-center justify-center shrink-0 mt-0.5"><i class="fas fa-check text-[11px]"></i></span>` : ''}
                   </div>
@@ -1972,7 +2518,7 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
                   <div class="px-5 sm:px-6 pb-5 pt-1">
                     ${backlinkVerified ? html`
                       <p class="text-sm text-emerald-700 font-medium flex items-center gap-1.5">
-                        <i class="fas fa-check"></i> Backlink verified — your DR 38+ do-follow link is locked in, and your listing now shows the gold verified checkmark.
+                        <i class="fas fa-check"></i> Backlink verified — your DR 37 do-follow link is locked in, and your listing now shows the gold verified checkmark.
                       </p>
                     ` : html`
                       <div class="space-y-3 ${skipBacklink ? 'opacity-60 pointer-events-none' : ''}">
@@ -2008,7 +2554,7 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
                       </div>
 
                       <!-- Live preview: what the listing keeps vs. loses. When the
-                           maker toggles "skip", the DR 38+ pill and gold checkmark
+                           maker toggles "skip", the DR 37 pill and gold checkmark
                            drop away so the trade-off is felt, not just read. -->
                       <div class="mt-4 rounded-xl border ${skipBacklink ? 'border-amber-200 bg-amber-50/40' : 'border-gray-200 bg-white'} p-4 transition-colors overflow-hidden">
                         <p class="text-[11px] font-semibold uppercase tracking-wider text-gray-400 mb-2.5">Preview — your listing on the homepage</p>
@@ -2023,12 +2569,12 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
                               <path fill="#fff" d="M10.28 16.4l-3.3-3.3 1.4-1.4 1.9 1.9 4.95-4.95 1.4 1.4z"/>
                             </svg>
                           </span>
-                          <span class="sh-drop sh-drop--d1 ${skipBacklink ? 'sh-drop--gone' : 'sh-drop--in'} text-[11px] font-bold text-orange-700 bg-orange-50 border border-orange-200 px-2 py-0.5 rounded-full">DR 38+</span>
+                          <span class="sh-drop sh-drop--d1 ${skipBacklink ? 'sh-drop--gone' : 'sh-drop--in'} text-[11px] font-bold text-orange-700 bg-orange-50 border border-orange-200 px-2 py-0.5 rounded-full">DR 37</span>
                         </div>
                         <p class="text-xs mt-2.5 ${skipBacklink ? 'text-amber-700' : 'text-gray-400'}">
                           ${skipBacklink
-        ? html`<i class="fas fa-arrow-trend-down mr-1"></i> Skipping drops your <strong>DR 38+ backlink</strong> and the <strong>gold verified checkmark</strong> — gone from your listing.`
-        : html`Verify your badge to keep the DR 38+ backlink and the gold verified checkmark on your listing.`}
+        ? html`<i class="fas fa-arrow-trend-down mr-1"></i> Skipping drops your <strong>DR 37 backlink</strong> and the <strong>gold verified checkmark</strong> — gone from your listing.`
+        : html`Verify your badge to keep the DR 37 backlink and the gold verified checkmark on your listing.`}
                         </p>
                       </div>
 
@@ -2037,7 +2583,7 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
                         <input type="checkbox" checked=${skipBacklink} onChange=${(e) => setSkipBacklink(e.target.checked)} class="mt-0.5 h-5 w-5 rounded-full border-2 border-gray-300 text-amber-600 focus:ring-amber-400 focus:ring-offset-0" />
                         <span class="text-sm text-gray-700">
                           <span class="font-medium text-gray-900">Continue with a no-follow backlink</span> — skip verification and launch now.
-                          <span class="block text-xs text-amber-700 mt-0.5">You'll forfeit your free DR 38+ do-follow link equity <strong>and the gold verified checkmark</strong> next to your listing. You can still add it later from your dashboard.</span>
+                          <span class="block text-xs text-amber-700 mt-0.5">You'll forfeit your free DR 37 do-follow link equity <strong>and the gold verified checkmark</strong> next to your listing. You can still add it later from your dashboard.</span>
                         </span>
                       </label>
                     `}
@@ -2066,6 +2612,39 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
                   ` : '')}
                 </div>
               ` : ''}
+
+              <!-- Maker quotes. Renders NOTHING while TESTIMONIALS is empty —
+                   see the constant: real, permissioned quotes only. -->
+              ${TESTIMONIALS.length ? html`
+                <section class="bg-white border border-gray-200 rounded-2xl shadow-sm p-5 sm:p-6">
+                  <div class="mb-4">
+                    <h3 class="text-lg font-semibold tracking-tight text-gray-900">What makers say</h3>
+                    <p class="text-sm text-gray-500 mt-0.5">From founders who launched here.</p>
+                  </div>
+                  <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                    ${TESTIMONIALS.map((t) => html`
+                      <figure class="rounded-xl border border-gray-200 bg-gray-50/60 p-4">
+                        <blockquote class="text-sm text-gray-700">${t.quote}</blockquote>
+                        <figcaption class="text-xs text-gray-500 mt-3">
+                          <span class="font-semibold text-gray-700">${t.name}</span>${t.handle ? html` · ${t.handle}` : ''}
+                        </figcaption>
+                      </figure>
+                    `)}
+                  </div>
+                </section>
+              ` : ''}
+
+              <!-- Running total: what this submit click costs, and what it does. -->
+              <section class="bg-white border border-gray-200 rounded-2xl shadow-sm p-5 sm:p-6">
+                <div class="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+                  <span class="text-base font-semibold tracking-tight text-gray-900">Total</span>
+                  <span class="flex items-baseline gap-2">
+                    <span class="text-2xl font-semibold tracking-tight text-gray-900 tabular-nums">$${selectedPrice}</span>
+                    <span class="text-sm text-gray-500">${selectedPrice > 0 ? 'one-time' : 'no charge'} · ${selectedPlanLabel}</span>
+                  </span>
+                </div>
+                <p class="text-sm text-gray-500 mt-2">${submitSummary()}</p>
+              </section>
 
               <div class="flex justify-between items-center pt-6 border-t border-gray-200 mt-6">
                 <button
@@ -2098,7 +2677,7 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
                     </button>
                     ${!formData.launchDate ? html`<p class="text-xs text-amber-600">Pick a launch date above to continue.</p>` : ''}
                     ${formData.launchDate && !backlinkVerified && !skipBacklink ? html`<p class="text-xs text-gray-400">Verify your backlink above, or check “Continue with a no-follow backlink” to skip.</p>` : ''}
-                    ${!backlinkVerified && skipBacklink ? html`<p class="text-xs text-amber-600">Launching without a do-follow backlink — you'll miss the DR 38+ link equity and the gold verified checkmark on your listing.</p>` : ''}
+                    ${!backlinkVerified && skipBacklink ? html`<p class="text-xs text-amber-600">Launching without a do-follow backlink — you'll miss the DR 37 link equity and the gold verified checkmark on your listing.</p>` : ''}
                   </div>
                 ` : ''}
 
