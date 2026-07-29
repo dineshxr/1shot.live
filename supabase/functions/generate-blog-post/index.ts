@@ -128,10 +128,136 @@ serve(async (req) => {
   }
 })
 
+// ---------------------------------------------------------------------------
+// Headline generation
+//
+// The prompt used to list five headline formulas and tell the model to "pick
+// the one that fits". It didn't spread them — it collapsed onto one. Of the 25
+// most recently published posts, 18 opened with "Stop {x}. Start {y}." and 16
+// never named the product at all, which is fatal for the one search term these
+// posts exist to rank for: the product's own name.
+//
+// So the archetype is chosen HERE, not by the model, and every archetype has
+// {Name} baked in. The choice is seeded off the slug so it's stable — the same
+// startup regenerates to the same style — while spreading evenly across the
+// corpus.
+// ---------------------------------------------------------------------------
+
+const TITLE_ARCHETYPES = [
+  '{Name} review: {one specific claim a reader could verify}',
+  'How {Name} {does the core job} for {specific audience}',
+  '{Name}: the {category} tool for {specific audience}',
+  '{Concrete outcome}, without {specific pain} — {Name}',
+  'What {Name} actually does (and who should skip it)',
+  'Why {specific audience} reach for {Name}',
+  '{Name} for {specific audience}: {outcome in a few words}',
+  'Getting started with {Name}: {first concrete win}',
+]
+
+// Small deterministic string hash (FNV-1a + an avalanche step). Not
+// security-relevant — it only needs to be stable across runs so regenerating a
+// post doesn't reshuffle its headline, and well-spread so archetypes don't
+// clump. The final mix matters: without it, short similar slugs bucket unevenly.
+function stableIndex(seed: string, buckets: number): number {
+  let h = 2166136261
+  for (let i = 0; i < seed.length; i++) {
+    h ^= seed.charCodeAt(i)
+    h = Math.imul(h, 16777619)
+  }
+  h ^= h >>> 16
+  h = Math.imul(h, 2246822507)
+  h ^= h >>> 13
+  h = Math.imul(h, 3266489909)
+  h ^= h >>> 16
+  return (h >>> 0) % buckets
+}
+
+function archetypeFor(startup: any): string {
+  const seed = String(startup.slug || startup.title || startup.id || '')
+  return TITLE_ARCHETYPES[stableIndex(seed, TITLE_ARCHETYPES.length)]
+}
+
+// Compare loosely so "ClearMail" in a headline still counts as naming
+// "Clear Mail for Gmail", and punctuation/casing never causes a false miss.
+function normalizeForMatch(s: string): string {
+  return String(s || '').toLowerCase().replace(/[^a-z0-9]/g, '')
+}
+
+function truncateAtWord(text: string, max: number): string {
+  const t = String(text || '').trim()
+  if (t.length <= max) return t
+  const cut = t.slice(0, max)
+  const lastSpace = cut.lastIndexOf(' ')
+  return (lastSpace > max * 0.6 ? cut.slice(0, lastSpace) : cut).replace(/[\s,;:—-]+$/, '')
+}
+
+// The single most over-used construction on this blog: 18 of the 25 most recent
+// posts. The prompt now bans it, but the previous prompt "banned" plenty and was
+// ignored, so this is the binding check. Deliberately tight — it only matches
+// the actual "Stop {x}. Start {y}" two-clause headline, not any innocent use of
+// the words "stop" or "start".
+const BANNED_TITLE_SHAPE = /^\s*stop\b[^.!?]*[.!?]\s*start\b/i
+
+// Deterministic, clean headline from the product's own words. Used whenever the
+// model's headline can't be salvaged, so the result never reads like a
+// half-truncated sentence.
+function fallbackTitle(startup: any): string {
+  const name = String(startup.title || '').trim()
+  let claim = String(startup.tagline || startup.description || '')
+    .trim().replace(/\s+/g, ' ').replace(/[.!?]+$/, '')
+  if (!claim) return `${name} review`
+
+  // Taglines very often open by restating the product name ("Codemaya — AI-powered
+  // software…"). Left alone that yields "Codemaya review: codemaya — AI-powered…".
+  if (name && claim.toLowerCase().startsWith(name.toLowerCase())) {
+    claim = claim.slice(name.length).replace(/^[\s:—–-]+/, '').replace(/^is\s+/i, '')
+  }
+  if (!claim) return `${name} review`
+
+  // Lower-case the first word only when it's an ordinary word. "AI-powered",
+  // "NYC" and other proper nouns / acronyms must keep their capitalisation.
+  const firstWord = claim.split(' ')[0]
+  const isOrdinaryWord = /^[A-Z][a-z]+$/.test(firstWord)
+  const body = isOrdinaryWord ? `${claim.charAt(0).toLowerCase()}${claim.slice(1)}` : claim
+
+  return truncateAtWord(`${name} review: ${body}`, 72)
+}
+
+// The prompt REQUESTS the product name and forbids the stock construction; this
+// makes both binding. A prompt is advisory, and the evidence is that the old one
+// was ignored most of the time. Repair prefers keeping the model's angle and
+// prefixing the brand; it only discards the headline when that would leave a
+// sentence chopped in half.
+function enforceBrandInTitle(rawTitle: unknown, startup: any): string {
+  const name = String(startup.title || '').trim()
+  const title = String(rawTitle || '').trim().replace(/\s+/g, ' ').replace(/^["']|["']$/g, '')
+  if (!name) return title
+  if (!title) return fallbackTitle(startup)
+
+  // Kill the stock shape outright, even when it does name the product —
+  // "Stop wasting time. Start launching with Foo." is still the problem.
+  if (BANNED_TITLE_SHAPE.test(title)) return fallbackTitle(startup)
+
+  if (normalizeForMatch(title).includes(normalizeForMatch(name))) return title
+
+  const merged = `${name}: ${title}`
+  if (merged.length <= 72) return merged
+
+  // Too long. Only trim if we can land on a sentence boundary — a headline cut
+  // mid-clause reads worse than a clean one rebuilt from the tagline.
+  const firstSentence = title.match(/^[^.!?]+[.!?]/)
+  if (firstSentence) {
+    const short = `${name}: ${firstSentence[0].trim().replace(/[.!?]+$/, '')}`
+    if (short.length <= 72) return short
+  }
+  return fallbackTitle(startup)
+}
+
 async function generateWithOpenRouter(startup: any, apiKey: string, isPaid: boolean) {
   const category = startup.category || 'tech'
   const description = startup.tagline || startup.description || ''
   const startupUrl = `https://submithunt.com/startup/${startup.slug || startup.id}`
+  const archetype = archetypeFor(startup)
 
   const prompt = `Write a 700–900 word blog post about "${startup.title}" — a ${category} startup. The post must do two jobs at once: rank on Google for "${startup.title}" and ${category}-tool searches, and funnel readers to ${startup.url}.
 
@@ -154,13 +280,26 @@ WRITING STYLE — non-negotiable:
 8. Show, don't tell. If you'd write "fast," replace with the time saved. If you'd write "easy," describe the steps it removes.
 9. Honest. Do not fabricate stats, testimonials, user counts, funding numbers, or company history. If you don't know it, don't claim it.
 
-HEADLINE — pick the formula that fits, then write a single headline (max 65 characters):
-- "{Outcome} without {pain point}"
-- "The ${category} ${startup.title.includes(' ') ? 'tool' : 'app'} for {specific audience}"
-- "Stop {painful action}. Start {outcome}."
-- "${startup.title} review: {specific claim a reader can verify}"
-- A sharp question that names the reader's pain in the ${category} space.
-Avoid: "Best [X] in 2025", "Ultimate Guide to…", "Top 10…", clickbait.
+HEADLINE — hard requirements, read twice:
+1. The headline MUST contain the product name exactly as written: ${startup.title}
+   A headline that does not name the product is a failed headline, because the
+   main search term this post exists to rank for is the product's own name.
+2. Use THIS shape and no other. It has been assigned to this post specifically
+   so that our blog doesn't end up with hundreds of identically-worded titles:
+
+   ${archetype}
+
+   Replace every {placeholder} with something concrete and specific to
+   ${startup.title}. Keep the shape; do not substitute a different formula.
+3. Max 65 characters including the product name. Count them.
+4. BANNED headline patterns — these are overused on this blog and must not
+   appear in any form:
+   - "Stop {anything}. Start {anything}." — do not use this construction at all.
+   - "Best [X] in {year}", "Ultimate Guide to…", "Top 10…", "The Future of…"
+   - Any headline that would still make sense for a different product. If you
+     could swap in a competitor's name without editing anything else, it is too
+     generic — rewrite it around what ${startup.title} specifically does.
+5. No exclamation points, no clickbait, no unverifiable superlatives.
 
 STRUCTURE — one idea per section, logical flow from pain to action:
 ${isPaid ? '- Open with a one-line "Editor\'s Pick" callout (italic <p><em>…</em></p>), then the hook below.\n' : ''}- Hook (1 short paragraph): a rhetorical question OR a sharp pain-point statement a ${category} reader would nod at. No "In today's world…" intros.
@@ -180,7 +319,7 @@ SEO RULES:
 
 OUTPUT — respond with valid JSON only. No markdown fences, no commentary outside the JSON.
 {
-  "title": "Single headline, max 65 chars, no exclamation point",
+  "title": "Single headline following the assigned shape above, max 65 chars, MUST contain \\"${startup.title}\\", no exclamation point",
   "content": "Full HTML article. Allowed tags only: <h2>, <h3>, <p>, <ul>, <li>, <strong>, <em>, <a>. No inline styles. No <h1> (the page renders that). 700–900 words.",
   "excerpt": "One sentence, max 160 chars, that sells the article without using any banned word above",
   "metaDescription": "SEO meta description, max 160 chars, primary keyword in the first 60 chars",
@@ -226,7 +365,12 @@ OUTPUT — respond with valid JSON only. No markdown fences, no commentary outsi
     throw new Error('Failed to parse OpenRouter response')
   }
 
-  return JSON.parse(jsonMatch[0])
+  const parsed = JSON.parse(jsonMatch[0])
+  const finalTitle = enforceBrandInTitle(parsed.title, startup)
+  if (finalTitle !== parsed.title) {
+    console.log(`Title repaired (model omitted the product name): ${JSON.stringify(parsed.title)} -> ${JSON.stringify(finalTitle)}`)
+  }
+  return { ...parsed, title: finalTitle }
 }
 
 function generateWithTemplate(startup: any, isPaid: boolean) {
@@ -234,7 +378,30 @@ function generateWithTemplate(startup: any, isPaid: boolean) {
   const description = startup.tagline || startup.description || `a ${category} tool for modern teams`
   const startupUrl = `https://submithunt.com/startup/${startup.slug || startup.id}`
 
-  const title = `${startup.title} Review: Is This the Best ${category.charAt(0).toUpperCase() + category.slice(1)} Tool in 2025?`
+  // The template path runs when OpenRouter is unavailable. It used to emit one
+  // fixed headline for every startup ("... Is This the Best X Tool in 2025?"),
+  // which is both the pattern the prompt bans and a guaranteed duplicate. Vary
+  // it off the same stable seed the model path uses, so fallbacks don't cluster
+  // either. Every variant names the product.
+  const shortClaim = truncateAtWord(
+    String(description).replace(/\s+/g, ' ').replace(/[.!?]+$/, ''),
+    Math.max(18, 60 - startup.title.length),
+  )
+  const prettyCategory = category.charAt(0).toUpperCase() + category.slice(1)
+  const titleVariants = [
+    `${startup.title} review: ${shortClaim || `a closer look at this ${category} tool`}`,
+    `What ${startup.title} does, and who it's for`,
+    `${startup.title}: the ${prettyCategory} tool worth a look`,
+    `How ${startup.title} fits into a ${category} workflow`,
+    `${startup.title} explained in two minutes`,
+    `Why builders are trying ${startup.title}`,
+    `${startup.title} for teams working in ${category}`,
+    `Getting started with ${startup.title}`,
+  ]
+  const title = truncateAtWord(
+    titleVariants[stableIndex(String(startup.slug || startup.title || startup.id || ''), titleVariants.length)],
+    72,
+  )
 
   const content = `
 <article>
@@ -273,7 +440,7 @@ function generateWithTemplate(startup: any, isPaid: boolean) {
     `best ${category} tools`,
     `${category} software`,
     'submithunt',
-    'startup tools 2025',
+    'new startup tools',
     `${category} startup`
   ].filter(Boolean).slice(0, 7)
 

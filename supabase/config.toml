@@ -156,6 +156,12 @@ verify_jwt = false
 [functions.publish-paid-startup]
 verify_jwt = true
 
+# Called server-to-server by backfill-blog-posts and send-live-notifications
+# with the service-role key. Pinned for the same reason as publish-paid-startup:
+# it only matched production by happening to equal the CLI default.
+[functions.generate-blog-post]
+verify_jwt = true
+
 [auth]
 enabled = true
 # The base URL of your website. Used as an allow-list for redirects and for constructing URLs used
