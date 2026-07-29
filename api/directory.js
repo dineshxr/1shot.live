@@ -103,12 +103,13 @@ const DIRECTORIES = [
   // dr: 68 — independently verified against the Ahrefs API on 2026-07-28, not
   // copied from their marketing page (which happens to claim the same number).
   //
-  // dofollow: null on purpose — we have not confirmed whether the backlink they
-  // hand out is dofollow, so the Link column shows "Unverified" rather than an
-  // invented yes/no.
+  // dofollow: true — their founder told us it's dofollow, and we checked rather
+  // than take it on trust: on a live product page the outbound link to the
+  // product carries rel="noreferrer noopener" with no nofollow token, so it does
+  // pass equity. (Verified 2026-07-28 against nicklaunches.com/products/latinaugc/.)
   {
     name: 'Nick Launches', url: 'https://nicklaunches.com/', submit: 'https://nicklaunches.com/submit',
-    dr: 68, type: 'Launchpad', pricing: 'Freemium', dofollow: null, partner: true,
+    dr: 68, type: 'Launchpad', pricing: 'Freemium', dofollow: true, partner: true,
   },
 ];
 
@@ -389,8 +390,8 @@ export default async function handler(req, res) {
     `<meta name="robots" content="index, follow" />` +
     `<meta property="og:type" content="website" /><meta property="og:title" content="${esc(title)}" />` +
     `<meta property="og:description" content="${esc(desc)}" /><meta property="og:url" content="${esc(canonical)}" />` +
-    `<meta property="og:image" content="${SITE}/og-image.png" /><meta property="og:site_name" content="SubmitHunt" />` +
-    `<meta name="twitter:card" content="summary_large_image" /><meta name="twitter:image" content="${SITE}/og-image.png" />` +
+    `<meta property="og:image" content="${SITE}/og-image.png?v=2" /><meta property="og:site_name" content="SubmitHunt" />` +
+    `<meta name="twitter:card" content="summary_large_image" /><meta name="twitter:image" content="${SITE}/og-image.png?v=2" />` +
     `<link rel="icon" type="image/x-icon" href="/src/favicon_io/favicon.ico" />` +
     jsonld.map((o) => `<script type="application/ld+json">${JSON.stringify(o)}</script>`).join('') +
     `<style>${STYLES}</style></head><body>` +
