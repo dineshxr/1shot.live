@@ -47,7 +47,9 @@ serve(async (req) => {
     // Fetch startup details
     const { data: startup, error: startupError } = await supabase
       .from('startups')
-      .select('id, title, description, tagline, url, category, slug, plan')
+      // tags + details feed the grounding block in the prompt. Without them the
+      // model has only a tagline to work from and starts inventing features.
+      .select('id, title, description, tagline, url, category, slug, plan, tags, details')
       .eq('id', startup_id)
       .single()
 
@@ -255,19 +257,41 @@ function enforceBrandInTitle(rawTitle: unknown, startup: any): string {
 
 async function generateWithOpenRouter(startup: any, apiKey: string, isPaid: boolean) {
   const category = startup.category || 'tech'
-  const description = startup.tagline || startup.description || ''
+  // Tagline and description are DIFFERENT fields carrying different information:
+  // the tagline is a 30-60 char hook, the description is the actual explanation.
+  // This used to be `tagline || description`, so any startup with both sent only
+  // the hook — the model got ~30 characters to write 800 words from and filled
+  // the gap by inventing capabilities. Send both, always.
+  const tagline = String(startup.tagline || '').trim()
+  const description = String(startup.description || '').trim()
+  const known = description || tagline
+  const tags = Array.isArray(startup.tags) ? startup.tags.filter(Boolean) : []
+  const details = (startup.details && typeof startup.details === 'object') ? startup.details : {}
+  const audience = String(details.targetAudience || '').trim()
   const startupUrl = `https://submithunt.com/startup/${startup.slug || startup.id}`
   const archetype = archetypeFor(startup)
 
   const prompt = `Write a 700–900 word blog post about "${startup.title}" — a ${category} startup. The post must do two jobs at once: rank on Google for "${startup.title}" and ${category}-tool searches, and funnel readers to ${startup.url}.
 
-Startup context:
+Startup context — this is EVERYTHING we know about the product. Treat it as the
+complete set of facts. Do not add capabilities, features, integrations, metrics
+or use cases that are not stated here:
 - Name: ${startup.title}
-- What it does: ${description || 'A new ' + category + ' tool'}
+${tagline ? `- Tagline (their own words): ${tagline}\n` : ''}- What it does: ${known || 'Not supplied — see the instruction below.'}
 - Category: ${category}
-- Website: ${startup.url}
+${tags.length ? `- Tags: ${tags.slice(0, 6).join(', ')}\n` : ''}${audience ? `- Who it's for: ${audience}\n` : ''}- Website: ${startup.url}
 - SubmitHunt listing: ${startupUrl}
 ${isPaid ? '- Status: Featured/Premium listing on SubmitHunt' : ''}
+
+GROUNDING — the most important rule here:
+Write only about what the context above actually says. If it is thin, write a
+SHORTER post about the little you genuinely know, describe the problem space
+around it, and point the reader at the website for specifics. Never pad the
+length by inventing what the product does. Guessing at features from the
+category name — "analyzes customer data", "integrates with your CRM",
+"real-time dashboards" — produces a post that is wrong about a real company and
+is worse than no post at all. If you cannot support a sentence from the context,
+delete it.
 
 WRITING STYLE — non-negotiable:
 1. Clarity over cleverness. Short sentences. Plain words. "Use" not "utilize." "Help" not "facilitate."
@@ -375,7 +399,10 @@ OUTPUT — respond with valid JSON only. No markdown fences, no commentary outsi
 
 function generateWithTemplate(startup: any, isPaid: boolean) {
   const category = startup.category || 'tech'
-  const description = startup.tagline || startup.description || `a ${category} tool for modern teams`
+  // The headline wants the short hook; the body wants the fuller explanation.
+  // Picking one for both is what starved the model path of context.
+  const hook = String(startup.tagline || '').trim()
+  const description = String(startup.description || '').trim() || hook || `a ${category} tool for modern teams`
   const startupUrl = `https://submithunt.com/startup/${startup.slug || startup.id}`
 
   // The template path runs when OpenRouter is unavailable. It used to emit one
@@ -384,7 +411,7 @@ function generateWithTemplate(startup: any, isPaid: boolean) {
   // it off the same stable seed the model path uses, so fallbacks don't cluster
   // either. Every variant names the product.
   const shortClaim = truncateAtWord(
-    String(description).replace(/\s+/g, ' ').replace(/[.!?]+$/, ''),
+    String(hook || description).replace(/\s+/g, ' ').replace(/[.!?]+$/, ''),
     Math.max(18, 60 - startup.title.length),
   )
   const prettyCategory = category.charAt(0).toUpperCase() + category.slice(1)
