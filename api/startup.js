@@ -175,5 +175,30 @@ export default async function handler(req, res) {
     }
   }
 
+  // Crawlable do-follow link to the listed product.
+  //
+  // Everything else on this page is client-rendered into #app-root, and the
+  // in-app "Visit Website" control used to be a <button> calling window.open(),
+  // which no crawler can follow. That meant the do-follow backlink the free
+  // badge is traded for — and the paid plans are sold on — did not exist in the
+  // raw HTML at all; the product URL appeared only inside JSON-LD "sameAs",
+  // which is metadata and passes no equity.
+  //
+  // This block sits OUTSIDE #app-root so Preact's render() doesn't wipe it on
+  // hydration. It is deliberately visible rather than hidden: serving a link to
+  // crawlers that users can't see is cloaking. Same href, same target, shown to
+  // everyone.
+  if (startup && startup.url) {
+    const host = String(startup.url).replace(/^https?:\/\//, '').replace(/^www\./, '').replace(/\/.*$/, '');
+    const outbound =
+      `<footer class="sh-ssr-outbound" style="max-width:1120px;margin:0 auto;padding:28px 20px 44px;` +
+      `font:14px/1.6 Inter,system-ui,sans-serif;color:#6b7280;">` +
+      `Official website for ${esc(startup.title)}: ` +
+      `<a href="${esc(startup.url)}" target="_blank" rel="noopener" ` +
+      `style="color:#c2410c;font-weight:600;text-decoration:underline;text-underline-offset:2px;">${esc(host)}</a>` +
+      `</footer>`;
+    html = html.includes('</body>') ? html.replace('</body>', `${outbound}</body>`) : html + outbound;
+  }
+
   res.status(startup ? 200 : 404).send(html);
 }

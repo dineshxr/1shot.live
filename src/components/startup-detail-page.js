@@ -197,16 +197,17 @@ export const StartupDetailPage = ({ user }) => {
     }
   }
   
-  const handleVisitWebsite = () => {
-    if (startup?.url) {
-      markVisited(startup.id);
-      trackEvent(ANALYTICS_EVENTS.LINK_CLICK, {
-        startupId: startup.id,
-        startupName: startup.title,
-        startupUrl: startup.url
-      });
-      window.open(addReferralParam(startup.url), '_blank');
-    }
+  // Tracking only — the anchor itself does the navigating. Deliberately does
+  // NOT preventDefault or call window.open: doing either would put us back to a
+  // JS-only link that search engines can't follow.
+  const trackVisitWebsite = () => {
+    if (!startup?.url) return;
+    markVisited(startup.id);
+    trackEvent(ANALYTICS_EVENTS.LINK_CLICK, {
+      startupId: startup.id,
+      startupName: startup.title,
+      startupUrl: startup.url
+    });
   };
   
   // Check if we should show navigation arrows
@@ -368,15 +369,24 @@ export const StartupDetailPage = ({ user }) => {
             </div>
           </div>
           
+          <!-- This MUST stay a real <a href>. It was a <button> firing
+               window.open(), which a crawler cannot follow — meaning the
+               do-follow backlink this whole product is sold on did not exist as
+               far as search engines were concerned. rel carries no "nofollow"
+               token, so the link passes equity; "noopener" is only tab-safety
+               and has no SEO effect. -->
           <div class="mb-6">
             <h2 class="text-xl font-bold mb-2">Website</h2>
             <p class="text-lg mb-2">${getHostname(startup.url)}</p>
-            <button
-              onClick=${handleVisitWebsite}
-              class="bg-black text-white px-6 py-3 rounded font-bold hover:bg-gray-800 transition-colors"
+            <a
+              href=${addReferralParam(startup.url)}
+              target="_blank"
+              rel="noopener"
+              onClick=${trackVisitWebsite}
+              class="inline-block bg-black text-white px-6 py-3 rounded font-bold hover:bg-gray-800 transition-colors"
             >
               Visit Website
-            </button>
+            </a>
           </div>
           
           ${startup.author &&
