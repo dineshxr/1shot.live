@@ -43,6 +43,7 @@ export default async function handler(req, res) {
   const urls = [
     tag(`${SITE}/`, today, 'daily', '1.0'),
     tag(`${SITE}/directory`, today, 'daily', '0.9'),
+    tag(`${SITE}/stats`, today, 'daily', '0.7'),
     tag(`${SITE}/submit.html`, today, 'weekly', '0.9'),
     tag(`${SITE}/pricing.html`, today, 'monthly', '0.7'),
     tag(`${SITE}/featured.html`, today, 'weekly', '0.7'),

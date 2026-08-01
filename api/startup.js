@@ -20,6 +20,25 @@ const clip = (s, n) => {
   s = String(s == null ? '' : s).replace(/\s+/g, ' ').trim();
   return s.length > n ? s.slice(0, n - 1).trimEnd() + '…' : s;
 };
+const stripHtml = (s) =>
+  String(s == null ? '' : s).replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+
+// Cleaned FAQ pairs from the AI-prefill details column: max 8 items, HTML
+// stripped, entries missing a question or answer skipped.
+function faqItems(details) {
+  const raw = details && typeof details === 'object' && Array.isArray(details.faq) ? details.faq : [];
+  const items = [];
+  for (const it of raw) {
+    if (!it || typeof it !== 'object') continue;
+    if (typeof it.question !== 'string' || typeof it.answer !== 'string') continue;
+    const question = stripHtml(it.question);
+    const answer = stripHtml(it.answer);
+    if (!question || !answer) continue;
+    items.push({ question, answer });
+    if (items.length >= 8) break;
+  }
+  return items;
+}
 
 let shellCache = null;
 async function getShell(host) {
@@ -73,6 +92,7 @@ function metaBlock(s, url, ogImg, title, desc) {
 
 function jsonLdBlock(s, url, ogImg) {
   const name = s.title || 'Startup';
+  const details = s.details && typeof s.details === 'object' ? s.details : null;
   const softwareApp = {
     '@context': 'https://schema.org',
     '@type': 'SoftwareApplication',
@@ -82,17 +102,22 @@ function jsonLdBlock(s, url, ogImg) {
     operatingSystem: 'Web',
     url,
     image: ogImg,
-    offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
     isPartOf: { '@type': 'WebSite', name: 'SubmitHunt', url: `${SITE}/` },
   };
+  // Only claim a price when we actually know it: the details column records
+  // the maker-declared pricing model. Anything other than 'Free' gets no
+  // offers block at all — we never guess a price.
+  if (details && details.pricing_model === 'Free') {
+    softwareApp.offers = { '@type': 'Offer', price: '0', priceCurrency: 'USD' };
+  }
   if (s.url) softwareApp.sameAs = [s.url];
+  // Upvotes are like-counts, not star ratings — represent them honestly as an
+  // InteractionCounter instead of a fabricated AggregateRating.
   if (Number(s.upvote_count) > 0) {
-    softwareApp.aggregateRating = {
-      '@type': 'AggregateRating',
-      ratingValue: '5',
-      ratingCount: String(Math.max(1, Number(s.upvote_count))),
-      bestRating: '5',
-      worstRating: '1',
+    softwareApp.interactionStatistic = {
+      '@type': 'InteractionCounter',
+      interactionType: { '@type': 'LikeAction' },
+      userInteractionCount: Number(s.upvote_count),
     };
   }
   const breadcrumb = {
@@ -111,8 +136,15 @@ function jsonLdBlock(s, url, ogImg) {
     url: `${SITE}/`,
     logo: `${SITE}/og-image.png`,
   };
-  return [softwareApp, breadcrumb, org]
-    .map((o) => `<script type="application/ld+json">${JSON.stringify(o)}</script>`)
+  // Deliberately NO FAQPage JSON-LD: the SPA does not render the FAQ, so the
+  // schema would describe content invisible to JS-rendering crawlers — the
+  // schema-not-backed-by-visible-content pattern Google penalizes. (FAQ rich
+  // results have also been restricted to gov/health sites since Aug 2023, so
+  // there is no upside.) The Q/A pairs still ship as plain noscript prose
+  // below for non-JS AI crawlers — content, not a schema claim.
+  const blocks = [softwareApp, breadcrumb, org];
+  return blocks
+    .map((o) => `<script type="application/ld+json">${JSON.stringify(o).replace(/</g, '\\u003c')}</script>`)
     .join('\n    ');
 }
 
@@ -126,7 +158,7 @@ export default async function handler(req, res) {
   let startup = null;
   try {
     const r = await fetch(
-      `${SUPABASE_URL}/rest/v1/startups?select=slug,title,tagline,description,category,tags,upvote_count,url,logo_url,screenshot_url&slug=eq.${encodeURIComponent(slug)}&limit=1`,
+      `${SUPABASE_URL}/rest/v1/startups?select=slug,title,tagline,description,category,tags,upvote_count,url,logo_url,screenshot_url,details&slug=eq.${encodeURIComponent(slug)}&limit=1`,
       { headers: { apikey: SUPABASE_ANON, Authorization: `Bearer ${SUPABASE_ANON}` } }
     );
     if (r.ok) {
@@ -164,14 +196,16 @@ export default async function handler(req, res) {
   let html = shell;
   if (startup) {
     if (html.includes('<!-- SSR_META_START -->') && html.includes('<!-- SSR_META_END -->')) {
-      html = html.replace(/<!-- SSR_META_START -->[\s\S]*?<!-- SSR_META_END -->/, `<!-- SSR_META_START -->${meta}\n    <!-- SSR_META_END -->`);
+      // Function replacers: interpolated content can contain $-sequences
+      // ($&, $', $`) which String.replace treats as patterns in string form.
+      html = html.replace(/<!-- SSR_META_START -->[\s\S]*?<!-- SSR_META_END -->/, () => `<!-- SSR_META_START -->${meta}\n    <!-- SSR_META_END -->`);
     } else {
-      html = html.replace(/<title>[\s\S]*?<\/title>/, '').replace('</head>', `${meta}\n  </head>`);
+      html = html.replace(/<title>[\s\S]*?<\/title>/, '').replace('</head>', () => `${meta}\n  </head>`);
     }
     if (html.includes('<!-- SSR_JSONLD_START -->') && html.includes('<!-- SSR_JSONLD_END -->')) {
-      html = html.replace(/<!-- SSR_JSONLD_START -->[\s\S]*?<!-- SSR_JSONLD_END -->/, `<!-- SSR_JSONLD_START -->\n    ${jsonld}\n    <!-- SSR_JSONLD_END -->`);
+      html = html.replace(/<!-- SSR_JSONLD_START -->[\s\S]*?<!-- SSR_JSONLD_END -->/, () => `<!-- SSR_JSONLD_START -->\n    ${jsonld}\n    <!-- SSR_JSONLD_END -->`);
     } else {
-      html = html.replace('</head>', `${jsonld}\n  </head>`);
+      html = html.replace('</head>', () => `${jsonld}\n  </head>`);
     }
   }
 
@@ -197,7 +231,32 @@ export default async function handler(req, res) {
       `<a href="${esc(startup.url)}" target="_blank" rel="noopener" ` +
       `style="color:#c2410c;font-weight:600;text-decoration:underline;text-underline-offset:2px;">${esc(host)}</a>` +
       `</footer>`;
-    html = html.includes('</body>') ? html.replace('</body>', `${outbound}</body>`) : html + outbound;
+    html = html.includes('</body>') ? html.replace('</body>', () => `${outbound}</body>`) : html + outbound;
+  }
+
+  // FAQ pairs as plain noscript prose for crawlers that don't execute JS.
+  // NOT paired with FAQPage JSON-LD (see jsonLdBlock) — the SPA doesn't render
+  // these, so a schema claim would describe content invisible to JS-rendering
+  // crawlers. Prose for non-JS agents is supplemental content; a schema block
+  // for it would be a rich-result claim we can't back. Sits OUTSIDE #app-root,
+  // same as the sh-ssr-outbound footer above, so hydration doesn't wipe it.
+  if (startup) {
+    const faq = faqItems(startup.details && typeof startup.details === 'object' ? startup.details : null);
+    if (faq.length) {
+      const faqSection =
+        `<noscript><section class="sh-ssr-faq" style="max-width:1120px;margin:0 auto;padding:0 20px 44px;` +
+        `font:14px/1.6 Inter,system-ui,sans-serif;color:#374151;">` +
+        `<h2 style="font-size:18px;margin:0 0 12px;">Frequently asked questions about ${esc(startup.title)}</h2>` +
+        faq
+          .map(
+            (f) =>
+              `<h3 style="font-size:15px;margin:16px 0 4px;">${esc(f.question)}</h3>` +
+              `<p style="margin:0;">${esc(f.answer)}</p>`
+          )
+          .join('') +
+        `</section></noscript>`;
+      html = html.includes('</body>') ? html.replace('</body>', () => `${faqSection}</body>`) : html + faqSection;
+    }
   }
 
   res.status(startup ? 200 : 404).send(html);

@@ -7,8 +7,9 @@ Allow: /
 # Sitemap location
 Sitemap: https://submithunt.com/sitemap.xml
 
-# Crawl-delay for respectful crawling
-Crawl-delay: 5
+# Crawl-delay removed (2026-07): Bing honors it and it was throttling Bingbot —
+# the index Microsoft Copilot answers from. Most other crawlers ignore the
+# directive anyway, so it cost Bing coverage for no benefit.
 
 # Main indexed pages
 Allow: /
@@ -21,6 +22,8 @@ Allow: /startup/*
 Allow: /directory
 Allow: /directory/*
 Allow: /api/og
+Allow: /stats
+Allow: /llms.txt
 
 # Private/utility pages (noindex but also disallow crawling to save budget)
 Disallow: /dashboard
@@ -31,6 +34,31 @@ Disallow: /api/
 Disallow: /admin/
 
 # Block test/debug pages
+Disallow: /test
+Disallow: /debug-routing
+Disallow: /test-auth
+
+# AI / answer-engine crawlers — explicitly welcome. They are already allowed by
+# the "*" rules above; naming them makes the intent unambiguous. Note: a bot
+# that matches a named group ignores the "*" group entirely, so the same
+# private-page disallows are repeated here to keep them in force.
+User-agent: GPTBot
+User-agent: ClaudeBot
+User-agent: Claude-Web
+User-agent: PerplexityBot
+User-agent: Bingbot
+User-agent: Google-Extended
+User-agent: CCBot
+User-agent: Amazonbot
+User-agent: Applebot-Extended
+Allow: /
+Allow: /api/og
+Disallow: /dashboard
+Disallow: /payment-success
+Disallow: /success
+Disallow: /auth/
+Disallow: /api/
+Disallow: /admin/
 Disallow: /test
 Disallow: /debug-routing
 Disallow: /test-auth

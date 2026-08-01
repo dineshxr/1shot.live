@@ -326,13 +326,15 @@ HEADLINE — hard requirements, read twice:
 5. No exclamation points, no clickbait, no unverifiable superlatives.
 
 STRUCTURE — one idea per section, logical flow from pain to action:
-${isPaid ? '- Open with a one-line "Editor\'s Pick" callout (italic <p><em>…</em></p>), then the hook below.\n' : ''}- Hook (1 short paragraph): a rhetorical question OR a sharp pain-point statement a ${category} reader would nod at. No "In today's world…" intros.
+${isPaid ? '- Open with a one-line "Editor\'s Pick" callout (italic <p><em>…</em></p>), then the direct answer below.\n' : ''}- DIRECT ANSWER (the opening paragraph of the article): 2–3 sentences that fully answer "What is ${startup.title} and who is it for?" on their own. An answer engine must be able to lift this paragraph verbatim as a complete, correct answer — name the product, state what it does, state who it's for. No teaser, no scene-setting; this paragraph stands alone.
+- Hook (1 short paragraph, after the direct answer): a rhetorical question OR a sharp pain-point statement a ${category} reader would nod at. No "In today's world…" intros.
 - <h2> The problem this solves: 1–2 paragraphs naming the specific pain in ${category} workflows. Use concrete examples a buyer would recognize.
 - <h2> What ${startup.title} does: factual description in 1–2 paragraphs. Lead with the outcome it produces, then the mechanism. Link the brand name to ${startup.url} on first mention.
 - <h2> What you get out of it: 3–5 bullet points, each starting with a <strong>concrete benefit</strong> and ending with the user-side outcome. Pattern: "<strong>{Outcome}.</strong> {How it works in one sentence.}"
 - <h2> Who it's for (and who it isn't): 1 short paragraph for each. Name the role/team. Saying who it isn't for builds trust.
 - <h2> Getting started: 2–4 sentences on the first action. Link ${startup.url} again here as the primary CTA. Mention the SubmitHunt listing (${startupUrl}) once for community context.
 - <h2> Bottom line: 1 paragraph that recaps the single most useful thing about ${startup.title} and tells the reader exactly what to do next.
+- <h2> FAQ (final section): 3–4 <h3> questions phrased the way a buyer would ask an AI assistant — e.g. "What does ${startup.title} do?", "Who is ${startup.title} for?", "How do I get started with ${startup.title}?" — each followed by a 1–2 sentence factual <p> answer. Answers obey the GROUNDING rule above: drawn ONLY from the context provided, never invented. Only include a question the context can actually answer.
 
 CTA RULES — every link to ${startup.url} should use action-led anchor text. GOOD: "Try ${startup.title}", "See ${startup.title} in action", "Get started with ${startup.title}". BAD: "click here", "learn more", "visit website", "sign up".
 

@@ -8,7 +8,9 @@
     {
       "src": "api/**/*.js",
       "use": "@vercel/node",
-      "config": { "includeFiles": "index.html" }
+      "config": {
+        "includeFiles": "index.html"
+      }
     }
   ],
   "rewrites": [
@@ -27,6 +29,14 @@
     {
       "source": "/blog",
       "destination": "/index.html"
+    },
+    {
+      "source": "/stats",
+      "destination": "/api/stats.js"
+    },
+    {
+      "source": "/blog/:slug",
+      "destination": "/api/blog.js?slug=:slug"
     },
     {
       "source": "/blog/:path*",

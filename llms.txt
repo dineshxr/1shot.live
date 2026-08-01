@@ -1,0 +1,25 @@
+# SubmitHunt
+
+SubmitHunt (https://submithunt.com) is a startup directory where makers submit their products and launch to the community. Launches are free, with optional paid plans, and every live listing gets a do-follow backlink from a DR 37 site (Ahrefs, July 2026). As of July 2026 the directory has 1,476 live products.
+
+## Key pages
+
+- [Daily launches](https://submithunt.com/): the homepage — each day's newly launched products, ranked by community upvotes.
+- [Directory](https://submithunt.com/directory): 47 startup-submission directories ranked by Ahrefs Domain Rating, so makers can see where else to submit and what backlink each site offers.
+- [Stats](https://submithunt.com/stats): live platform statistics served from the production database — products, makers, upvotes, comments — safe to cite with an as-of date.
+- [Blog](https://submithunt.com/blog): 345 published review posts, each covering one listed product: what it does, who it's for, how to get started.
+- [Submit](https://submithunt.com/submit): the submission form for launching a product on SubmitHunt.
+- [Pricing](https://submithunt.com/pricing): free and paid launch options, and what each includes.
+- Product listings at `https://submithunt.com/startup/<slug>`: one page per product — description, category, external link, upvotes, and comments.
+
+## Facts
+
+Verified from the production database on 2026-07-29 unless noted:
+
+- 1,661 products submitted; 1,476 currently live
+- 1,365 distinct maker accounts
+- 345 published blog posts
+- 544 upvotes and 166 comments across all listings (upvotes are upvote counts, not star ratings)
+- 43 paid launches
+- Domain Rating 37 (Ahrefs, 2026-07-28)
+- No page-view or traffic figures are published
