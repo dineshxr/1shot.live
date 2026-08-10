@@ -8,6 +8,8 @@
 
 const SITE = 'https://submithunt.com';
 
+import { CATEGORIES } from './category.js';
+
 const esc = (s) =>
   String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 
@@ -424,6 +426,15 @@ export default async function handler(req, res) {
     `<th scope="col">Link</th><th scope="col">Visit</th><th scope="col">Submit</th></tr></thead>` +
     `<tbody>${rowsHtml}</tbody></table><div id="empty">No directories match your filters.</div></div>` +
     `<p class="note">DR (Domain Rating) values are approximate and updated periodically. A “—” in the DR column means we have not measured that domain and make no DR claim for it; “Unverified” in the Link column means we have not confirmed what kind of backlink that site gives out. Always review each directory's guidelines before submitting.</p>` +
+    // Category link hub: /directory is the site's strongest indexed page after
+    // the homepage, so it anchors the internal-link mesh for the programmatic
+    // /category/:slug landing pages.
+    `<section class="seo"><h2>Browse launches by category</h2>` +
+    `<p style="display:flex;flex-wrap:wrap;gap:8px;max-width:none">` +
+    Object.entries(CATEGORIES)
+      .map(([slug, c]) => `<a href="/category/${slug}" style="background:#fff;border:1px solid #e2e8f0;border-radius:9999px;padding:6px 14px;font-size:13px;color:#475569;white-space:nowrap">${esc(c.name)}</a>`)
+      .join('') +
+    `</p></section>` +
     // SEO copy
     `<section class="seo"><h2>How to use this directory list</h2>` +
     `<p>Submitting your startup to directories is one of the fastest ways to earn your first backlinks, referral traffic, and a brand presence in search. Work down this list from the highest Domain Rating, prioritising <strong>dofollow</strong> directories that pass SEO value. Start with <a href="/submit" style="color:#f97316">SubmitHunt</a> for a free dofollow listing, then read our guides on <a href="/blog/list-your-startup" style="color:#f97316">listing your startup</a>, <a href="/blog/saas-directory-submission" style="color:#f97316">SaaS directory submission</a>, and <a href="/blog/startup-link-submission" style="color:#f97316">startup link submission</a>.</p>` +

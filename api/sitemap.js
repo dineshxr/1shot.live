@@ -2,6 +2,8 @@
 // Always-fresh: static pages + every published blog post + every live startup
 // + one page per category. Replaces the old hand-maintained sitemap.xml.
 
+import { CATEGORIES } from './category.js';
+
 const SUPABASE_URL = 'https://lbayphzxmdtdmrqmeomt.supabase.co';
 const SUPABASE_ANON =
   process.env.SUPABASE_ANON_KEY ||
@@ -28,8 +30,6 @@ async function fetchAll(query) {
   return out;
 }
 
-const slugifyCategory = (c) =>
-  String(c).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
 const xmlEscape = (s) =>
   String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&apos;');
 const day = (v, fallback) => (v ? String(v).slice(0, 10) : fallback);
@@ -49,6 +49,12 @@ export default async function handler(req, res) {
     tag(`${SITE}/featured.html`, today, 'weekly', '0.7'),
     tag(`${SITE}/blog`, today, 'weekly', '0.8'),
   ];
+
+  // One landing page per curated category (the allowlist in api/category.js —
+  // importing it keeps the sitemap and the routes in lockstep).
+  for (const slug of Object.keys(CATEGORIES)) {
+    urls.push(tag(`${SITE}/category/${slug}`, today, 'daily', '0.8'));
+  }
 
   try {
     const posts = await fetchAll('blog_posts?select=slug,updated_at,published_at&is_published=eq.true');

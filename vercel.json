@@ -27,8 +27,12 @@
       "destination": "/api/startup.js?slug=:slug"
     },
     {
+      "source": "/category/:slug",
+      "destination": "/api/category.js?slug=:slug"
+    },
+    {
       "source": "/blog",
-      "destination": "/index.html"
+      "destination": "/api/blog.js"
     },
     {
       "source": "/stats",

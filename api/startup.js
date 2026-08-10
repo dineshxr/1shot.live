@@ -7,6 +7,12 @@
 
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { CATEGORIES } from './category.js';
+
+// Reverse map: startups.category value -> /category/:slug page.
+const CATEGORY_SLUGS = Object.fromEntries(
+  Object.entries(CATEGORIES).map(([slug, c]) => [c.db, { slug, name: c.name }])
+);
 
 const SUPABASE_URL = 'https://lbayphzxmdtdmrqmeomt.supabase.co';
 const SUPABASE_ANON =
@@ -120,12 +126,17 @@ function jsonLdBlock(s, url, ogImg) {
       userInteractionCount: Number(s.upvote_count),
     };
   }
+  // Middle crumb: the startup's category landing page when we have one (it is
+  // the true parent collection), otherwise the directory.
+  const catPage = CATEGORY_SLUGS[s.category];
   const breadcrumb = {
     '@context': 'https://schema.org',
     '@type': 'BreadcrumbList',
     itemListElement: [
       { '@type': 'ListItem', position: 1, name: 'Home', item: `${SITE}/` },
-      { '@type': 'ListItem', position: 2, name: 'Directory', item: `${SITE}/directory` },
+      catPage
+        ? { '@type': 'ListItem', position: 2, name: catPage.name, item: `${SITE}/category/${catPage.slug}` }
+        : { '@type': 'ListItem', position: 2, name: 'Directory', item: `${SITE}/directory` },
       { '@type': 'ListItem', position: 3, name, item: url },
     ],
   };
@@ -224,12 +235,21 @@ export default async function handler(req, res) {
   // everyone.
   if (startup && startup.url) {
     const host = String(startup.url).replace(/^https?:\/\//, '').replace(/^www\./, '').replace(/\/.*$/, '');
+    // Visible category cross-link: a real crawlable anchor from every startup
+    // page into its /category/:slug collection (JSON-LD breadcrumbs alone pass
+    // no equity). Same visible-to-everyone rule as the outbound link.
+    const catPage = CATEGORY_SLUGS[startup.category];
+    const catLink = catPage
+      ? ` · More <a href="/category/${catPage.slug}" ` +
+        `style="color:#c2410c;font-weight:600;text-decoration:underline;text-underline-offset:2px;">${esc(catPage.name)}</a> on SubmitHunt`
+      : '';
     const outbound =
       `<footer class="sh-ssr-outbound" style="max-width:1120px;margin:0 auto;padding:28px 20px 44px;` +
       `font:14px/1.6 Inter,system-ui,sans-serif;color:#6b7280;">` +
       `Official website for ${esc(startup.title)}: ` +
       `<a href="${esc(startup.url)}" target="_blank" rel="noopener" ` +
       `style="color:#c2410c;font-weight:600;text-decoration:underline;text-underline-offset:2px;">${esc(host)}</a>` +
+      catLink +
       `</footer>`;
     html = html.includes('</body>') ? html.replace('</body>', () => `${outbound}</body>`) : html + outbound;
   }

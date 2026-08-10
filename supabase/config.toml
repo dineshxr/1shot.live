@@ -150,6 +150,22 @@ verify_jwt = false
 [functions.backfill-blog-posts]
 verify_jwt = false
 
+# Called hourly by pg_cron (recurring DR-reminder marketing blast); same
+# x-cron-secret auth as the other cron-driven functions.
+[functions.send-backlink-reminder]
+verify_jwt = false
+
+# Public by design: opened from unsubscribe links in marketing emails (and
+# POSTed by mail clients for RFC 8058 one-click unsubscribe). The HMAC token
+# in the link is the auth gate.
+[functions.unsubscribe]
+verify_jwt = false
+
+# Called weekly by pg_cron (Ahrefs DR probe -> site_config); same
+# x-cron-secret auth as the other cron-driven functions.
+[functions.update-domain-rating]
+verify_jwt = false
+
 # Invoked server-to-server by stripe-webhook with the service-role key, so the
 # gateway JWT check is the right gate here. Stated explicitly so a deploy can't
 # drift it. (create-checkout and stripe-webhook are configured further down.)

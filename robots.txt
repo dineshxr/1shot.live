@@ -1,6 +1,10 @@
 # SubmitHunt Robots.txt
 # https://submithunt.com
 
+# Content-Signal (contentsignals.org): search + AI answers + AI training all
+# welcome — AI answer engines citing SubmitHunt is distribution, not a cost.
+Content-Signal: search=yes, ai-input=yes, ai-train=yes
+
 User-agent: *
 Allow: /
 
@@ -19,6 +23,7 @@ Allow: /featured.html
 Allow: /blog
 Allow: /blog/*
 Allow: /startup/*
+Allow: /category/*
 Allow: /directory
 Allow: /directory/*
 Allow: /api/og

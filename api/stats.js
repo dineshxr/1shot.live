@@ -40,8 +40,35 @@ const FALLBACK = {
   paid: 43, // premium + featured launches
   free: 1618, // derived: 1,661 total − 43 paid (no independent measurement)
 };
-// DR is a static verified fact, not a live query.
-const DR = { value: 37, source: 'Ahrefs', measured: 'July 28, 2026' };
+// DR comes from site_config['domain_rating'] — the same row the marketing
+// emails read, refreshed weekly by the update-domain-rating cron (or by hand;
+// Ahrefs currently offers no API access). Still a verified fact rather than a
+// per-request Ahrefs query; this constant is the last-known-good fallback if
+// the config read fails.
+const DR_FALLBACK = { value: 37, source: 'Ahrefs', measured: 'July 28, 2026' };
+
+async function resolveDr() {
+  try {
+    const r = await fetch(
+      `${SUPABASE_URL}/rest/v1/site_config?select=value&key=eq.domain_rating&limit=1`,
+      { headers: { apikey: SUPABASE_ANON, Authorization: `Bearer ${SUPABASE_ANON}` } }
+    );
+    if (!r.ok) return DR_FALLBACK;
+    const rows = await r.json();
+    const v = rows && rows[0] && rows[0].value;
+    if (!v || typeof v.value !== 'number' || v.value < 1 || v.value > 100) return DR_FALLBACK;
+    let measured = DR_FALLBACK.measured;
+    if (typeof v.measured_at === 'string') {
+      const d = new Date(`${v.measured_at}T00:00:00Z`);
+      if (!isNaN(d)) {
+        measured = d.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC' });
+      }
+    }
+    return { value: Math.round(v.value), source: 'Ahrefs', measured };
+  } catch {
+    return DR_FALLBACK;
+  }
+}
 
 // "archived not true" — identical filter to api/sitemap.js.
 const NOT_ARCHIVED = 'or=(archived.is.null,archived.is.false)';
@@ -142,7 +169,7 @@ export default async function handler(req, res) {
   // NOTE: `votes` is RLS-protected, so the anon key usually sees 0 rows — the
   // zero-guard below turns that into the verified fallback rather than a false
   // "0 upvotes" claim. We keep querying in case the policy ever opens up.
-  const [cTotal, cLive, cUpvotes, cComments, cArticles, cFree, cPremium, cFeatured, rows] =
+  const [cTotal, cLive, cUpvotes, cComments, cArticles, cFree, cPremium, cFeatured, rows, DR] =
     await Promise.all([
       countExact(`startups?${NOT_ARCHIVED}`),
       countExact(`startups?is_live=eq.true&${NOT_ARCHIVED}`),
@@ -154,6 +181,9 @@ export default async function handler(req, res) {
       countExact(`startups?plan=eq.featured&${NOT_ARCHIVED}`),
       // Category + maker aggregation source: every non-archived startup.
       fetchAll(`startups?select=is_live,category,email:author->>email&${NOT_ARCHIVED}`),
+      // Shadows nothing: DR exists only inside the handler; resolveDr always
+      // returns a usable object (falls back internally).
+      resolveDr(),
     ]);
 
   // Every fallback baseline is > 0, so a 0 from any of these count queries can
