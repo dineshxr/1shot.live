@@ -1,4 +1,5 @@
 import { supabaseClient } from '../lib/supabase-client.js';
+import { uploadImage } from '../lib/upload-client.js';
 // Using global analytics functions defined in main.js instead of imports
 // html and useState are defined globally in main.js
 /* global html, useState, useEffect */
@@ -538,27 +539,15 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
       let logoUrl = null;
       if (formData.logo) {
         try {
-          console.log('Uploading logo to Supabase Storage...');
-          const logoExt = formData.logo.name.split('.').pop();
-          const logoPath = `logos/${uniqueSlug}.${logoExt}`;
-
-          const { error: logoUploadError } = await supabase.storage
-            .from('startup-images')
-            .upload(logoPath, formData.logo, {
-              cacheControl: '3600',
-              upsert: false
-            });
+          console.log('Uploading logo...');
+          const { url: uploadedLogoUrl, error: logoUploadError } = await uploadImage(formData.logo, 'logo');
 
           if (logoUploadError) {
             console.error('Logo upload error:', logoUploadError);
             throw new Error('Failed to upload logo. Please try again.');
           }
 
-          const { data: { publicUrl } } = supabase.storage
-            .from('startup-images')
-            .getPublicUrl(logoPath);
-
-          logoUrl = publicUrl;
+          logoUrl = uploadedLogoUrl;
           console.log(`Logo uploaded successfully: ${logoUrl}`);
         } catch (logoError) {
           console.error('Error uploading logo:', logoError);
@@ -573,27 +562,15 @@ export const SubmitStartupForm = ({ isOpen, onClose }) => {
           console.log(`Uploading ${formData.screenshots.length} screenshots to Supabase Storage...`);
           for (let i = 0; i < formData.screenshots.length; i++) {
             const file = formData.screenshots[i];
-            const ext = file.name.split('.').pop();
-            const screenshotPath = `screenshots/${uniqueSlug}-${i + 1}.${ext}`;
-
-            const { error: uploadError } = await supabase.storage
-              .from('startup-images')
-              .upload(screenshotPath, file, {
-                cacheControl: '3600',
-                upsert: false
-              });
+            const { url: uploadedUrl, error: uploadError } = await uploadImage(file, 'screenshot');
 
             if (uploadError) {
               console.error(`Screenshot ${i + 1} upload error:`, uploadError);
               throw new Error(`Failed to upload screenshot ${i + 1}. Please try again.`);
             }
 
-            const { data: { publicUrl } } = supabase.storage
-              .from('startup-images')
-              .getPublicUrl(screenshotPath);
-
-            screenshotUrls.push(publicUrl);
-            console.log(`Screenshot ${i + 1} uploaded successfully: ${publicUrl}`);
+            screenshotUrls.push(uploadedUrl);
+            console.log(`Screenshot ${i + 1} uploaded successfully: ${uploadedUrl}`);
           }
         } catch (screenshotError) {
           console.error('Error uploading screenshots:', screenshotError);

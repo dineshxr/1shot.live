@@ -1,9 +1,9 @@
 import { supabaseClient } from './supabase-client.js';
 import { config } from '../config.js';
+import { uploadImage } from './upload-client.js';
 
 const AI_PREFILL_URL = `${config.supabase.url}/functions/v1/ai-prefill`;
 const DR_URL = `${config.supabase.url}/functions/v1/domain-rating`;
-const STORAGE_BUCKET = 'startup-assets';
 
 // AI-Powered Form Prefill: ask the ai-prefill Edge Function (OpenRouter) to read
 // the URL and return structured fields + logo/cover/socials.
@@ -51,21 +51,4 @@ export const fetchDomainRating = async (url) => {
 
 // Upload a user-provided logo/cover to the public startup-assets bucket and
 // return its public URL. kind is just a filename prefix ('logo' | 'cover').
-export const uploadAsset = async (file, kind) => {
-  try {
-    const supabase = supabaseClient();
-    const ext = ((file.name || '').split('.').pop() || 'png').toLowerCase().replace(/[^a-z0-9]/g, '') || 'png';
-    const path = `submissions/${kind}-${Date.now()}-${Math.floor(Math.random() * 1e6)}.${ext}`;
-    const { error } = await supabase.storage.from(STORAGE_BUCKET).upload(path, file, {
-      contentType: file.type || 'image/png',
-      cacheControl: '3600',
-      upsert: true,
-    });
-    if (error) return { error: error.message };
-    const { data } = supabase.storage.from(STORAGE_BUCKET).getPublicUrl(path);
-    return { url: data.publicUrl };
-  } catch (e) {
-    console.error('uploadAsset error:', e);
-    return { error: 'Upload failed. Please try a different image.' };
-  }
-};
+export const uploadAsset = async (file, kind) => uploadImage(file, kind);
