@@ -74,7 +74,7 @@ export const getFreeSubmissionStatus = async (productUrl) => {
       return {
         eligible: true, unavailable: true,
         upvotes_done: 0, upvotes_required: 3,
-        comments_done: 0, comments_required: 1,
+        comments_done: 0, comments_required: 0,
         backlink_verified: false, is_returning: false,
       };
     }
@@ -84,7 +84,7 @@ export const getFreeSubmissionStatus = async (productUrl) => {
     return {
       eligible: true, unavailable: true,
       upvotes_done: 0, upvotes_required: 3,
-      comments_done: 0, comments_required: 1,
+      comments_done: 0, comments_required: 0,
       backlink_verified: false, is_returning: false,
     };
   }

@@ -1,6 +1,6 @@
 import { auth } from './lib/auth.js';
 import { supabaseClient } from './lib/supabase-client.js';
-import { BADGE_LIGHT_EMBED } from './lib/backlink.js';
+import { BADGE_LIGHT_EMBED, verifyBacklink } from './lib/backlink.js';
 
 class Dashboard {
     constructor() {
@@ -161,12 +161,9 @@ class Dashboard {
         if (section) section.classList.remove('hidden');
 
         const upReq = s.upvotes_required || 3;
-        const cmReq = s.comments_required || 1;
         const upDone = Math.min(s.upvotes_done || 0, upReq);
-        const cmDone = Math.min(s.comments_done || 0, cmReq);
         const upOk = upDone >= upReq;
-        const cmOk = cmDone >= cmReq;
-        const engagementReady = upOk && cmOk;
+        const engagementReady = upOk;
 
         const row = (ok, done, req, icon, title, hint) => `
             <div class="flex items-center gap-3 p-3 rounded-xl border ${ok ? 'border-emerald-200 bg-emerald-50/50' : 'border-gray-200'}">
@@ -186,14 +183,13 @@ class Dashboard {
             <div class="flex flex-wrap items-start justify-between gap-3 mb-1">
                 <div>
                     <h2 class="text-lg sm:text-xl font-semibold tracking-tight text-gray-900">Unlock your next free launch</h2>
-                    <p class="text-sm text-gray-500 mt-0.5">Each new free product needs a fresh set of community engagement${s.is_returning ? ' — progress resets after every launch' : ''}.</p>
+                    <p class="text-sm text-gray-500 mt-0.5">Each new free product needs ${upReq} fresh upvotes${s.is_returning ? ' — progress resets after every launch' : ''}.</p>
                 </div>
                 <a href="/" class="sh-btn-ghost text-sm shrink-0"><i class="fas fa-arrow-up-right-from-square text-xs"></i> Browse products</a>
             </div>
 
-            <div class="mt-4 grid gap-3 sm:grid-cols-2">
+            <div class="mt-4 grid gap-3">
                 ${row(upOk, upDone, upReq, 'fa-arrow-up', `Upvote ${upReq} products`, 'Discover and support products you love')}
-                ${row(cmOk, cmDone, cmReq, 'fa-comment', `Comment on ${cmReq} product${cmReq > 1 ? 's' : ''}`, 'Share your thoughts with the community')}
             </div>
 
             <div class="mt-3 flex items-start gap-2 text-xs text-gray-500">
@@ -208,7 +204,7 @@ class Dashboard {
                    </div>`
                 : `<div class="mt-4 flex flex-wrap items-center gap-2">
                        <a href="/" class="sh-btn-primary text-sm"><i class="fas fa-arrow-up text-xs"></i> Go engage</a>
-                       <span class="text-xs text-gray-400">Only upvotes & comments after your last launch count toward the next one.</span>
+                       <span class="text-xs text-gray-400">Only upvotes after your last launch count toward the next one.</span>
                    </div>`}
         `;
     }
@@ -403,12 +399,24 @@ class Dashboard {
                         <div class="rounded-lg border border-amber-200 bg-amber-50 p-3">
                             <p class="text-[13px] text-amber-800 leading-snug">
                                 <i class="fas fa-triangle-exclamation text-[11px] mr-1"></i>
-                                <strong>No do-follow backlink yet.</strong> Add our badge to your product's site to claim your free DR 38+ backlink and boost your own SEO.
+                                <strong>No do-follow backlink yet.</strong> Add our badge to your product's site, then verify it here to claim your free DR 38+ backlink and the gold verified checkmark.
                             </p>
                             <button onclick="dashboard.copyBadge(this)"
                                     class="mt-2 inline-flex items-center gap-1.5 text-xs font-semibold text-amber-900 border border-amber-300 bg-white px-2.5 py-1 rounded-lg hover:bg-amber-100 transition-colors">
                                 <i class="fas fa-copy text-[10px]"></i> Copy badge embed
                             </button>
+                            <div class="mt-2 flex gap-2">
+                                <input id="bl-url-${listing.id}" type="url"
+                                       value="${this.escapeAttr(listing.url)}"
+                                       placeholder="https://yourproduct.com"
+                                       aria-label="URL of the page with our badge"
+                                       class="flex-1 min-w-0 px-2.5 py-1.5 border border-amber-300 rounded-lg text-xs bg-white focus:outline-none focus:ring-2 focus:ring-amber-400" />
+                                <button id="bl-btn-${listing.id}" onclick="dashboard.verifyListingBacklink('${listing.id}')"
+                                        class="shrink-0 inline-flex items-center gap-1.5 text-xs font-semibold text-white bg-amber-600 hover:bg-amber-700 px-2.5 py-1.5 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                                    <i class="fas fa-shield-halved text-[10px]"></i> Verify
+                                </button>
+                            </div>
+                            <p id="bl-msg-${listing.id}" class="hidden mt-1.5 text-xs text-red-600"></p>
                         </div>
                     </div>
                     ` : ''}
@@ -431,6 +439,61 @@ class Dashboard {
                 </div>
             </div>
         `;
+    }
+
+    // Escape a DB-sourced string for use inside a double-quoted HTML attribute.
+    escapeAttr(value) {
+        return String(value || '')
+            .replace(/&/g, '&amp;')
+            .replace(/"/g, '&quot;')
+            .replace(/</g, '&lt;');
+    }
+
+    // Verify the badge for an EXISTING listing straight from the dashboard.
+    // The verify-backlink Edge Function records the verification and stamps
+    // startups.backlink_verified_at, so after a reload the reminder disappears
+    // and the listing shows the gold verified checkmark.
+    async verifyListingBacklink(listingId) {
+        const listing = this.listings.find(l => l.id === listingId);
+        const input = document.getElementById(`bl-url-${listingId}`);
+        const btn = document.getElementById(`bl-btn-${listingId}`);
+        const msg = document.getElementById(`bl-msg-${listingId}`);
+        if (!listing || !input || !btn) return;
+
+        const link = (input.value || '').trim();
+        if (!link) {
+            if (msg) {
+                msg.textContent = 'Enter the URL of the page where you placed our badge.';
+                msg.classList.remove('hidden');
+            }
+            return;
+        }
+
+        const originalHtml = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin text-[10px]"></i> Verifying…';
+        if (msg) msg.classList.add('hidden');
+
+        try {
+            const result = await verifyBacklink(link, listing.url);
+            if (result.verified) {
+                await this.loadUserListings();
+                return; // card re-renders without the reminder — nothing to restore
+            }
+            if (msg) {
+                msg.textContent = result.error || 'Could not verify the backlink. Please try again.';
+                msg.classList.remove('hidden');
+            }
+        } catch (e) {
+            console.error('Dashboard backlink verify failed:', e);
+            if (msg) {
+                msg.textContent = 'Something went wrong verifying. Please try again.';
+                msg.classList.remove('hidden');
+            }
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = originalHtml;
+        }
     }
 
     // Copy the do-follow badge embed from a listing's backlink reminder.

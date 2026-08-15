@@ -5,6 +5,7 @@ import { createCheckoutSession } from '../lib/stripe.js';
 import { config } from '../config.js';
 import { getFreeSubmissionStatus, verifyBacklink, BADGE_LIGHT_EMBED, BADGE_DARK_EMBED } from '../lib/backlink.js';
 import { aiPrefill, fetchDomainRating, uploadAsset } from '../lib/prefill.js';
+import { UpvoteProductsModal } from './upvote-products-modal.js';
 
 /* global html, useState, useEffect, useRef */
 
@@ -138,6 +139,11 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
   const [backlinkUrl, setBacklinkUrl] = useState('');
   const [verifyingBacklink, setVerifyingBacklink] = useState(false);
   const [backlinkError, setBacklinkError] = useState(null);
+  // True once THIS session verified the backlink — stamps the insert even if
+  // the status RPC is unavailable when the user hits Submit.
+  const [backlinkVerifiedNow, setBacklinkVerifiedNow] = useState(false);
+  // In-flow unlock helper: upvote products from a dialog without leaving the form.
+  const [showUpvoteModal, setShowUpvoteModal] = useState(false);
   const [skipBacklink, setSkipBacklink] = useState(false); // "continue with a no-follow backlink"
   const [copiedEmbed, setCopiedEmbed] = useState(''); // '' | 'light' | 'dark'
   // Phase 1 auto-fill (scrape metadata from the URL)
@@ -292,8 +298,8 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
   urlRef.current = formData.url;
   const statusReqRef = useRef(0);
 
-  // Combined free-plan unlock status: upvote 3 + comment 1 (fresh since the
-  // user's last free launch) + a verified do-follow backlink for this product.
+  // Combined free-plan unlock status: 3 upvotes (fresh since the user's last
+  // free launch) + optional do-follow backlink reporting for this product.
   // Returning users can resubmit free once they re-clear the gate. The check
   // fails open client-side; the DB trigger is the real enforcement.
   const checkFreeStatus = async (productUrl) => {
@@ -316,13 +322,12 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
   // Unlock state for the free plan. While the status is still loading we show
   // a spinner instead of flashing the unlock panel at already-eligible users.
   const statusLoading = !!user && freeStatus === null;
-  // Engagement (upvote + comment) is what UNLOCKS the form/slot picker. The
-  // do-follow backlink is a separate FINAL step that gates the Submit button —
-  // not the unlock — so the user fills details and picks a slot first.
+  // Engagement (3 upvotes) is what UNLOCKS the form/slot picker. The do-follow
+  // backlink is a separate FINAL step that gates the Submit button — not the
+  // unlock — so the user fills details and picks a slot first.
   const engagementDone = freeStatus
     ? (freeStatus.unavailable === true
-        || ((freeStatus.upvotes_done || 0) >= (freeStatus.upvotes_required || 3)
-            && (freeStatus.comments_done || 0) >= (freeStatus.comments_required || 1)))
+        || (freeStatus.upvotes_done || 0) >= (freeStatus.upvotes_required || 3))
     : true;
   const freeUnlocked = !statusLoading && engagementDone;
   const backlinkVerified = freeStatus ? (freeStatus.unavailable === true || !!freeStatus.backlink_verified) : true;
@@ -473,6 +478,11 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
       checkFreeStatus(formData.url);
     }
   }, [user, currentPage]);
+
+  // A session-local verification is bound to the product URL it was verified
+  // for — editing the URL invalidates it (the server keys verifications by
+  // host, so the re-pulled status stays authoritative for the new URL).
+  useEffect(() => { setBacklinkVerifiedNow(false); }, [formData.url]);
 
   // Re-check whenever the tab regains focus — the upvote/comment steps happen on
   // the homepage in another tab, so this is what ticks the checklist off when
@@ -640,6 +650,7 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
       const result = await verifyBacklink(link, formData.url);
       if (result.verified) {
         window.trackEvent('backlink_verify_success', {});
+        setBacklinkVerifiedNow(true);
         // Re-pull the combined status so the checklist + Submit unlock together.
         await checkFreeStatus();
       } else {
@@ -812,12 +823,12 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
       return;
     }
 
-    // Free launches must be unlocked first: upvote 3 + comment 1. The do-follow
+    // Free launches must be unlocked first: upvote 3 products. The do-follow
     // backlink is optional now, so it's not part of this gate. The DB trigger
     // enforces the engagement rule regardless; this just catches it early with a
     // friendlier message.
     if (formData.plan === 'free' && freeStatus && !freeStatus.eligible) {
-      setError('Complete the unlock steps first — upvote 3 products and comment on 1.');
+      setError('Complete the unlock step first — upvote 3 products.');
       return;
     }
 
@@ -1061,7 +1072,7 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
         // Record the verified backlink for ops/audit (the gate itself is the
         // DB trigger checking backlink_verifications).
         backlink_url: backlinkUrl.trim() || null,
-        backlink_verified_at: freeStatus && freeStatus.backlink_verified ? new Date().toISOString() : null,
+        backlink_verified_at: (backlinkVerifiedNow || (freeStatus && freeStatus.backlink_verified)) ? new Date().toISOString() : null,
       };
 
       let data = null;
@@ -1085,7 +1096,7 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
         }
         if (/FREE_UNLOCK_REQUIRED/i.test(msg)) {
           checkFreeStatus(); // re-sync the unlock checklist
-          throw new Error('Almost there — finish the unlock steps (upvote 3 products, comment on 1), then try again.');
+          throw new Error('Almost there — upvote 3 products to unlock, then try again.');
         }
         if (res.error.code === '23505' && /email/i.test(msg)) {
           // Transitional: the one-active-free-launch-per-email unique index
@@ -1810,16 +1821,9 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
     const s = freeStatus || {};
     const upDone = Math.min(s.upvotes_done || 0, s.upvotes_required || 3);
     const upReq = s.upvotes_required || 3;
-    const cmDone = Math.min(s.comments_done || 0, s.comments_required || 1);
-    const cmReq = s.comments_required || 1;
     const upOk = upDone >= upReq;
-    const cmOk = cmDone >= cmReq;
-    const stepsDone = (upOk ? 1 : 0) + (cmOk ? 1 : 0);
-    const counter = (done, ok) => ok
-      ? html`<span class="w-7 h-7 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-600 flex items-center justify-center shrink-0 mt-0.5"><i class="fas fa-check text-[11px]"></i></span>`
-      : html`<span class="text-xs font-semibold text-gray-500 tabular-nums shrink-0 mt-1.5">${done}</span>`;
     return html`
-                <!-- Unlock product submission: upvote 3 + comment 1 + verified backlink -->
+                <!-- Unlock product submission: upvote 3 products (comments + backlink no longer required) -->
                 <div class="border border-gray-200 rounded-2xl overflow-hidden">
                   <div class="flex items-start gap-4 px-5 sm:px-6 pt-6 pb-5 bg-gradient-to-b from-emerald-50/70 to-white">
                     <div class="w-11 h-11 rounded-xl bg-white border border-emerald-200 flex items-center justify-center text-emerald-600 shrink-0">
@@ -1829,53 +1833,49 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
                       <h3 class="text-lg font-semibold text-gray-900">Unlock product submission</h3>
                       <p class="text-sm text-gray-500 mt-0.5">
                         ${s.is_returning
-                          ? `You've launched here before. Support the community again to unlock your next free launch.`
-                          : `Complete the quick steps below so the community knows you before you launch.`}
+                          ? `You've launched here before. Upvote ${upReq} products again to unlock your next free launch.`
+                          : `Upvote ${upReq} products you like so the community knows you before you launch.`}
                       </p>
                       <div class="flex items-center gap-3 mt-3">
                         <div class="flex-1 h-1.5 rounded-full bg-gray-100 overflow-hidden">
-                          <div class="h-full bg-emerald-500 transition-all" style="width: ${Math.round((stepsDone / 2) * 100)}%"></div>
+                          <div class="h-full bg-emerald-500 transition-all" style="width: ${Math.round((upDone / upReq) * 100)}%"></div>
                         </div>
-                        <span class="text-sm font-semibold text-gray-700 tabular-nums">${stepsDone}/2</span>
+                        <span class="text-sm font-semibold text-gray-700 tabular-nums">${upDone}/${upReq}</span>
                       </div>
                     </div>
-                    <a
-                      href="/"
-                      target="_blank"
-                      rel="noopener"
+                    <button
+                      type="button"
+                      onClick=${() => setShowUpvoteModal(true)}
                       class="hidden sm:flex px-4 py-2 rounded-xl bg-gray-900 text-white text-sm font-medium hover:bg-gray-800 transition-colors items-center gap-2 shrink-0"
                     >
-                      Browse Products <i class="fas fa-arrow-right text-xs"></i>
-                    </a>
+                      Upvote products <i class="fas fa-arrow-right text-xs"></i>
+                    </button>
                   </div>
 
                   <div class="px-5 sm:px-6 pt-4 pb-1">
-                    <span class="text-xs font-semibold uppercase tracking-wider text-emerald-600">Requirements</span>
+                    <span class="text-xs font-semibold uppercase tracking-wider text-emerald-600">One quick step</span>
                   </div>
 
                   <div class="divide-y divide-gray-100">
-                    <!-- 1. Upvote 3 products -->
+                    <!-- Upvote 3 products — right here in a dialog, no tab-hopping -->
                     <div class="flex items-start gap-4 px-5 sm:px-6 py-4">
                       <div class="w-10 h-10 rounded-xl border bg-emerald-50 border-emerald-100 text-emerald-600 flex items-center justify-center shrink-0">
                         <i class="fas fa-arrow-up"></i>
                       </div>
                       <div class="flex-1 min-w-0">
                         <p class="font-semibold text-gray-900 text-sm">Upvote ${upReq} products</p>
-                        <p class="text-sm text-gray-500 mt-0.5">Discover and support products you love.</p>
+                        <p class="text-sm text-gray-500 mt-0.5">Discover and support products you love — without leaving this page.</p>
+                        <button
+                          type="button"
+                          onClick=${() => setShowUpvoteModal(true)}
+                          class="mt-2.5 px-4 py-2 rounded-xl bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-700 transition-colors inline-flex items-center gap-2"
+                        >
+                          <i class="fas fa-arrow-up text-xs"></i> ${upDone > 0 ? `Keep upvoting (${upDone}/${upReq})` : 'Upvote products now'}
+                        </button>
                       </div>
-                      ${upOk ? counter(upDone, true) : html`<span class="text-xs font-semibold text-gray-500 tabular-nums shrink-0 mt-1.5">${upDone}/${upReq}</span>`}
-                    </div>
-
-                    <!-- 2. Comment on 1 product -->
-                    <div class="flex items-start gap-4 px-5 sm:px-6 py-4">
-                      <div class="w-10 h-10 rounded-xl border bg-blue-50 border-blue-100 text-blue-600 flex items-center justify-center shrink-0">
-                        <i class="fas fa-comment"></i>
-                      </div>
-                      <div class="flex-1 min-w-0">
-                        <p class="font-semibold text-gray-900 text-sm">Comment on ${cmReq} product${cmReq > 1 ? 's' : ''}</p>
-                        <p class="text-sm text-gray-500 mt-0.5">Share your thoughts with the community.</p>
-                      </div>
-                      ${cmOk ? counter(cmDone, true) : html`<span class="text-xs font-semibold text-gray-500 tabular-nums shrink-0 mt-1.5">${cmDone}/${cmReq}</span>`}
+                      ${upOk
+      ? html`<span class="w-7 h-7 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-600 flex items-center justify-center shrink-0 mt-0.5"><i class="fas fa-check text-[11px]"></i></span>`
+      : html`<span class="text-xs font-semibold text-gray-500 tabular-nums shrink-0 mt-1.5">${upDone}/${upReq}</span>`}
                     </div>
                   </div>
 
@@ -1894,6 +1894,17 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
                 </div>
     `;
   })() : ''}
+
+              ${formData.plan === 'free' ? html`
+                <${UpvoteProductsModal}
+                  isOpen=${showUpvoteModal}
+                  onClose=${() => setShowUpvoteModal(false)}
+                  userEmail=${user?.email}
+                  done=${freeStatus ? (freeStatus.upvotes_done || 0) : 0}
+                  required=${freeStatus ? (freeStatus.upvotes_required || 3) : 3}
+                  onVoted=${() => checkFreeStatus()}
+                />
+              ` : ''}
 
               ${formData.plan === 'free' && freeUnlocked && wasLocked ? html`
                 <div class="px-4 py-3 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center gap-3">

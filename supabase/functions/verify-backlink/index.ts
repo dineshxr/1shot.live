@@ -243,6 +243,37 @@ Deno.serve(async (req) => {
       return json({ verified: false, error: 'Verified the link but failed to save it. Please try again.' }, 500)
     }
 
+    // Retroactively stamp any EXISTING listings for this maker + product host.
+    // startups.backlink_verified_at drives every user-visible "verified" signal
+    // (dashboard reminder, gold checkmark on the listing, launch-email nudges)
+    // but is otherwise only written at insert time — so a badge verified after
+    // launch never showed up anywhere. Non-fatal: the verification row above is
+    // already saved, which is what the free-launch gate reads.
+    try {
+      // ilike can only over-match (an email's "_" is a single-char wildcard),
+      // so candidates are re-checked exactly (email + normalized host) below.
+      const { data: candidates, error: candErr } = await admin
+        .from('startups')
+        .select('id, url, author')
+        .is('backlink_verified_at', null)
+        .ilike('author->>email', user.email)
+      if (candErr) throw candErr
+      const ids = (candidates ?? [])
+        .filter((s) =>
+          String((s as { author?: { email?: string } })?.author?.email ?? '').toLowerCase() === user.email.toLowerCase() &&
+          normalizeHost(String((s as { url?: string })?.url ?? '')) === productHost)
+        .map((s) => (s as { id: string }).id)
+      if (ids.length > 0) {
+        const { error: updErr } = await admin
+          .from('startups')
+          .update({ backlink_verified_at: new Date().toISOString(), backlink_url: linkUrl })
+          .in('id', ids)
+        if (updErr) throw updErr
+      }
+    } catch (e) {
+      console.error('retroactive startups backlink stamp failed (non-fatal):', e)
+    }
+
     return json({ verified: true, host: productHost, linkUrl }, 200)
   } catch (e) {
     return json({ verified: false, error: String((e as Error)?.message || e) }, 500)
