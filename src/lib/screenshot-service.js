@@ -3,6 +3,8 @@
  * Uses the Microlink API to capture screenshots of websites
  */
 
+import { uploadImage } from './upload-client.js';
+
 /**
  * Ensure the screenshot_url column exists in the startups table
  * 
@@ -135,33 +137,17 @@ export const uploadScreenshot = async (supabase, screenshotUrl, slug) => {
     }
     
     const imageBlob = await imageResponse.blob();
-    const fileName = `${slug}-${Date.now()}.png`;
-    const filePath = `startups/${fileName}`;
-    
-    console.log(`Uploading screenshot to Supabase storage: ${filePath}`);
-    
-    // Upload to Supabase storage
-    const { data, error } = await supabase.storage
-      .from('screenshots')
-      .upload(filePath, imageBlob, {
-        contentType: 'image/png',
-        cacheControl: '3600',
-        upsert: true
-      });
-    
+    const file = new File([imageBlob], `${slug}-${Date.now()}.png`, { type: imageBlob.type || 'image/png' });
+
+    // Compress in the browser and store on Cloudflare R2 via /api/upload
+    const { url, error } = await uploadImage(file, 'screenshot');
     if (error) {
-      throw error;
+      throw new Error(error);
     }
-    
-    // Get the public URL
-    const { data: publicUrlData } = supabase.storage
-      .from('screenshots')
-      .getPublicUrl(filePath);
-    
-    const publicUrl = publicUrlData.publicUrl;
-    console.log(`Screenshot uploaded successfully: ${publicUrl}`);
-    
-    return publicUrl;
+
+    console.log(`Screenshot uploaded successfully: ${url}`);
+
+    return url;
   } catch (error) {
     console.error('Error uploading screenshot:', error);
     throw error;
