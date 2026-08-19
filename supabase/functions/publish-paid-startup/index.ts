@@ -319,7 +319,7 @@ async function sendLiveNotification(listing: any, blogUrl: string | null = null)
           Products that reach the Top 3 on launch day all have one thing in common: their founders shared the listing within the first few hours. The earlier you share, the more momentum you build.
         </p>
         <p style="margin: 0 0 15px 0; color: #92400e; font-size: 14px; font-weight: bold;">
-          Top 3 products earn a permanent badge + a dofollow backlink from our 38+ DR site.
+          Top 3 products earn a permanent badge + a dofollow backlink from our 41+ DR site.
         </p>
         <a href="https://twitter.com/intent/tweet?text=${shareText}&url=${encodeURIComponent(startupUrl)}" style="display: inline-block; background-color: #000; color: #fff; padding: 10px 20px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 14px;">Share on X</a>
       </div>
@@ -329,7 +329,7 @@ async function sendLiveNotification(listing: any, blogUrl: string | null = null)
       <div style="background: linear-gradient(135deg, #7c3aed 0%, #5b21b6 100%); border-radius: 8px; padding: 25px; margin: 25px 0;">
         <h3 style="margin: 0 0 10px 0; color: #fff; font-size: 18px;">Your Featured Spot benefits are active</h3>
         <p style="margin: 0; color: #fff; font-size: 14px; line-height: 1.6; opacity: 0.95;">
-          ${listing.title} is running with featured placement in the feed — gradient-border card, prime visibility to every visitor for the next 7 days. Your guaranteed dofollow backlink (DR 38+) goes live within 24 hours.
+          ${listing.title} is running with featured placement in the feed — gradient-border card, prime visibility to every visitor for the next 7 days. Your guaranteed dofollow backlink (DR 41+) goes live within 24 hours.
         </p>
       </div>
       ` : `
@@ -337,7 +337,7 @@ async function sendLiveNotification(listing: any, blogUrl: string | null = null)
       <div style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); border-radius: 8px; padding: 25px; margin: 25px 0;">
         <h3 style="margin: 0 0 10px 0; color: #fff; font-size: 18px;">Your Premium benefits are active</h3>
         <p style="margin: 0; color: #fff; font-size: 14px; line-height: 1.6; opacity: 0.95;">
-          ${listing.title} has priority placement and stays on the homepage for 14 days — double the standard run. Your guaranteed dofollow backlink (DR 38+) goes live within 24 hours, and we'll feature you in our next newsletter to 2,000+ subscribers.
+          ${listing.title} has priority placement and stays on the homepage for 14 days — double the standard run. Your guaranteed dofollow backlink (DR 41+) goes live within 24 hours, and we'll feature you in our next newsletter to 2,000+ subscribers.
         </p>
       </div>
       `}
@@ -392,14 +392,14 @@ Your product page: ${startupUrl}
 THE #1 THING THAT SEPARATES TOP LAUNCHES
 Products that reach the Top 3 on launch day all have one thing in common: their founders shared the listing within the first few hours.
 
-Top 3 products earn a permanent badge + a dofollow backlink from our 38+ DR site.
+Top 3 products earn a permanent badge + a dofollow backlink from our 41+ DR site.
 
 Share on X: https://twitter.com/intent/tweet?text=${shareText}&url=${encodeURIComponent(startupUrl)}
 
 ${isFeatured ? `YOUR FEATURED SPOT BENEFITS ARE ACTIVE
-${listing.title} is running with featured placement in the feed — gradient-border card, prime visibility to every visitor for the next 7 days. Your guaranteed dofollow backlink (DR 38+) goes live within 24 hours.
+${listing.title} is running with featured placement in the feed — gradient-border card, prime visibility to every visitor for the next 7 days. Your guaranteed dofollow backlink (DR 41+) goes live within 24 hours.
 ` : `YOUR PREMIUM BENEFITS ARE ACTIVE
-${listing.title} has priority placement and stays on the homepage for 14 days — double the standard run. Your guaranteed dofollow backlink (DR 38+) goes live within 24 hours, and we'll feature you in our next newsletter to 2,000+ subscribers.
+${listing.title} has priority placement and stays on the homepage for 14 days — double the standard run. Your guaranteed dofollow backlink (DR 41+) goes live within 24 hours, and we'll feature you in our next newsletter to 2,000+ subscribers.
 `}
 
 ${blogUrl ? `YOUR BLOG POST IS LIVE
@@ -536,7 +536,7 @@ async function sendScheduledConfirmation(listing: any, launchDate: string): Prom
         <table style="width: 100%;" cellpadding="0" cellspacing="0">
           <tr><td style="padding: 5px 0; color: #555; font-size: 14px;">1. ${listing.title} goes live automatically on ${launchDay} at 8 AM PST — nothing more to do</td></tr>
           <tr><td style="padding: 5px 0; color: #555; font-size: 14px;">2. You'll get an email that morning with your live link + a dedicated SEO blog post about your product</td></tr>
-          <tr><td style="padding: 5px 0; color: #555; font-size: 14px;">3. ${isFeatured ? 'Your Featured placement runs for 7 days from launch' : 'You stay on the homepage for 14 days from launch'}, with your guaranteed dofollow backlink (DR 38+)</td></tr>
+          <tr><td style="padding: 5px 0; color: #555; font-size: 14px;">3. ${isFeatured ? 'Your Featured placement runs for 7 days from launch' : 'You stay on the homepage for 14 days from launch'}, with your guaranteed dofollow backlink (DR 41+)</td></tr>
         </table>
       </div>
 
@@ -579,7 +579,7 @@ Preview your listing: ${startupUrl}
 WHAT HAPPENS NEXT
 1. ${listing.title} goes live automatically on ${launchDay} at 8 AM PST — nothing more to do
 2. You'll get an email that morning with your live link + a dedicated SEO blog post about your product
-3. ${isFeatured ? 'Your Featured placement runs for 7 days from launch' : 'You stay on the homepage for 14 days from launch'}, with your guaranteed dofollow backlink (DR 38+)
+3. ${isFeatured ? 'Your Featured placement runs for 7 days from launch' : 'You stay on the homepage for 14 days from launch'}, with your guaranteed dofollow backlink (DR 41+)
 
 USE THE RUNWAY
 The products that hit the Top 3 line things up before launch day: draft your X post, give a few friends a heads-up to upvote in the first hour, and have your communities ready. We'll email you the moment ${listing.title} is live.

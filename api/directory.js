@@ -13,7 +13,7 @@ const esc = (s) =>
 
 // SubmitHunt — pinned + highlighted at the top.
 const FEATURED = {
-  name: 'SubmitHunt', url: SITE, submit: '/submit', dr: 38,
+  name: 'SubmitHunt', url: SITE, submit: '/submit', dr: 41,
   type: 'Startup Directory', pricing: 'Free', dofollow: true,
 };
 
@@ -186,8 +186,8 @@ export default async function handler(req, res) {
     `<meta name="robots" content="index, follow" />` +
     `<meta property="og:type" content="website" /><meta property="og:title" content="${esc(title)}" />` +
     `<meta property="og:description" content="${esc(desc)}" /><meta property="og:url" content="${esc(canonical)}" />` +
-    `<meta property="og:image" content="${SITE}/og-image.png" /><meta property="og:site_name" content="SubmitHunt" />` +
-    `<meta name="twitter:card" content="summary_large_image" /><meta name="twitter:image" content="${SITE}/og-image.png" />` +
+    `<meta property="og:image" content="${SITE}/og-image.png?v=41" /><meta property="og:site_name" content="SubmitHunt" />` +
+    `<meta name="twitter:card" content="summary_large_image" /><meta name="twitter:image" content="${SITE}/og-image.png?v=41" />` +
     `<link rel="icon" type="image/x-icon" href="/src/favicon_io/favicon.ico" />` +
     jsonld.map((o) => `<script type="application/ld+json">${JSON.stringify(o)}</script>`).join('') +
     `<style>${STYLES}</style></head><body>` +

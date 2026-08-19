@@ -164,7 +164,7 @@ html, body {
 }
 
 /* Backlink preview "drop" — when a free maker chooses to skip the do-follow
-   badge, the DR 38+ pill and gold checkmark visibly fall away so they feel
+   badge, the DR 41+ pill and gold checkmark visibly fall away so they feel
    exactly what they're giving up. */
 .sh-drop { display: inline-flex; align-items: center; transform-origin: center; }
 .sh-drop--gone { animation: sh-drop-fall 0.8s cubic-bezier(0.45, 0.03, 0.75, 0.28) forwards; }

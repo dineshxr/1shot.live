@@ -281,7 +281,7 @@ const FeaturedPage = () => {
                   </li>
                   <li class="flex items-start gap-2.5">
                     <i class="fas fa-check text-orange-600 mt-1 text-xs"></i>
-                    <span>Guaranteed high-authority backlink (38+ DR)</span>
+                    <span>Guaranteed high-authority backlink (41+ DR)</span>
                   </li>
                   <li class="flex items-start gap-2.5">
                     <i class="fas fa-check text-orange-600 mt-1 text-xs"></i>

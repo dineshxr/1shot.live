@@ -146,7 +146,7 @@ export const StartupCard = ({ startup, user, onUpvoteChange, allStartups }) => {
     }
 
     // Add the free backlink message
-    shareText += `\n\nEarning free DR 38+ backlink on submithunt`;
+    shareText += `\n\nEarning free DR 41+ backlink on submithunt`;
 
     // Add creator tag if available
     if (startup.author && startup.author.name) {
@@ -343,7 +343,7 @@ export const StartupCard = ({ startup, user, onUpvoteChange, allStartups }) => {
                         </linearGradient>
                       </svg>
                       <span class="pointer-events-none absolute left-1/2 -translate-x-1/2 top-[26px] z-30 whitespace-nowrap rounded-lg bg-gray-900 text-white text-[11px] font-medium leading-snug px-3 py-1.5 opacity-0 invisible group-hover/vf:opacity-100 group-hover/vf:visible transition-opacity duration-150 shadow-xl normal-case tracking-normal">
-                        <span class="font-semibold text-amber-300">Verified</span> — earning a DR 38+ backlink
+                        <span class="font-semibold text-amber-300">Verified</span> — earning a DR 41+ backlink
                         <span class="absolute -top-1 left-1/2 -translate-x-1/2 w-2 h-2 rotate-45 bg-gray-900"></span>
                       </span>
                     </span>

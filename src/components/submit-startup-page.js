@@ -132,7 +132,7 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
   const [freeStatus, setFreeStatus] = useState(null);
   const [checkingStatus, setCheckingStatus] = useState(false);
   const [wasLocked, setWasLocked] = useState(false); // saw the unlock panel this visit
-  // Backlink: an OPTIONAL final step. A do-follow badge earns a DR 38+ backlink,
+  // Backlink: an OPTIONAL final step. A do-follow badge earns a DR 41+ backlink,
   // but the maker can skip it (skipBacklink) and launch without — they just
   // forfeit the link equity (and we keep reminding them on the dashboard + in
   // the launch email).
@@ -1198,7 +1198,7 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
           <div class="mt-6 p-5 border border-orange-200 rounded-2xl bg-orange-50/40">
             <h3 class="font-semibold text-gray-900 mb-3 flex items-center">
               <i class="fas fa-award mr-2 text-orange-600"></i>
-              Get your badge & keep your 38+ DR backlink
+              Get your badge & keep your 41+ DR backlink
             </h3>
             <div class="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-xl">
               <p class="text-sm text-amber-900">Add our badge to your website to make your listing <strong>permanent</strong> and keep your backlink as <strong>dofollow</strong>.</p>
@@ -1277,7 +1277,7 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
             <i class="fas fa-rocket text-sm"></i>
           </div>
           <div class="text-sm">
-            <p class="font-medium text-gray-900">Submit your startup, get a 38+ DR backlink</p>
+            <p class="font-medium text-gray-900">Submit your startup, get a 41+ DR backlink</p>
             <p class="text-gray-600 mt-0.5">Join hundreds of founders who chose SubmitHunt.</p>
           </div>
         </div>
@@ -1969,7 +1969,7 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
               ` : ''}
 
               <!-- Optional final step: do-follow backlink (after slot selection).
-                   Recommended — earns a DR 38+ do-follow backlink — but skippable
+                   Recommended — earns a DR 41+ do-follow backlink — but skippable
                    via the toggle below. The DB gate no longer requires it. -->
               ${formData.plan === 'free' && freeUnlocked ? html`
                 <div class="border ${backlinkVerified ? 'border-emerald-200' : (skipBacklink ? 'border-amber-200' : 'border-gray-200')} rounded-2xl overflow-hidden">
@@ -1979,7 +1979,7 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
                     </div>
                     <div class="flex-1 min-w-0">
                       <p class="font-semibold text-gray-900 text-sm">Add a do-follow backlink <span class="font-normal text-gray-400">— recommended</span></p>
-                      <p class="text-sm text-gray-500 mt-0.5">Place our badge on your homepage or footer to claim a permanent <strong>DR 38+ do-follow backlink</strong> — and earn a <span class="inline-flex items-center gap-1 font-semibold text-amber-700"><svg viewBox="0 0 24 24" class="w-[15px] h-[15px]"><path fill="#f59e0b" d="M22.5 12c0-1.47-.81-2.75-2.01-3.42.32-1.3-.02-2.72-1.03-3.73s-2.43-1.35-3.73-1.03C15.03.81 13.75 0 12 0S8.97.81 8.27 2.79c-1.3-.32-2.72.02-3.73 1.03S3.19 6.25 3.51 7.55C2.31 8.22 1.5 9.5 1.5 12s.81 2.75 2.01 3.42c-.32 1.3.02 2.72 1.03 3.73s2.43 1.35 3.73 1.03C8.97 22.19 10.25 24 12 24s3.03-.81 3.73-2.79c1.3.32 2.72-.02 3.73-1.03s1.35-2.43 1.03-3.73C21.69 14.75 22.5 13.47 22.5 12z"/><path fill="#fff" d="M10.62 15.53l-3.15-3.15 1.32-1.32 1.83 1.83 4.55-4.55 1.32 1.33z"/></svg>gold verified checkmark</span> next to your listing. Skip it and you launch without either.</p>
+                      <p class="text-sm text-gray-500 mt-0.5">Place our badge on your homepage or footer to claim a permanent <strong>DR 41+ do-follow backlink</strong> — and earn a <span class="inline-flex items-center gap-1 font-semibold text-amber-700"><svg viewBox="0 0 24 24" class="w-[15px] h-[15px]"><path fill="#f59e0b" d="M22.5 12c0-1.47-.81-2.75-2.01-3.42.32-1.3-.02-2.72-1.03-3.73s-2.43-1.35-3.73-1.03C15.03.81 13.75 0 12 0S8.97.81 8.27 2.79c-1.3-.32-2.72.02-3.73 1.03S3.19 6.25 3.51 7.55C2.31 8.22 1.5 9.5 1.5 12s.81 2.75 2.01 3.42c-.32 1.3.02 2.72 1.03 3.73s2.43 1.35 3.73 1.03C8.97 22.19 10.25 24 12 24s3.03-.81 3.73-2.79c1.3.32 2.72-.02 3.73-1.03s1.35-2.43 1.03-3.73C21.69 14.75 22.5 13.47 22.5 12z"/><path fill="#fff" d="M10.62 15.53l-3.15-3.15 1.32-1.32 1.83 1.83 4.55-4.55 1.32 1.33z"/></svg>gold verified checkmark</span> next to your listing. Skip it and you launch without either.</p>
                     </div>
                     ${backlinkVerified ? html`<span class="w-7 h-7 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-600 flex items-center justify-center shrink-0 mt-0.5"><i class="fas fa-check text-[11px]"></i></span>` : ''}
                   </div>
@@ -1987,7 +1987,7 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
                   <div class="px-5 sm:px-6 pb-5 pt-1">
                     ${backlinkVerified ? html`
                       <p class="text-sm text-emerald-700 font-medium flex items-center gap-1.5">
-                        <i class="fas fa-check"></i> Backlink verified — your DR 38+ do-follow link is locked in, and your listing now shows the gold verified checkmark.
+                        <i class="fas fa-check"></i> Backlink verified — your DR 41+ do-follow link is locked in, and your listing now shows the gold verified checkmark.
                       </p>
                     ` : html`
                       <div class="space-y-3 ${skipBacklink ? 'opacity-60 pointer-events-none' : ''}">
@@ -2023,7 +2023,7 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
                       </div>
 
                       <!-- Live preview: what the listing keeps vs. loses. When the
-                           maker toggles "skip", the DR 38+ pill and gold checkmark
+                           maker toggles "skip", the DR 41+ pill and gold checkmark
                            drop away so the trade-off is felt, not just read. -->
                       <div class="mt-4 rounded-xl border ${skipBacklink ? 'border-amber-200 bg-amber-50/40' : 'border-gray-200 bg-white'} p-4 transition-colors overflow-hidden">
                         <p class="text-[11px] font-semibold uppercase tracking-wider text-gray-400 mb-2.5">Preview — your listing on the homepage</p>
@@ -2038,12 +2038,12 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
                               <path fill="#fff" d="M10.62 15.53l-3.15-3.15 1.32-1.32 1.83 1.83 4.55-4.55 1.32 1.33z"/>
                             </svg>
                           </span>
-                          <span class="sh-drop sh-drop--d1 ${skipBacklink ? 'sh-drop--gone' : 'sh-drop--in'} text-[11px] font-bold text-orange-700 bg-orange-50 border border-orange-200 px-2 py-0.5 rounded-full">DR 38+</span>
+                          <span class="sh-drop sh-drop--d1 ${skipBacklink ? 'sh-drop--gone' : 'sh-drop--in'} text-[11px] font-bold text-orange-700 bg-orange-50 border border-orange-200 px-2 py-0.5 rounded-full">DR 41+</span>
                         </div>
                         <p class="text-xs mt-2.5 ${skipBacklink ? 'text-amber-700' : 'text-gray-400'}">
                           ${skipBacklink
-        ? html`<i class="fas fa-arrow-trend-down mr-1"></i> Skipping drops your <strong>DR 38+ backlink</strong> and the <strong>gold verified checkmark</strong> — gone from your listing.`
-        : html`Verify your badge to keep the DR 38+ backlink and the gold verified checkmark on your listing.`}
+        ? html`<i class="fas fa-arrow-trend-down mr-1"></i> Skipping drops your <strong>DR 41+ backlink</strong> and the <strong>gold verified checkmark</strong> — gone from your listing.`
+        : html`Verify your badge to keep the DR 41+ backlink and the gold verified checkmark on your listing.`}
                         </p>
                       </div>
 
@@ -2052,7 +2052,7 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
                         <input type="checkbox" checked=${skipBacklink} onChange=${(e) => setSkipBacklink(e.target.checked)} class="mt-0.5 h-5 w-5 rounded-full border-2 border-gray-300 text-amber-600 focus:ring-amber-400 focus:ring-offset-0" />
                         <span class="text-sm text-gray-700">
                           <span class="font-medium text-gray-900">Continue with a no-follow backlink</span> — skip verification and launch now.
-                          <span class="block text-xs text-amber-700 mt-0.5">You'll forfeit your free DR 38+ do-follow link equity <strong>and the gold verified checkmark</strong> next to your listing. You can still add it later from your dashboard.</span>
+                          <span class="block text-xs text-amber-700 mt-0.5">You'll forfeit your free DR 41+ do-follow link equity <strong>and the gold verified checkmark</strong> next to your listing. You can still add it later from your dashboard.</span>
                         </span>
                       </label>
                     `}
@@ -2111,7 +2111,7 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
                         : html`${formData.launchDate ? 'Schedule free launch' : 'Submit free launch'} <i class="fas fa-arrow-right text-xs"></i>`}
                     </button>
                     ${!backlinkVerified && !skipBacklink ? html`<p class="text-xs text-gray-400">Verify your backlink above, or check “Continue with a no-follow backlink” to skip.</p>` : ''}
-                    ${!backlinkVerified && skipBacklink ? html`<p class="text-xs text-amber-600">Launching without a do-follow backlink — you'll miss the DR 38+ link equity and the gold verified checkmark on your listing.</p>` : ''}
+                    ${!backlinkVerified && skipBacklink ? html`<p class="text-xs text-amber-600">Launching without a do-follow backlink — you'll miss the DR 41+ link equity and the gold verified checkmark on your listing.</p>` : ''}
                   </div>
                 ` : ''}
 

@@ -246,7 +246,7 @@ const PricingPage = () => {
                   <i class="fas fa-chevron-down text-gray-400 text-xs transition-transform group-open:rotate-180"></i>
                 </summary>
                 <div class="px-6 pb-5 text-sm text-gray-600 leading-relaxed">
-                  A dofollow backlink passes SEO authority from our site (38+ DR) to yours, helping improve your search engine rankings.
+                  A dofollow backlink passes SEO authority from our site (41+ DR) to yours, helping improve your search engine rankings.
                 </div>
               </details>
 
