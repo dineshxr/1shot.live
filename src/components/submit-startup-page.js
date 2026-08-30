@@ -156,6 +156,10 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
   const [turnstileUnavailable, setTurnstileUnavailable] = useState(false); // widget couldn't load (e.g. blocked)
   const [freeDomainTaken, setFreeDomainTaken] = useState(false); // this site already submitted on free plan
   const [showScheduleConfirm, setShowScheduleConfirm] = useState(false); // free-launch confirmation modal
+  // "Slow lane" interstitial for free makers skipping the backlink: explains
+  // the >=1-week wait and offers the badge (or Priority) as the faster path.
+  const [showSlowLaneModal, setShowSlowLaneModal] = useState(false);
+  const [showBadgeNudge, setShowBadgeNudge] = useState(false); // clicked a badge-only date
   const [couponCopied, setCouponCopied] = useState(false);
 
   const getESTDateString = (date) => {
@@ -196,45 +200,66 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
     }
   };
 
+  // Free launches without a VERIFIED badge wait at least this many days; a
+  // verified do-follow badge unlocks the near-term ("this week") dates.
+  const FREE_MIN_WAIT_DAYS = 7;
+
+  // EST "today + n days" as YYYY-MM-DD — the free queue runs on the EST wall
+  // clock (8 AM EST go-live), so the 1-week cutoff is computed there too.
+  const estDatePlusDays = (n) => {
+    const est = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/New_York' }));
+    est.setHours(0, 0, 0, 0);
+    est.setDate(est.getDate() + n);
+    return getESTDateString(est);
+  };
+
   const generateLaunchDates = async () => {
     setLoadingDates(true);
-    const dates = [];
 
     const now = new Date();
     const estNow = new Date(now.toLocaleString("en-US", { timeZone: "America/New_York" }));
 
     let workingDate = new Date(estNow);
     workingDate.setHours(0, 0, 0, 0);
-    workingDate.setDate(workingDate.getDate() + 7);
+    workingDate.setDate(workingDate.getDate() + 1); // grid starts tomorrow (EST)
 
+    // Everything before this date is badge-only (needs a verified backlink).
+    const minOpenDate = estDatePlusDays(FREE_MIN_WAIT_DAYS);
+
+    // 10 upcoming weekdays: the badge-only week plus the open week(s) after it.
+    const candidates = [];
     let daysChecked = 0;
 
-    while (dates.length < 5 && daysChecked < 30) {
+    while (candidates.length < 10 && daysChecked < 30) {
       const dayOfWeek = workingDate.getDay();
 
       if (dayOfWeek >= 1 && dayOfWeek <= 5) {
         const dateOptions = { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'America/New_York' };
-        const formattedDate = workingDate.toLocaleDateString('en-US', dateOptions);
-        const dateValue = getESTDateString(workingDate);
-        const slotData = await fetchSlotAvailability(dateValue);
-        const slotsRemaining = slotData.free_slots_remaining;
-        const freeAvailable = slotsRemaining > 0;
-
-        dates.push({
-          date: formattedDate,
-          value: dateValue,
-          freeAvailable: freeAvailable,
-          premiumAvailable: true,
-          freeCount: slotData.free_count,
-          totalCount: slotData.total_count,
-          slotsRemaining: slotsRemaining,
-          dayOfWeek: dayOfWeek
+        candidates.push({
+          date: workingDate.toLocaleDateString('en-US', dateOptions),
+          value: getESTDateString(workingDate),
+          dayOfWeek: dayOfWeek,
         });
       }
 
       workingDate.setDate(workingDate.getDate() + 1);
       daysChecked++;
     }
+
+    // Slot lookups in parallel — 10 sequential RPCs would feel sluggish.
+    const dates = await Promise.all(candidates.map(async (c) => {
+      const slotData = await fetchSlotAvailability(c.value);
+      const slotsRemaining = slotData.free_slots_remaining;
+      return {
+        ...c,
+        freeAvailable: slotsRemaining > 0,
+        premiumAvailable: true,
+        freeCount: slotData.free_count,
+        totalCount: slotData.total_count,
+        slotsRemaining: slotsRemaining,
+        unlockRequired: c.value < minOpenDate, // badge-only date
+      };
+    }));
 
     setLoadingDates(false);
     return dates;
@@ -274,7 +299,7 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
   const getDelayText = () => {
     if (availableLaunchDates.length === 0) return 'Loading...';
 
-    const firstAvailable = availableLaunchDates.find(d => d.freeAvailable);
+    const firstAvailable = availableLaunchDates.find(d => d.freeAvailable && (!d.unlockRequired || badgeVerifiedStrict));
     if (!firstAvailable) return 'No slots available';
 
     const today = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/New_York' }));
@@ -331,6 +356,11 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
     : true;
   const freeUnlocked = !statusLoading && engagementDone;
   const backlinkVerified = freeStatus ? (freeStatus.unavailable === true || !!freeStatus.backlink_verified) : true;
+  // STRICT variant for the launch-date unlock: near-term (this-week) free dates
+  // require a POSITIVELY verified badge — no failing open, because the DB
+  // trigger (FREE_DELAY_REQUIRED) enforces the 1-week wait regardless and we
+  // never want to offer a date the insert would then reject.
+  const badgeVerifiedStrict = backlinkVerifiedNow || !!(freeStatus && freeStatus.backlink_verified);
 
 
   // On mount, restore any in-progress form data saved before an OAuth login
@@ -465,6 +495,17 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
       setFormData(prev => ({ ...prev, launchDate: fresh[0]?.value || '' }));
     }
   }, [formData.plan]);
+
+  // A free launch date inside the badge-only week is only valid while the
+  // badge is verified — clear it if that lapses (restored draft, expired
+  // verification, edited URL).
+  useEffect(() => {
+    if (formData.plan !== 'free' || !formData.launchDate) return;
+    const sel = availableLaunchDates.find(d => d.value === formData.launchDate);
+    if (sel && sel.unlockRequired && !badgeVerifiedStrict) {
+      setFormData(prev => ({ ...prev, launchDate: '' }));
+    }
+  }, [formData.plan, formData.launchDate, availableLaunchDates, badgeVerifiedStrict]);
 
   // Fetch the unlock status when the user lands on the plan step (page 2), and
   // reset it to null first so a freshly-edited URL can't briefly show the
@@ -660,6 +701,22 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
     } finally {
       setVerifyingBacklink(false);
     }
+  };
+
+  // Jump to the badge/verify step (from a locked date, the nudge, or the
+  // slow-lane modal) — and make sure the skip toggle is off again.
+  const scrollToBacklink = () => {
+    setSkipBacklink(false);
+    setShowSlowLaneModal(false);
+    setShowBadgeNudge(false);
+    window.trackEvent('badge_cta_clicked', {});
+    setTimeout(() => {
+      const el = document.getElementById('backlinkUrl');
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        try { el.focus({ preventScroll: true }); } catch (e) { /* ignore */ }
+      }
+    }, 60);
   };
 
   const copyEmbed = async (variant) => {
@@ -920,7 +977,7 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
       // slot in the grid — never a stray paid-window date. Paid plans use the
       // maker's chosen weekday as-is.
       const selectedLaunchDate = formData.plan === 'free'
-        ? (availableLaunchDates.some(d => d.value === formData.launchDate && d.freeAvailable) ? formData.launchDate : '')
+        ? (availableLaunchDates.some(d => d.value === formData.launchDate && d.freeAvailable && (!d.unlockRequired || badgeVerifiedStrict)) ? formData.launchDate : '')
         : formData.launchDate;
 
       const resolvedLaunchDate = selectedLaunchDate || await (async () => {
@@ -939,12 +996,17 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
             String(launchDay.getMonth() + 1).padStart(2, '0') + '-' +
             String(launchDay.getDate()).padStart(2, '0');
         }
-        // For free plan, get next available scheduled date
+        // For free plan: prefer the first grid date this user can actually
+        // pick (this-week dates need the verified badge). The RPC fallback
+        // already returns dates >= 1 week out for free plans.
+        const firstSelectable = availableLaunchDates.find(d => d.freeAvailable && (!d.unlockRequired || badgeVerifiedStrict));
+        if (firstSelectable) return firstSelectable.value;
         const { data: nextDate, error: dateError } = await supabase.rpc('get_next_launch_date');
         if (dateError) {
-          const pst = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Los_Angeles' }));
-          let nextDay = new Date(pst);
-          nextDay.setDate(pst.getDate() + 1);
+          // Last-ditch local fallback — honor the 1-week wait when unverified.
+          const est = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/New_York' }));
+          let nextDay = new Date(est);
+          nextDay.setDate(est.getDate() + (badgeVerifiedStrict ? 1 : FREE_MIN_WAIT_DAYS));
           while (nextDay.getDay() === 0 || nextDay.getDay() === 6) {
             nextDay.setDate(nextDay.getDate() + 1);
           }
@@ -1097,6 +1159,10 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
         if (/FREE_UNLOCK_REQUIRED/i.test(msg)) {
           checkFreeStatus(); // re-sync the unlock checklist
           throw new Error('Almost there — upvote 3 products to unlock, then try again.');
+        }
+        if (/FREE_DELAY_REQUIRED/i.test(msg)) {
+          checkFreeStatus(); // re-sync the badge state that drives the date grid
+          throw new Error('Free launches without a verified backlink are scheduled at least 1 week out. Pick a later date, or verify your badge to launch sooner.');
         }
         if (res.error.code === '23505' && /email/i.test(msg)) {
           // Transitional: the one-active-free-launch-per-email unique index
@@ -1610,7 +1676,7 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
                       </div>
                       <div class="flex items-start gap-2.5 mt-3 pt-3 border-t border-gray-200">
                         <i class="fas fa-clock text-amber-500 mt-1 text-xs"></i>
-                        <span class="text-amber-700 text-sm font-medium">Launch in ${getDelayText()}</span>
+                        <span class="text-amber-700 text-sm font-medium">Launch in ${getDelayText()}${!badgeVerifiedStrict ? html` <span class="text-gray-400 font-normal">— or this week with a verified badge</span>` : ''}</span>
                       </div>
                     </div>
                   </div>
@@ -1916,7 +1982,7 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
               ${formData.plan === 'free' && freeUnlocked ? html`
                 <div>
                   <h3 class="text-xl font-bold text-black mb-2">📅 Choose Your Launch Date</h3>
-                  <p class="text-gray-600 text-sm mb-4">Startups launch at 8 AM EST, Monday-Friday. Max 6 free slots per day.</p>
+                  <p class="text-gray-600 text-sm mb-4">Startups launch at 8 AM EST, Monday-Friday. Max 6 free slots per day. <span class="text-amber-700 font-medium">This-week dates need a verified badge — without one, launches wait at least 1 week.</span></p>
                   
                   ${loadingDates ? html`
                     <div class="flex items-center justify-center py-8">
@@ -1930,7 +1996,11 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
     const dayName = dayNames[date.dayOfWeek];
     const dateNum = date.date.split(' ')[2];
     const isSelected = formData.launchDate === date.value;
-    const isAvailable = date.freeAvailable;
+    // Dates inside the 1-week window need a verified badge; without one they
+    // render locked (amber) — the DB trigger enforces the same rule on insert.
+    const needsBadge = date.unlockRequired && !badgeVerifiedStrict;
+    const isAvailable = date.freeAvailable && !needsBadge;
+    const isLockedNear = date.freeAvailable && needsBadge;
 
     return html`
                           <div 
@@ -1938,20 +2008,36 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
         ? 'border-blue-500 bg-blue-100'
         : isAvailable
           ? 'border-black hover:bg-gray-50 cursor-pointer'
-          : 'border-gray-300 bg-gray-200 cursor-not-allowed'
+          : isLockedNear
+            ? 'border-dashed border-amber-300 bg-amber-50/70 cursor-pointer'
+            : 'border-gray-300 bg-gray-200 cursor-not-allowed'
       }"
-                            onClick=${isAvailable ? () => selectLaunchDate(date.value) : null}
+                            onClick=${isAvailable ? () => selectLaunchDate(date.value) : (isLockedNear ? () => setShowBadgeNudge(true) : null)}
+                            title=${isLockedNear ? 'Verify your badge to unlock this-week launch dates' : ''}
                           >
-                            <div class="text-xs font-bold ${isAvailable ? 'text-gray-600' : 'text-gray-400'}">${dayName}</div>
-                            <div class="text-lg font-bold ${isSelected ? 'text-blue-700' : isAvailable ? 'text-black' : 'text-gray-400'}">${dateNum}</div>
-                            <div class="text-xs ${isAvailable ? 'text-green-600' : 'text-red-500'} font-medium">
-                              ${isAvailable ? `${date.slotsRemaining} left` : 'Full / Sold Out'}
+                            <div class="text-xs font-bold ${isAvailable ? 'text-gray-600' : isLockedNear ? 'text-amber-700' : 'text-gray-400'}">${dayName}</div>
+                            <div class="text-lg font-bold ${isSelected ? 'text-blue-700' : isAvailable ? 'text-black' : isLockedNear ? 'text-amber-800' : 'text-gray-400'}">${dateNum}</div>
+                            <div class="text-xs ${isAvailable ? 'text-green-600' : isLockedNear ? 'text-amber-700' : 'text-red-500'} font-medium">
+                              ${date.freeAvailable ? (isLockedNear ? html`<i class="fas fa-lock text-[10px] mr-0.5"></i> Badge` : `${date.slotsRemaining} left`) : 'Full / Sold Out'}
                             </div>
                           </div>
                         `;
   })}
                     </div>
                   `}
+
+                  ${!loadingDates && availableLaunchDates.length > 0 ? (badgeVerifiedStrict ? html`
+                    <p class="text-xs text-emerald-700 mb-3"><i class="fas fa-unlock mr-1"></i> Badge verified — this-week launch dates are unlocked for you.</p>
+                  ` : html`
+                    <p class="text-xs text-gray-500 mb-3"><i class="fas fa-lock text-amber-500 mr-1"></i> Dates within the next 7 days are reserved for makers with a <strong>verified badge</strong> — add yours in the step below to launch up to a week sooner.</p>
+                  `) : ''}
+
+                  ${showBadgeNudge && !badgeVerifiedStrict ? html`
+                    <div class="mb-3 px-3 py-2.5 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-800 flex flex-wrap items-center justify-between gap-2">
+                      <span><strong>That date needs a verified badge.</strong> Add our do-follow badge to your site (~2 min) to unlock this-week launches.</span>
+                      <button type="button" onClick=${scrollToBacklink} class="shrink-0 font-semibold underline underline-offset-2 hover:text-amber-900">Add the badge ↓</button>
+                    </div>
+                  ` : ''}
 
                   ${availableLaunchDates.some(d => !d.freeAvailable) ? html`
                     <div class="mt-3 rounded-xl border border-orange-200 bg-gradient-to-r from-orange-50 to-amber-50 p-3 flex flex-wrap items-center justify-between gap-3">
@@ -2049,10 +2135,10 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
 
                       <!-- Skip toggle: continue with a no-follow (or no) backlink -->
                       <label class="mt-4 flex items-start gap-3 rounded-xl border ${skipBacklink ? 'border-amber-300 bg-amber-50/70' : 'border-gray-200 bg-white'} p-3 cursor-pointer transition-colors">
-                        <input type="checkbox" checked=${skipBacklink} onChange=${(e) => setSkipBacklink(e.target.checked)} class="mt-0.5 h-5 w-5 rounded-full border-2 border-gray-300 text-amber-600 focus:ring-amber-400 focus:ring-offset-0" />
+                        <input type="checkbox" checked=${skipBacklink} onChange=${(e) => { const on = e.target.checked; setSkipBacklink(on); if (on) { setShowSlowLaneModal(true); window.trackEvent('backlink_skip_toggled', {}); } }} class="mt-0.5 h-5 w-5 rounded-full border-2 border-gray-300 text-amber-600 focus:ring-amber-400 focus:ring-offset-0" />
                         <span class="text-sm text-gray-700">
-                          <span class="font-medium text-gray-900">Continue with a no-follow backlink</span> — skip verification and launch now.
-                          <span class="block text-xs text-amber-700 mt-0.5">You'll forfeit your free DR 41+ do-follow link equity <strong>and the gold verified checkmark</strong> next to your listing. You can still add it later from your dashboard.</span>
+                          <span class="font-medium text-gray-900">Continue with a no-follow backlink</span> — skip verification.
+                          <span class="block text-xs text-amber-700 mt-0.5">You'll forfeit your free DR 41+ do-follow link equity <strong>and the gold verified checkmark</strong> — and your launch waits <strong>at least 1 week</strong> in the queue. You can still add the badge later from your dashboard.</span>
                         </span>
                       </label>
                     `}
@@ -2111,7 +2197,7 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
                         : html`${formData.launchDate ? 'Schedule free launch' : 'Submit free launch'} <i class="fas fa-arrow-right text-xs"></i>`}
                     </button>
                     ${!backlinkVerified && !skipBacklink ? html`<p class="text-xs text-gray-400">Verify your backlink above, or check “Continue with a no-follow backlink” to skip.</p>` : ''}
-                    ${!backlinkVerified && skipBacklink ? html`<p class="text-xs text-amber-600">Launching without a do-follow backlink — you'll miss the DR 41+ link equity and the gold verified checkmark on your listing.</p>` : ''}
+                    ${!backlinkVerified && skipBacklink ? html`<p class="text-xs text-amber-600">Launching without a do-follow backlink — no DR 41+ link equity, no gold checkmark, and your launch waits at least 1 week in the queue.</p>` : ''}
                   </div>
                 ` : ''}
 
@@ -2147,6 +2233,58 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
         </form>
       </div>
 
+      ${showSlowLaneModal ? (() => {
+        const firstBadgeDate = availableLaunchDates.find(d => d.freeAvailable && d.unlockRequired);
+        const firstOpenDate = availableLaunchDates.find(d => d.freeAvailable && !d.unlockRequired);
+        return html`
+        <div class="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/50" onClick=${(e) => { if (e.target === e.currentTarget) setShowSlowLaneModal(false); }}>
+          <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+            <div class="px-6 pt-6 pb-4 text-center bg-gradient-to-b from-amber-50/80 to-white rounded-t-2xl">
+              <div class="inline-flex items-center justify-center w-12 h-12 rounded-full bg-amber-100 border border-amber-200 text-amber-600 mb-3">
+                <i class="fas fa-hourglass-half text-lg"></i>
+              </div>
+              <h3 class="text-xl font-semibold tracking-tight text-gray-900">Skipping the backlink puts you in the slow lane</h3>
+              <p class="text-sm text-gray-500 mt-1.5">Free launches without a verified badge wait <strong class="text-gray-700">at least 1 week</strong> in the queue. Makers who add the badge can launch this week.</p>
+            </div>
+
+            <div class="px-6 pt-2 pb-1 grid sm:grid-cols-2 gap-3">
+              <div class="rounded-xl border-2 border-emerald-200 bg-emerald-50/50 p-4">
+                <p class="text-[11px] font-bold uppercase tracking-wider text-emerald-700 mb-2"><i class="fas fa-rocket mr-1"></i> With the badge</p>
+                <p class="text-sm font-semibold text-gray-900">Launch ${firstBadgeDate ? firstBadgeDate.date : 'this week'}</p>
+                <ul class="mt-2 space-y-1.5 text-xs text-gray-600">
+                  <li><i class="fas fa-check text-emerald-600 mr-1.5"></i>DR 41+ do-follow backlink</li>
+                  <li><i class="fas fa-check text-emerald-600 mr-1.5"></i>Gold verified checkmark</li>
+                  <li><i class="fas fa-check text-emerald-600 mr-1.5"></i>This-week launch dates</li>
+                </ul>
+              </div>
+              <div class="rounded-xl border border-gray-200 bg-gray-50/60 p-4">
+                <p class="text-[11px] font-bold uppercase tracking-wider text-gray-500 mb-2"><i class="fas fa-hourglass-half mr-1"></i> Without it</p>
+                <p class="text-sm font-semibold text-gray-700">Earliest ${firstOpenDate ? firstOpenDate.date : 'in 1+ week'}</p>
+                <ul class="mt-2 space-y-1.5 text-xs text-gray-500">
+                  <li><i class="fas fa-xmark text-red-400 mr-1.5"></i>No-follow link only</li>
+                  <li><i class="fas fa-xmark text-red-400 mr-1.5"></i>No verified checkmark</li>
+                  <li><i class="fas fa-clock text-amber-500 mr-1.5"></i>Waits at least 1 week</li>
+                </ul>
+              </div>
+            </div>
+
+            <div class="px-6 py-4 space-y-2">
+              <button type="button" onClick=${scrollToBacklink} class="w-full py-2.5 rounded-xl bg-emerald-600 text-white font-semibold text-sm hover:bg-emerald-700 transition-colors flex items-center justify-center gap-2">
+                <i class="fas fa-link text-xs"></i> Add the badge instead — takes ~2 minutes
+              </button>
+              <button type="button" onClick=${() => setShowSlowLaneModal(false)} class="w-full py-2.5 rounded-xl border border-gray-200 text-gray-600 text-sm font-medium hover:bg-gray-50 transition-colors">
+                Continue without it${firstOpenDate ? ` — earliest launch ${firstOpenDate.date}` : ' — wait at least 1 week'}
+              </button>
+              <p class="text-center text-xs text-gray-400 pt-1">
+                In a hurry without a badge?
+                <button type="button" onClick=${() => { setShowSlowLaneModal(false); selectPlan('premium'); }} class="font-semibold text-orange-600 hover:text-orange-700 underline underline-offset-2">Priority Launch goes live today — $20</button>
+              </p>
+            </div>
+          </div>
+        </div>
+        `;
+      })() : ''}
+
       ${showScheduleConfirm ? html`
         <div class="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/50" onClick=${(e) => { if (e.target === e.currentTarget) setShowScheduleConfirm(false); }}>
           <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
@@ -2168,7 +2306,7 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
                 <p class="font-semibold text-gray-900 text-sm">${formData.projectName || 'Your product'}</p>
                 ${formData.launchDate
         ? html`<p class="text-sm text-gray-500 mt-0.5">Launch date: <span class="text-gray-700 font-medium">${new Date(formData.launchDate + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}</span></p>`
-        : html`<p class="text-sm text-gray-500 mt-0.5">Launches on the next available free date.</p>`}
+        : html`<p class="text-sm text-gray-500 mt-0.5">Launches on the next available free date${badgeVerifiedStrict ? '' : ' — at least 1 week out without a verified badge'}.</p>`}
               </div>
 
               <div class="rounded-xl border border-gray-200 px-4 py-4">
