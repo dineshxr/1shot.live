@@ -28,3 +28,19 @@ export function addReferralParam(url) {
     }
   }
 }
+
+/**
+ * Normalizes what a maker typed into the "website URL" field: trims it and
+ * prefixes https:// when no scheme was given, so "mystartup.com" and
+ * "www.mystartup.com" become valid URLs. Anything already carrying a
+ * "scheme://" is left alone (so http:// stays http://, and a non-web scheme
+ * like ftp:// is left for validation to reject).
+ * @param {string} raw
+ * @returns {string}
+ */
+export function normalizeWebsiteUrl(raw) {
+  const s = String(raw || '').trim();
+  if (!s) return '';
+  if (/^[a-z][a-z0-9+.-]*:\/\//i.test(s)) return s;
+  return `https://${s.replace(/^\/+/, '')}`;
+}

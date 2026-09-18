@@ -5,6 +5,7 @@ import { createCheckoutSession } from '../lib/stripe.js';
 import { config } from '../config.js';
 import { getFreeSubmissionStatus, verifyBacklink, BADGE_LIGHT_EMBED, BADGE_DARK_EMBED } from '../lib/backlink.js';
 import { aiPrefill, fetchDomainRating, uploadAsset } from '../lib/prefill.js';
+import { normalizeWebsiteUrl } from '../lib/url-utils.js';
 import { UpvoteProductsModal } from './upvote-products-modal.js';
 
 /* global html, useState, useEffect, useRef */
@@ -115,6 +116,8 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
   const [drValue, setDrValue] = useState(null);     // Ahrefs Domain Rating
   const [drLoading, setDrLoading] = useState(false);
   const [drAnim, setDrAnim] = useState(0);          // 0..1 count-up progress
+  const drUrlRef = useRef('');                      // URL of the in-flight / last DR lookup
+  const drReqRef = useRef(0);                       // lookup id — drops stale responses
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [uploadingCover, setUploadingCover] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -582,7 +585,7 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
   // (OpenRouter) and fill the form from the structured result. Fills empty-ish
   // fields so it never clobbers what the user already typed.
   const handleAutoFill = async () => {
-    const url = formData.url.trim();
+    const url = commitUrl();
     if (!url || autoFilling) return;
     setAutoFilling(true);
     setAutoFilled(false);
@@ -634,16 +637,39 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
     }
   };
 
-  // Domain Rating lookup (Ahrefs free endpoint) — shown next to the URL.
+  // Normalize the website field in place: trim + auto-prefix https:// when the
+  // maker typed a bare "mystartup.com". Writes the result back so the field
+  // shows the full URL, and returns it for immediate use (state is async).
+  const normalizeUrlField = () => {
+    const url = normalizeWebsiteUrl(formData.url);
+    if (url !== formData.url) setFormData((prev) => ({ ...prev, url }));
+    return url;
+  };
+
+  // Commit the URL field (blur / Prefill click): normalize, then look up DR.
+  const commitUrl = () => {
+    const url = normalizeUrlField();
+    lookupDomainRating(url);
+    return url;
+  };
+
+  // Domain Rating lookup (Ahrefs free endpoint) — shown under the URL row.
+  // Fires on the URL input's blur AND on the Prefill click; clicking Prefill
+  // blurs the input first, so both fire for the same URL — the second is a
+  // no-op. Responses for a URL the user has since changed are dropped.
   const lookupDomainRating = async (url) => {
     const u = (url || '').trim();
-    if (!u) { setDrValue(null); return; }
+    if (!u) { drUrlRef.current = ''; setDrValue(null); return; }
+    if (u === drUrlRef.current) return;
+    drUrlRef.current = u;
+    const reqId = ++drReqRef.current;
     setDrLoading(true);
     try {
       const res = await fetchDomainRating(u);
+      if (reqId !== drReqRef.current) return;
       setDrValue(typeof res.dr === 'number' ? res.dr : null);
     } finally {
-      setDrLoading(false);
+      if (reqId === drReqRef.current) setDrLoading(false);
     }
   };
 
@@ -739,11 +765,11 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
   // Flag whether this site (or a subpage/subdomain of it) is already on the
   // FREE plan. We don't hard-block here — the user can still pick a paid plan —
   // we just surface a warning on the plan step and disable the free option.
-  const checkDuplicateUrl = async () => {
-    if (!formData.url) { setFreeDomainTaken(false); return; }
+  const checkDuplicateUrl = async (url = formData.url) => {
+    if (!url) { setFreeDomainTaken(false); return; }
     try {
       const supabase = supabaseClient();
-      const { data, error } = await supabase.rpc('check_free_domain_taken', { p_url: formData.url });
+      const { data, error } = await supabase.rpc('check_free_domain_taken', { p_url: url });
       setFreeDomainTaken(!error && data === true);
     } catch (e) {
       console.error('Error in checkDuplicateUrl:', e);
@@ -758,12 +784,13 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
         return;
       }
 
-      if (!formData.url) {
+      const url = normalizeUrlField();
+      if (!url) {
         setError("Please enter a valid URL");
         return;
       }
 
-      if (!formData.url.startsWith('http://') && !formData.url.startsWith('https://')) {
+      if (!/^https?:\/\//i.test(url)) {
         setError("Please enter a valid URL starting with http:// or https://");
         return;
       }
@@ -776,14 +803,14 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
       // Slug is auto-derived; never block the user on it. Backfill if empty.
       if (!formData.slug) {
         const auto = generateSlug(formData.projectName)
-          || generateSlug(formData.url.replace(/^https?:\/\//, ''))
+          || generateSlug(url.replace(/^https?:\/\//, ''))
           || `startup-${Math.floor(Math.random() * 100000)}`;
         setFormData(prev => ({ ...prev, slug: auto }));
       }
 
       // Refresh the "already on free plan" flag for the plan-step warning. We do
       // NOT block here — the user may still choose a paid plan for this site.
-      await checkDuplicateUrl();
+      await checkDuplicateUrl(url);
 
       setError(null);
       setCurrentPage(2);
@@ -898,8 +925,9 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
     console.info('[submit] handleSubmit start', { plan: formData.plan });
 
     try {
-      if (!formData.url) throw new Error("Please enter a valid URL");
-      if (!formData.url.startsWith('http://') && !formData.url.startsWith('https://')) {
+      const siteUrl = normalizeUrlField();
+      if (!siteUrl) throw new Error("Please enter a valid URL");
+      if (!/^https?:\/\//i.test(siteUrl)) {
         throw new Error("Please enter a valid URL starting with http:// or https://");
       }
       if (!formData.projectName) throw new Error("Please enter a project name");
@@ -910,7 +938,7 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
       // handled by the insert retry loop / webhook, not by the user.
       const slug = (formData.slug && formData.slug.trim())
         || generateSlug(formData.projectName)
-        || generateSlug(formData.url.replace(/^https?:\/\//, ''))
+        || generateSlug(siteUrl.replace(/^https?:\/\//, ''))
         || `startup-${Math.floor(Math.random() * 100000)}`;
 
       const supabase = supabaseClient();
@@ -925,7 +953,7 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
       try {
         console.info('[submit] capturing screenshot (max 6s)');
         const screenshotPromise = (async () => {
-          const capturedScreenshotUrl = await captureScreenshot(formData.url, {
+          const capturedScreenshotUrl = await captureScreenshot(siteUrl, {
             width: 1280,
             height: 800,
             waitUntil: 'networkidle2'
@@ -956,7 +984,7 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
       } catch (screenshotError) {
         if (screenshotError && screenshotError.message === 'screenshot_timeout') {
           console.warn('[submit] screenshot skipped (timeout 6s) — Microlink slow/down');
-          window.trackEvent('screenshot_timeout', { url: formData.url });
+          window.trackEvent('screenshot_timeout', { url: siteUrl });
         } else {
           console.warn('[submit] screenshot skipped (error)', screenshotError);
           window.trackEvent('screenshot_failed', { error: String(screenshotError?.message || screenshotError).slice(0, 200) });
@@ -1027,7 +1055,7 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
       if (isPaid) {
         const submission = {
           title: formData.projectName,
-          url: formData.url,
+          url: siteUrl,
           tagline: formData.tagline || '',
           description: formData.description || '',
           slug,
@@ -1118,7 +1146,7 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
       };
       const baseRow = {
         title: formData.projectName,
-        url: formData.url,
+        url: siteUrl,
         tagline: formData.tagline || null,
         description: formData.description,
         category: formData.category,
@@ -1393,21 +1421,25 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
                   </div>
                 </div>
 
-                <div class="flex flex-col lg:flex-row gap-3 lg:items-start">
-                  <div class="flex-1 min-w-0">
+                <!-- Always stacked, never beside the URL row: the DR panel mounts
+                     on the URL input's blur, i.e. between mousedown and mouseup
+                     on the Prefill button. Sharing the row shifted the button out
+                     from under the cursor and swallowed the first click. -->
+                <div class="flex flex-col gap-3">
+                  <div class="min-w-0">
                     <div class="flex flex-col sm:flex-row gap-2">
                       <input
                         type="url" id="url" name="url"
                         value=${formData.url}
                         onInput=${handleChange}
-                        onBlur=${() => lookupDomainRating(formData.url)}
+                        onBlur=${commitUrl}
                         class="flex-1 px-3 py-2.5 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
                         placeholder="https://mystartup.com"
                         required
                       />
                       <button
                         type="button"
-                        onClick=${() => { handleAutoFill(); lookupDomainRating(formData.url); }}
+                        onClick=${handleAutoFill}
                         disabled=${autoFilling || !formData.url}
                         class="shrink-0 px-4 py-2.5 rounded-xl bg-indigo-600 text-white font-semibold text-sm hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                       >
@@ -1442,6 +1474,7 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
                         </div>
                       `}
                     </div>
+                    ${drValue != null ? html`<p class="text-[10px] text-gray-400">Domain Rating by Ahrefs</p>` : ''}
                   ` : ''}
                 </div>
               </div>
