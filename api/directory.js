@@ -6,7 +6,7 @@
 // without JavaScript.
 // Served at /directory via the rewrite to /api/directory.js in vercel.json.
 
-const SITE = 'https://submithunt.com';
+const SITE = 'https://www.submithunt.com';
 
 const esc = (s) =>
   String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');

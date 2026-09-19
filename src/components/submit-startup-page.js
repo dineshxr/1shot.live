@@ -1302,7 +1302,7 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
               <h4 class="text-sm font-semibold text-gray-900 mb-2">Embed code</h4>
               <img src="/badge-light.svg" alt="Featured on Submit Hunt" class="h-11 w-auto mb-3" />
               <div class="bg-gray-50 border border-gray-200 p-3 rounded-lg text-xs font-mono mb-3 overflow-x-auto text-gray-700">
-                <code id="embed-code">&lt;a href="https://submithunt.com" target="_blank"&gt;&lt;img src="https://submithunt.com/badge-light.svg" alt="Featured on Submit Hunt" width="240" height="66" /&gt;&lt;/a&gt;</code>
+                <code id="embed-code">&lt;a href="https://www.submithunt.com" target="_blank"&gt;&lt;img src="https://www.submithunt.com/badge-light.svg" alt="Featured on Submit Hunt" width="240" height="66" /&gt;&lt;/a&gt;</code>
               </div>
               <button
                 onClick=${() => {
@@ -1323,7 +1323,7 @@ export const SubmitStartupPage = ({ user, authLoading, onLoginRequired }) => {
                  class="w-10 h-10 flex items-center justify-center rounded-full border border-gray-200 text-gray-700 hover:bg-gray-50 hover:text-gray-900 transition-colors">
                 <i class="fab fa-twitter"></i>
               </a>
-              <a href="https://www.linkedin.com/sharing/share-offsite/?url=https://submithunt.com" target="_blank"
+              <a href="https://www.linkedin.com/sharing/share-offsite/?url=https://www.submithunt.com" target="_blank"
                  class="w-10 h-10 flex items-center justify-center rounded-full border border-gray-200 text-gray-700 hover:bg-gray-50 hover:text-gray-900 transition-colors">
                 <i class="fab fa-linkedin-in"></i>
               </a>

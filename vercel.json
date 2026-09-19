@@ -36,11 +36,11 @@
     },
     {
       "source": "/blog",
-      "destination": "/index.html"
+      "destination": "/api/blog.js"
     },
     {
-      "source": "/blog/:path*",
-      "destination": "/index.html"
+      "source": "/blog/:slug",
+      "destination": "/api/blog.js?slug=:slug"
     },
     {
       "source": "/featured",
@@ -85,12 +85,62 @@
           "value": "public, max-age=31536000, immutable"
         }
       ]
+    },
+    {
+      "source": "/(.*)",
+      "has": [
+        {
+          "type": "host",
+          "value": ".*\\.vercel\\.app"
+        }
+      ],
+      "headers": [
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, nofollow"
+        }
+      ]
     }
   ],
   "crons": [
     {
       "path": "/api/cron/x-roundup.js",
       "schedule": "15 16 * * 1-5"
+    }
+  ],
+  "redirects": [
+    {
+      "source": "/:path*",
+      "has": [
+        {
+          "type": "host",
+          "value": "1shot-live-eta.vercel.app"
+        }
+      ],
+      "destination": "https://www.submithunt.com/:path*",
+      "permanent": true
+    },
+    {
+      "source": "/:path*",
+      "has": [
+        {
+          "type": "host",
+          "value": "submithunt-dino06raos-projects.vercel.app"
+        }
+      ],
+      "destination": "https://www.submithunt.com/:path*",
+      "permanent": true
+    },
+    {
+      "source": "/:path*",
+      "has": [
+        {
+          "type": "host",
+          "value": "submithunt-git-main-dino06raos-projects.vercel.app"
+        }
+      ],
+      "destination": "https://www.submithunt.com/:path*",
+      "permanent": true
     }
   ]
 }

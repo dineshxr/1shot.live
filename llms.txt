@@ -1,0 +1,30 @@
+# SubmitHunt
+
+> SubmitHunt is a startup launch directory and Product Hunt alternative. Makers list a product in about two minutes and get a permanent listing page plus a do-follow backlink from a Domain Rating 44 site. Six free launch slots open every weekday; paid Premium and Featured plans skip the queue and get homepage placement.
+
+SubmitHunt has listed 1,600+ startups across 16 categories (SaaS, AI/ML, Productivity, Marketing, Web App, Developer Tools, E-commerce, Design, Education, Health & Fitness, Mobile App and more) and publishes a review post for every launch. Every page below is server-rendered, so its full text is readable without JavaScript.
+
+## Start here
+
+- [Submit your startup](https://www.submithunt.com/submit): the two-minute listing form; an AI prefill drafts the listing from your URL
+- [Pricing](https://www.submithunt.com/pricing): Free vs Premium vs Featured plans and what each includes
+- [Directory](https://www.submithunt.com/directory): every launched startup, browsable by category
+- [Featured startups](https://www.submithunt.com/featured): current homepage placements
+- [Blog](https://www.submithunt.com/blog): 500+ startup reviews and launch, backlink and directory guides; each post lives at /blog/<slug>
+
+## How listings work
+
+- Free listings launch on the next open weekday slot and stay live permanently with a do-follow link to the maker's site.
+- Makers who place the SubmitHunt badge on their site (a do-follow link back) get a verified gold checkmark on their listing and can launch the same week.
+- Each startup has its own page at https://www.submithunt.com/startup/<slug> with SoftwareApplication structured data, category, tags and upvotes.
+- Premium and Featured launches are highlighted in the daily launch roundup on X (@submithunt).
+
+## Machine-readable
+
+- [Sitemap](https://www.submithunt.com/sitemap.xml): every page, including all blog posts and startup pages, with last-modified dates
+- [robots.txt](https://www.submithunt.com/robots.txt): AI search crawlers are explicitly allowed
+
+## Contact
+
+- Email: hello@submithunt.com
+- X: https://x.com/submithunt

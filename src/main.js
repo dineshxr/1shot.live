@@ -56,5 +56,10 @@ window.PUBLIC_ENV = {
 };
 
 
+// Server-rendered blog markup (api/blog.js) exists for crawlers that do not run
+// JavaScript; remove it as the app takes over so nothing renders twice.
+const ssrRoot = document.getElementById("ssr-root");
+if (ssrRoot) ssrRoot.remove();
+
 // Render the App component
 render(html`<${App} />`, document.getElementById("app-root"));

@@ -7,11 +7,11 @@ const VERIFY_BACKLINK_URL = `${config.supabase.url}/functions/v1/verify-backlink
 // light/white backgrounds, dark for dark backgrounds. The embed is deliberately
 // do-follow — no rel="nofollow" — so it passes our own verifier and gives the
 // maker real link equity.
-export const BADGE_LIGHT_URL = 'https://submithunt.com/badge-light.svg';
-export const BADGE_DARK_URL = 'https://submithunt.com/badge-dark.svg';
+export const BADGE_LIGHT_URL = 'https://www.submithunt.com/badge-light.svg';
+export const BADGE_DARK_URL = 'https://www.submithunt.com/badge-dark.svg';
 
 const buildEmbed = (url) =>
-  `<a href="https://submithunt.com" target="_blank">` +
+  `<a href="https://www.submithunt.com" target="_blank">` +
   `<img src="${url}" alt="Featured on Submit Hunt" width="240" height="66" />` +
   `</a>`;
 
@@ -24,7 +24,7 @@ export const BADGE_EMBED_CODE = BADGE_LIGHT_EMBED;
 
 // Plain text-link alternative ("set your own link") — also do-follow.
 export const TEXT_LINK_EMBED_CODE =
-  `<a href="https://submithunt.com" target="_blank">Featured on Submit Hunt</a>`;
+  `<a href="https://www.submithunt.com" target="_blank">Featured on Submit Hunt</a>`;
 
 // Ask the verify-backlink Edge Function to fetch linkUrl and confirm a do-follow
 // link to submithunt.com on the product's own site. On success the function

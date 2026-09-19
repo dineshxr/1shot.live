@@ -9,7 +9,7 @@ const SUPABASE_URL = 'https://lbayphzxmdtdmrqmeomt.supabase.co';
 const SUPABASE_ANON =
   process.env.SUPABASE_ANON_KEY ||
   'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxiYXlwaHp4bWR0ZG1ycW1lb210Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDA5NTAyNTYsImV4cCI6MjA1NjUyNjI1Nn0.uSt7ll1Gy_TtbHxTyRtkyToZBIbW7ud18X45k5BdzKo';
-const SITE = 'https://submithunt.com';
+const SITE = 'https://www.submithunt.com';
 const FALLBACK = `${SITE}/og-image.png`;
 
 const h = (type, props) => ({ type, props: props || {} });
