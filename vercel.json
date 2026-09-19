@@ -8,10 +8,16 @@
     {
       "src": "api/**/*.js",
       "use": "@vercel/node",
-      "config": { "includeFiles": "index.html" }
+      "config": {
+        "includeFiles": "index.html"
+      }
     }
   ],
   "rewrites": [
+    {
+      "source": "/api/domain-rating",
+      "destination": "/api/domain-rating.js"
+    },
     {
       "source": "/img/:key*",
       "destination": "/api/img.js?key=:key*"
@@ -79,6 +85,12 @@
           "value": "public, max-age=31536000, immutable"
         }
       ]
+    }
+  ],
+  "crons": [
+    {
+      "path": "/api/cron/x-roundup.js",
+      "schedule": "15 16 * * 1-5"
     }
   ]
 }
