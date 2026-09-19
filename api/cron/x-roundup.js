@@ -10,6 +10,7 @@
 //    Post Bridge — so nothing double-posts if another poster fires first.
 // 3. Publishes immediately through Post Bridge to @submithunt on X, with the
 //    site link in the first comment (X strips links from the tweet body).
+//    Paid launches (premium / featured) get a starred shout-out line first.
 //
 // Env: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, POST_BRIDGE_API_KEY, CRON_SECRET.
 
@@ -60,32 +61,61 @@ function sortLaunches(rows) {
     (rank[a.plan] ?? 3) - (rank[b.plan] ?? 3) || String(a.created_at).localeCompare(String(b.created_at)));
 }
 
-// Fit the roundup into one tweet: shorten taglines, then drop them, then the
-// footer, then shorten titles, and finally list fewer makers with "+N more".
-// Never flattens the line structure.
+// Paid launches (premium / featured, payment_status = paid) get a starred
+// shout-out line each, listed first; free launches follow after a blank line.
+const PAID_LABEL = { featured: '🏆 Featured', premium: '⭐ Premium' };
+const isPaid = (s) => Boolean(PAID_LABEL[s.plan]) && s.payment_status === 'paid';
+
+// Fit the roundup into one tweet. Space is reclaimed in this order: free
+// taglines shrink then drop, paid taglines shrink then drop, footer goes,
+// titles shorten, and finally free launches fall off the end as "+N more".
+// Paid launches are never dropped. Line structure is always preserved.
 export function compose(launches) {
-  const build = (items, cap, footer, titleMax) => {
-    const lines = items.map((it) => {
-      const title = truncate(it.title, titleMax);
-      const who = it.handle ? `@${it.handle} – ${title}` : title;
-      return who + (cap && it.tagline ? `: ${truncate(it.tagline, cap)}` : '');
-    });
-    return `${header(launches.length)}\n\n${lines.join('\n')}${footer ? `\n\n${FOOTER}` : ''}`;
+  const items = sortLaunches(launches).map((s) => ({
+    paid: isPaid(s), label: PAID_LABEL[s.plan], handle: xHandle(s),
+    title: clean(s.title), tagline: clean(s.tagline),
+  }));
+  const paid = items.filter((it) => it.paid);
+  const free = items.filter((it) => !it.paid);
+  const total = launches.length;
+
+  const line = (it, cap, titleMax) => {
+    const title = truncate(it.title, titleMax);
+    const who = it.handle ? `@${it.handle} – ${title}` : title;
+    const tag = cap && it.tagline ? `: ${truncate(it.tagline, cap)}` : '';
+    return (it.paid ? `${it.label}: ` : '') + who + tag;
   };
-  const items = launches.map((s) => ({ handle: xHandle(s), title: clean(s.title), tagline: clean(s.tagline) }));
-  for (let cap = 45; cap >= 0; cap -= 5) {
-    const text = build(items, cap, true, 30);
-    if (text.length <= MAX_TWEET) return text;
+  const build = (freeItems, capPaid, capFree, footer, titleMax, dropped = 0) => {
+    const sections = [];
+    if (paid.length) sections.push(paid.map((it) => line(it, capPaid, titleMax)).join('\n'));
+    const freeLines = freeItems.map((it) => line(it, capFree, titleMax));
+    if (dropped) freeLines.push(`+${dropped} more`);
+    if (freeLines.length) sections.push(freeLines.join('\n'));
+    return `${header(total)}\n\n${sections.join('\n\n')}${footer ? `\n\n${FOOTER}` : ''}`;
+  };
+  const fits = (text) => text.length <= MAX_TWEET;
+
+  // Tagline caps step down to 15 and then straight to 0: a shorter stub
+  // ("A ta…") reads worse than no tagline at all.
+  const CAPS_FREE = [45, 40, 35, 30, 25, 20, 15, 0];
+  const CAPS_PAID = [60, 50, 40, 30, 20, 15, 0];
+  for (const cap of CAPS_FREE) {
+    const text = build(free, 60, cap, true, 30);
+    if (fits(text)) return text;
+  }
+  for (const cap of CAPS_PAID) {
+    const text = build(free, cap, 0, true, 30);
+    if (fits(text)) return text;
   }
   for (const titleMax of [30, 22]) {
-    const text = build(items, 0, false, titleMax);
-    if (text.length <= MAX_TWEET) return text;
+    const text = build(free, 0, 0, false, titleMax);
+    if (fits(text)) return text;
   }
-  for (let keep = items.length - 1; keep >= 1; keep -= 1) {
-    const text = `${build(items.slice(0, keep), 0, false, 22)}\n+${items.length - keep} more`;
-    if (text.length <= MAX_TWEET) return text;
+  for (let keep = free.length - 1; keep >= 0; keep -= 1) {
+    const text = build(free.slice(0, keep), 0, 0, false, 22, free.length - keep);
+    if (fits(text)) return text;
   }
-  return truncate(header(launches.length), MAX_TWEET);
+  return truncate(header(total), MAX_TWEET);
 }
 
 async function loadLaunches(day) {
