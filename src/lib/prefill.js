@@ -3,7 +3,9 @@ import { config } from '../config.js';
 import { uploadImage } from './upload-client.js';
 
 const AI_PREFILL_URL = `${config.supabase.url}/functions/v1/ai-prefill`;
-const DR_URL = `${config.supabase.url}/functions/v1/domain-rating`;
+// Same-origin Vercel route (api/domain-rating.js) — holds the Ahrefs key and
+// CDN-caches results per URL for a day.
+const DR_URL = '/api/domain-rating';
 
 // AI-Powered Form Prefill: ask the ai-prefill Edge Function (OpenRouter) to read
 // the URL and return structured fields + logo/cover/socials.
@@ -32,15 +34,11 @@ export const aiPrefill = async (url) => {
   }
 };
 
-// Ahrefs Domain Rating (0-100) for a URL, via the free public endpoint proxy.
+// Ahrefs Domain Rating (0-100) for a URL, via our /api/domain-rating proxy.
 // Resolves to { dr: number } or { error }.
 export const fetchDomainRating = async (url) => {
   try {
-    const res = await fetch(DR_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', apikey: config.supabase.anonKey },
-      body: JSON.stringify({ url }),
-    });
+    const res = await fetch(`${DR_URL}?url=${encodeURIComponent(url)}`);
     const data = await res.json().catch(() => ({}));
     if (typeof data.domain_rating === 'number') return { dr: data.domain_rating };
     return { error: data.error || 'No Domain Rating available.' };

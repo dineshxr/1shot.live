@@ -118,9 +118,6 @@ verify_jwt = false
 verify_jwt = false
 
 # domain-rating just proxies Ahrefs' free public endpoint — publicly invokable.
-[functions.domain-rating]
-verify_jwt = false
-
 # Called hourly by pg_cron via pg_net, which can't send a platform JWT. Auth is
 # an x-cron-secret header checked in code against the CRON_SECRET edge secret
 # (same value stored in Vault as 'cron_secret').
