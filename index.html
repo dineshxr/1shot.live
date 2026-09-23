@@ -55,6 +55,12 @@
     />
     <link rel="stylesheet" href="/src/style.css" />
 
+    <!-- The homepage's static crawler markup (#ssr-root[data-home] in <body>)
+         is only for clients without JavaScript: JS browsers never paint it, and
+         src/main.js removes it as the SPA boots. -->
+    <script>document.documentElement.classList.add('js');</script>
+    <style>.js #ssr-root[data-home]{display:none}</style>
+
     <!-- Analytics: wrapped so adblocker / network failures never break boot -->
     <script>
       window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };
@@ -179,6 +185,21 @@
     <!-- SSR_JSONLD_END -->
   </head>
   <body>
+    <!-- HOME_SSR_START -->
+    <!-- Homepage-only: the sponsor links as plain HTML so crawlers that don't
+         run JavaScript still see (and follow) them. Keep in sync with SPONSORS
+         in src/components/right-sidebar.js. getShell() in lib/ssr.js strips
+         this region when the file is reused as the shell for other routes. -->
+    <div id="ssr-root" data-home>
+      <aside aria-label="Sponsored" class="max-w-md mx-auto px-4 py-10">
+        <p class="text-[11px] font-semibold text-gray-500 uppercase tracking-wider mb-3">Sponsored</p>
+        <ul class="space-y-3 text-sm text-gray-600">
+          <li><a href="https://www.bolly.ai/" target="_blank" rel="noopener" class="font-medium text-gray-900 underline underline-offset-2">Bolly.AI</a> — AI meme video maker: put yourself in any viral clip.</li>
+          <li><a href="https://www.memebuilder.ai/" target="_blank" rel="noopener" class="font-medium text-gray-900 underline underline-offset-2">MemeBuilder AI</a> — Convert text to memes with AI, perfect for marketers.</li>
+        </ul>
+      </aside>
+    </div>
+    <!-- HOME_SSR_END -->
     <div id="app-root"></div>
     <script type="importmap">
       {

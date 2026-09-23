@@ -56,8 +56,9 @@ window.PUBLIC_ENV = {
 };
 
 
-// Server-rendered blog markup (api/blog.js) exists for crawlers that do not run
-// JavaScript; remove it as the app takes over so nothing renders twice.
+// Server-rendered markup (api/blog.js, index.html's homepage sponsor block)
+// exists for crawlers that do not run JavaScript; remove it as the app takes
+// over so nothing renders twice.
 const ssrRoot = document.getElementById("ssr-root");
 if (ssrRoot) ssrRoot.remove();
 

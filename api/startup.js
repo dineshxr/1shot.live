@@ -5,8 +5,7 @@
 // This is what makes per-startup OG images + rich results work for crawlers,
 // which do not execute the client-side JS.
 
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { getShell } from '../lib/ssr.js';
 
 const SUPABASE_URL = 'https://lbayphzxmdtdmrqmeomt.supabase.co';
 const SUPABASE_ANON =
@@ -20,27 +19,6 @@ const clip = (s, n) => {
   s = String(s == null ? '' : s).replace(/\s+/g, ' ').trim();
   return s.length > n ? s.slice(0, n - 1).trimEnd() + '…' : s;
 };
-
-let shellCache = null;
-async function getShell(host) {
-  if (shellCache) return shellCache;
-  try {
-    shellCache = readFileSync(join(process.cwd(), 'index.html'), 'utf8');
-    return shellCache;
-  } catch {
-    /* fall through to HTTP */
-  }
-  try {
-    const r = await fetch(`https://${host}/index.html`);
-    if (r.ok) {
-      shellCache = await r.text();
-      return shellCache;
-    }
-  } catch {
-    /* fall through to null */
-  }
-  return null;
-}
 
 function metaBlock(s, url, ogImg, title, desc) {
   const tags = Array.isArray(s.tags) ? s.tags.filter(Boolean) : [];

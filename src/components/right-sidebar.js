@@ -1,5 +1,25 @@
 /* global html */
 
+// Permanent sponsored listings in the "Featured" rail. The links are
+// deliberately do-follow: never add rel="nofollow", "sponsored" or "ugc".
+// Link the final https://www. URL (both apexes 307 there). index.html repeats
+// these links as static HTML (HOME_SSR block) so crawlers that don't run
+// JavaScript see them too — keep the two lists in sync.
+const SPONSORS = [
+  {
+    name: 'Bolly.AI',
+    url: 'https://www.bolly.ai/',
+    logo: '/src/sponsors/bolly.png',
+    blurb: 'AI meme video maker — put yourself in any viral clip.',
+  },
+  {
+    name: 'MemeBuilder AI',
+    url: 'https://www.memebuilder.ai/',
+    logo: '/src/sponsors/memebuilder.svg',
+    blurb: 'Convert text to memes with AI — perfect for marketers.',
+  },
+];
+
 export const RightSidebar = ({ startups = [] }) => {
   // Top 5 by upvote across the visible window
   const topStartups = [...startups]
@@ -18,20 +38,24 @@ export const RightSidebar = ({ startups = [] }) => {
           </a>
         </div>
 
-        <a href="https://memebuilder.ai" target="_blank" rel="dofollow" class="block group">
-          <div class="rounded-xl border border-gray-200 p-4 hover:border-gray-300 hover:bg-gray-50 transition-colors">
-            <div class="flex items-center gap-3 mb-2">
-              <div class="w-9 h-9 bg-gradient-to-br from-purple-500 to-pink-500 rounded-lg flex items-center justify-center">
-                <span class="text-white font-bold text-sm">M</span>
+        <div class="space-y-3">
+          ${SPONSORS.map((sponsor) => html`
+            <a key=${sponsor.url} href=${sponsor.url} target="_blank" rel="noopener" class="block group">
+              <div class="rounded-xl border border-gray-200 p-4 hover:border-gray-300 hover:bg-gray-50 transition-colors">
+                <div class="flex items-center gap-3 mb-2">
+                  <div class="w-9 h-9 rounded-lg ring-1 ring-gray-200 overflow-hidden bg-white flex items-center justify-center shrink-0">
+                    <img src=${sponsor.logo} alt="" width="36" height="36" class="w-full h-full object-contain" />
+                  </div>
+                  <div class="min-w-0">
+                    <div class="font-medium text-sm text-gray-900 truncate">${sponsor.name}</div>
+                    <div class="text-[11px] text-gray-500">Sponsored</div>
+                  </div>
+                </div>
+                <p class="text-xs text-gray-500 leading-relaxed">${sponsor.blurb}</p>
               </div>
-              <div class="min-w-0">
-                <div class="font-medium text-sm text-gray-900 truncate">MemeBuilder AI</div>
-                <div class="text-[11px] text-gray-500">Sponsored</div>
-              </div>
-            </div>
-            <p class="text-xs text-gray-500 leading-relaxed">Convert text to memes with AI — perfect for marketers.</p>
-          </div>
-        </a>
+            </a>
+          `)}
+        </div>
 
         <a
           href="/featured"
