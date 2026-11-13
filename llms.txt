@@ -1,6 +1,6 @@
 # SubmitHunt
 
-> SubmitHunt is a startup launch directory and Product Hunt alternative. Makers list a product in about two minutes and get a permanent listing page plus a do-follow backlink from a Domain Rating 44 site. Six free launch slots open every weekday; paid Premium and Featured plans skip the queue and get homepage placement.
+> SubmitHunt is a startup launch directory and Product Hunt alternative. Makers list a product in about two minutes and get a permanent listing page plus a do-follow backlink from a Domain Rating 49 site. Six free launch slots open every weekday; paid Premium and Featured plans skip the queue and get homepage placement.
 
 SubmitHunt has listed 1,600+ startups across 16 categories (SaaS, AI/ML, Productivity, Marketing, Web App, Developer Tools, E-commerce, Design, Education, Health & Fitness, Mobile App and more) and publishes a review post for every launch. Every page below is server-rendered, so its full text is readable without JavaScript.
 
