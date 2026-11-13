@@ -186,11 +186,22 @@
   </head>
   <body>
     <!-- HOME_SSR_START -->
-    <!-- Homepage-only: the sponsor links as plain HTML so crawlers that don't
-         run JavaScript still see (and follow) them. Keep in sync with SPONSORS
-         in src/components/right-sidebar.js. getShell() in lib/ssr.js strips
-         this region when the file is reused as the shell for other routes. -->
+    <!-- Homepage-only: the main navigation and the sponsor links as plain HTML
+         so crawlers that don't run JavaScript still see (and follow) them — the
+         SPA's own header/footer links only exist after JS runs. Keep the nav in
+         sync with src/components/header.js + footer.js, and the sponsors with
+         SPONSORS in src/components/right-sidebar.js. getShell() in lib/ssr.js
+         strips this region when the file is reused as the shell for other routes. -->
     <div id="ssr-root" data-home>
+      <nav aria-label="Main" class="max-w-md mx-auto px-4 pt-10">
+        <ul class="flex flex-wrap gap-x-4 gap-y-2 text-sm text-gray-700">
+          <li><a href="/submit" class="font-medium text-gray-900 underline underline-offset-2">Submit your startup</a></li>
+          <li><a href="/featured" class="underline underline-offset-2">Featured startups</a></li>
+          <li><a href="/directory" class="underline underline-offset-2">Startup directories ranked by DR</a></li>
+          <li><a href="/pricing" class="underline underline-offset-2">Pricing</a></li>
+          <li><a href="/blog" class="underline underline-offset-2">Blog</a></li>
+        </ul>
+      </nav>
       <aside aria-label="Sponsored" class="max-w-md mx-auto px-4 py-10">
         <p class="text-[11px] font-semibold text-gray-500 uppercase tracking-wider mb-3">Sponsored</p>
         <ul class="space-y-3 text-sm text-gray-600">

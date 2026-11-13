@@ -33,10 +33,10 @@ export const BlogPostPage = () => {
           setPost(data);
           setGenerating(false);
           setLoading(false);
-          supabase.from('blog_posts')
-            .update({ view_count: (data.view_count || 0) + 1 })
-            .eq('id', data.id)
-            .then(() => {});
+          // Anon can't write blog_posts directly; this RPC only bumps view_count
+          // (and leaves updated_at alone, so the sitemap lastmod stays honest).
+          supabase.rpc('increment_blog_post_view', { p_post_id: data.id })
+            .then(() => {}, () => {});
         }
       });
   };

@@ -1,6 +1,11 @@
 // Dynamic sitemap served at /sitemap.xml (via rewrite in vercel.json).
-// Always-fresh: static pages + every published blog post + every live startup
-// + one page per category. Replaces the old hand-maintained sitemap.xml.
+// Always-fresh: static pages + every published blog post + every live startup.
+// Replaces the old hand-maintained sitemap.xml.
+//
+// Every <loc> must be the page's canonical URL (clean paths like /submit, never
+// the /submit.html file the rewrite serves). <lastmod> is only emitted when we
+// know it: Google ignores lastmod site-wide once it proves inaccurate, so
+// static pages get none instead of "today".
 
 const SUPABASE_URL = 'https://lbayphzxmdtdmrqmeomt.supabase.co';
 const SUPABASE_ANON =
@@ -35,36 +40,47 @@ const xmlEscape = (s) =>
 const day = (v, fallback) => (v ? String(v).slice(0, 10) : fallback);
 
 function tag(loc, lastmod, changefreq, priority) {
-  return `  <url>\n    <loc>${xmlEscape(loc)}</loc>\n    <lastmod>${lastmod}</lastmod>\n    <changefreq>${changefreq}</changefreq>\n    <priority>${priority}</priority>\n  </url>`;
+  const mod = lastmod ? `\n    <lastmod>${lastmod}</lastmod>` : '';
+  return `  <url>\n    <loc>${xmlEscape(loc)}</loc>${mod}\n    <changefreq>${changefreq}</changefreq>\n    <priority>${priority}</priority>\n  </url>`;
 }
+
+const latest = (rows, ...fields) =>
+  rows.reduce((max, r) => {
+    const d = day(fields.map((f) => r[f]).find(Boolean), '');
+    return d > max ? d : max;
+  }, '');
 
 export default async function handler(req, res) {
   const today = new Date().toISOString().slice(0, 10);
-  const urls = [
-    tag(`${SITE}/`, today, 'daily', '1.0'),
-    tag(`${SITE}/directory`, today, 'daily', '0.9'),
-    tag(`${SITE}/submit.html`, today, 'weekly', '0.9'),
-    tag(`${SITE}/pricing.html`, today, 'monthly', '0.7'),
-    tag(`${SITE}/featured.html`, today, 'weekly', '0.7'),
-    tag(`${SITE}/blog`, today, 'weekly', '0.8'),
-  ];
-
+  let posts = [];
+  let startups = [];
   try {
-    const posts = await fetchAll('blog_posts?select=slug,updated_at,published_at&is_published=eq.true');
-    for (const p of posts) {
-      if (!p.slug) continue;
-      urls.push(tag(`${SITE}/blog/${p.slug}`, day(p.updated_at || p.published_at, today), 'monthly', '0.7'));
-    }
-
-    const startups = await fetchAll(
+    posts = await fetchAll('blog_posts?select=slug,updated_at,published_at&is_published=eq.true');
+    startups = await fetchAll(
       'startups?select=slug,updated_at,created_at&is_live=eq.true&or=(archived.is.null,archived.is.false)&order=upvote_count.desc'
     );
-    for (const s of startups) {
-      if (!s.slug) continue;
-      urls.push(tag(`${SITE}/startup/${encodeURIComponent(s.slug)}`, day(s.updated_at || s.created_at, today), 'weekly', '0.6'));
-    }
   } catch {
-    // Degrade gracefully to the static URLs already queued.
+    // Degrade gracefully to the static URLs below.
+  }
+
+  // The homepage and /blog change whenever a launch or a post does; the rest
+  // only change on deploys, so they carry no lastmod.
+  const urls = [
+    tag(`${SITE}/`, latest(startups, 'updated_at', 'created_at') || today, 'daily', '1.0'),
+    tag(`${SITE}/submit`, null, 'monthly', '0.9'),
+    tag(`${SITE}/directory`, null, 'monthly', '0.8'),
+    tag(`${SITE}/blog`, latest(posts, 'published_at', 'updated_at') || null, 'daily', '0.8'),
+    tag(`${SITE}/featured`, null, 'weekly', '0.7'),
+    tag(`${SITE}/pricing`, null, 'monthly', '0.7'),
+  ];
+
+  for (const p of posts) {
+    if (!p.slug) continue;
+    urls.push(tag(`${SITE}/blog/${p.slug}`, day(p.updated_at || p.published_at, today), 'monthly', '0.7'));
+  }
+  for (const s of startups) {
+    if (!s.slug) continue;
+    urls.push(tag(`${SITE}/startup/${encodeURIComponent(s.slug)}`, day(s.updated_at || s.created_at, today), 'weekly', '0.6'));
   }
 
   const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls.join('\n')}\n</urlset>\n`;

@@ -110,6 +110,17 @@
   ],
   "redirects": [
     {
+      "source": "/",
+      "has": [
+        {
+          "type": "host",
+          "value": "(1shot-live-eta|submithunt-dino06raos-projects|submithunt-git-main-dino06raos-projects)\\.vercel\\.app"
+        }
+      ],
+      "destination": "https://www.submithunt.com/",
+      "permanent": true
+    },
+    {
       "source": "/:path*",
       "has": [
         {
