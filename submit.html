@@ -14,20 +14,20 @@
     
     <!-- Open Graph / Facebook -->
     <meta property="og:type" content="website" />
-    <meta property="og:url" content="https://www.submithunt.com/submit.html" />
+    <meta property="og:url" content="https://www.submithunt.com/submit" />
     <meta property="og:title" content="Submit Your Startup | SubmitHunt" />
     <meta property="og:description" content="Submit your startup to SubmitHunt and get a 49+ DR backlink." />
     <meta property="og:image" content="https://www.submithunt.com/og-image.png?v=49" />
     
     <!-- Twitter / X -->
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:url" content="https://www.submithunt.com/submit.html" />
+    <meta name="twitter:url" content="https://www.submithunt.com/submit" />
     <meta name="twitter:title" content="Submit Your Startup | SubmitHunt" />
     <meta name="twitter:description" content="Submit your startup to SubmitHunt and get a 49+ DR backlink." />
     <meta name="twitter:image" content="https://www.submithunt.com/og-image.png?v=49" />
     
     <!-- Canonical URL -->
-    <link rel="canonical" href="https://www.submithunt.com/submit.html" />
+    <link rel="canonical" href="https://www.submithunt.com/submit" />
     
     <!-- Structured Data / JSON-LD -->
     <script type="application/ld+json">
@@ -36,7 +36,7 @@
       "@type": "WebPage",
       "name": "Submit Your Startup",
       "description": "Submit your startup to SubmitHunt and get a 49+ DR backlink. Launch your product on the best Product Hunt alternative.",
-      "url": "https://www.submithunt.com/submit.html",
+      "url": "https://www.submithunt.com/submit",
       "isPartOf": {
         "@type": "WebSite",
         "name": "SubmitHunt",
@@ -45,7 +45,7 @@
       "potentialAction": {
         "@type": "CreateAction",
         "name": "Submit Startup",
-        "target": "https://www.submithunt.com/submit.html"
+        "target": "https://www.submithunt.com/submit"
       }
     }
     </script>
@@ -63,6 +63,12 @@
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
     />
     <link rel="stylesheet" href="/src/style.css" />
+
+    <!-- The static crawler markup (#ssr-root in <body>) is only for clients
+         without JavaScript: JS browsers never paint it, and src/submit.js
+         removes it before the Preact app renders. -->
+    <script>document.documentElement.classList.add('js');</script>
+    <style>.js #ssr-root{display:none}</style>
 
     <!-- Cloudflare Turnstile (bot protection for the submit form). Explicit
          render so we control when/where the widget mounts in the Preact app. -->
@@ -94,6 +100,56 @@
     </script>
   </head>
   <body>
+    <!-- Crawler-visible summary of this page for clients that don't run
+         JavaScript (most AI crawlers, Google's first pass). Every fact mirrors
+         src/components/submit-startup-page.js (steps, free-plan unlock and
+         badge rules, plan cards) and src/pricing.js: keep them in sync. -->
+    <div id="ssr-root">
+      <nav aria-label="Main" class="max-w-3xl mx-auto px-4 pt-6">
+        <ul class="flex flex-wrap gap-3 text-sm text-gray-700">
+          <li><a href="/" class="underline underline-offset-2">Discover startups</a></li>
+          <li><a href="/submit" aria-current="page" class="font-medium text-gray-900 underline underline-offset-2">Submit your startup</a></li>
+          <li><a href="/pricing" class="underline underline-offset-2">Pricing</a></li>
+          <li><a href="/featured" class="underline underline-offset-2">Get featured</a></li>
+          <li><a href="/directory" class="underline underline-offset-2">Startup &amp; SaaS submission directories</a></li>
+          <li><a href="/blog" class="underline underline-offset-2">Blog</a></li>
+        </ul>
+      </nav>
+      <main class="max-w-3xl mx-auto px-4 py-12">
+        <h1 class="text-3xl font-semibold tracking-tight text-gray-900">Submit your startup</h1>
+        <p class="text-lg text-gray-600 mt-3 leading-relaxed">Launch your project on SubmitHunt, the best Product Hunt alternative, and get a DR 49+ backlink. Sign in to start your submission.</p>
+
+        <section class="mt-10">
+          <h2 class="text-xl font-semibold text-gray-900">How it works</h2>
+          <ol class="pl-5 mt-3 space-y-2 text-gray-700" style="list-style-type: decimal">
+            <li><strong>Your product.</strong> Enter your website URL and AI fills almost every field — name, tagline, description, categories, tags, pricing, target audience, tech stack, social links, SEO metadata, FAQ, and more. You review the draft before submitting: startup name, tagline, slug, category, up to 5 tags, logo, cover image, your X username, and optional LinkedIn and GitHub links.</li>
+            <li><strong>Plan &amp; launch.</strong> Choose the Free, Premium or Featured plan and pick your launch day. Premium and Featured are paid through Stripe and go live on the weekday you choose — right after payment, or automatically on a scheduled date. Free launches join the queue for the date you select.</li>
+          </ol>
+        </section>
+
+        <section class="mt-10">
+          <h2 class="text-xl font-semibold text-gray-900">Launching for free</h2>
+          <ul class="list-disc pl-5 mt-3 space-y-2 text-gray-700">
+            <li>No payment method needed. Unlock free submission by upvoting 3 products you like, so the community knows you before you launch.</li>
+            <li>Free launches go live Monday to Friday, with up to 6 free slots per day.</li>
+            <li>Place our badge on your homepage or footer to claim a permanent DR 49+ do-follow backlink and a gold verified checkmark next to your listing. The link must stay do-follow — don't add rel="nofollow", "sponsored" or "ugc".</li>
+            <li>A verified badge unlocks launch dates within the next 7 days. Without one, free launches wait at least 1 week in the queue.</li>
+            <li>You can skip the badge and launch with a no-follow link and no checkmark, then add the badge later from your dashboard.</li>
+            <li>Each website, including its subpages and subdomains, gets one free launch.</li>
+          </ul>
+        </section>
+
+        <section class="mt-10">
+          <h2 class="text-xl font-semibold text-gray-900">Plans at a glance</h2>
+          <ul class="list-disc pl-5 mt-3 space-y-2 text-gray-700">
+            <li><strong>Standard Launch — Free:</strong> live on the homepage for 7 days, badge for top 3 ranking, dofollow backlink with a verified badge; launch delayed by ~1 week without one.</li>
+            <li><strong>Premium Launch — $20 per launch</strong> (one-time payment): skip the queue and launch immediately, live on the homepage for 14 days, guaranteed dofollow backlink, featured in our newsletter.</li>
+            <li><strong>Featured Spot — $50 one-time:</strong> 7 days of featured placement in the feed, colorful gradient border, high visibility to daily visitors, guaranteed dofollow backlink, no subscription.</li>
+          </ul>
+          <p class="mt-4 text-gray-700">Compare every feature on the <a href="/pricing" class="underline underline-offset-2">pricing page</a>, see <a href="/featured" class="underline underline-offset-2">what a Featured Spot includes</a>, or browse <a href="/directory" class="underline underline-offset-2">startup &amp; SaaS submission directories</a> and the <a href="/blog" class="underline underline-offset-2">SubmitHunt blog</a>.</p>
+        </section>
+      </main>
+    </div>
     <div id="app-root"></div>
     <script type="importmap">
       {

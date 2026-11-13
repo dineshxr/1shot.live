@@ -83,7 +83,13 @@
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
     />
     <link rel="stylesheet" href="/src/style.css" />
-    
+
+    <!-- The static crawler markup (#ssr-root in <body>) is only for clients
+         without JavaScript: JS browsers never paint it, and src/pricing.js
+         removes it before the Preact app renders. -->
+    <script>document.documentElement.classList.add('js');</script>
+    <style>.js #ssr-root{display:none}</style>
+
     <!-- Analytics: wrapped so adblocker / network failures never break boot -->
     <script>
       window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };
@@ -110,6 +116,87 @@
     </script>
   </head>
   <body>
+    <!-- Crawler-visible summary of this page for clients that don't run
+         JavaScript (most AI crawlers, Google's first pass). Every fact mirrors
+         src/pricing.js: keep the plans, the backlink footnote and the FAQ in
+         sync when they change there. -->
+    <div id="ssr-root">
+      <nav aria-label="Main" class="max-w-3xl mx-auto px-4 pt-6">
+        <ul class="flex flex-wrap gap-3 text-sm text-gray-700">
+          <li><a href="/" class="underline underline-offset-2">Discover startups</a></li>
+          <li><a href="/submit" class="underline underline-offset-2">Submit your startup</a></li>
+          <li><a href="/pricing" aria-current="page" class="font-medium text-gray-900 underline underline-offset-2">Pricing</a></li>
+          <li><a href="/featured" class="underline underline-offset-2">Get featured</a></li>
+          <li><a href="/directory" class="underline underline-offset-2">Startup &amp; SaaS submission directories</a></li>
+          <li><a href="/blog" class="underline underline-offset-2">Blog</a></li>
+        </ul>
+      </nav>
+      <main class="max-w-3xl mx-auto px-4 py-12">
+        <h1 class="text-3xl font-semibold tracking-tight text-gray-900">Simple, transparent pricing</h1>
+        <p class="text-lg text-gray-600 mt-3 leading-relaxed">Choose the plan that fits your SubmitHunt launch. Every plan comes with a high-authority dofollow backlink from SubmitHunt (DR 49+) — on the free plan, once you add our badge.</p>
+
+        <section class="mt-10">
+          <h2 class="text-xl font-semibold text-gray-900">Standard Launch — Free</h2>
+          <p class="text-gray-600 mt-2">For founders happy to wait for a slot.</p>
+          <ul class="list-disc pl-5 mt-3 space-y-1 text-gray-700">
+            <li>Live on homepage for 7 days</li>
+            <li>Badge for top 3 ranking products</li>
+            <li>Indexable listing page</li>
+            <li>Category, tag, and search visibility</li>
+            <li>Editorial review</li>
+            <li>Guaranteed dofollow backlink<a href="#backlink-note">*</a></li>
+            <li>Launch delayed by ~1 week</li>
+          </ul>
+          <p class="mt-3"><a href="/submit" class="font-medium text-gray-900 underline underline-offset-2">Start with Free</a></p>
+        </section>
+
+        <section class="mt-10">
+          <h2 class="text-xl font-semibold text-gray-900">Premium Launch — $20 per launch</h2>
+          <p class="text-gray-600 mt-2">Most popular. Skip the queue and launch right away. One-time payment.</p>
+          <ul class="list-disc pl-5 mt-3 space-y-1 text-gray-700">
+            <li>Live on homepage for 14 days</li>
+            <li>Badge for top 3 ranking products</li>
+            <li>Indexable listing page</li>
+            <li>Category, tag, and search visibility</li>
+            <li>Editorial review</li>
+            <li>Guaranteed dofollow backlink</li>
+            <li>Skip the queue — launch immediately</li>
+            <li>Featured in our newsletter</li>
+          </ul>
+          <p class="mt-3"><a href="/submit?plan=premium" class="font-medium text-gray-900 underline underline-offset-2">Choose Premium</a></p>
+        </section>
+
+        <section class="mt-10">
+          <h2 class="text-xl font-semibold text-gray-900">Featured Spot — $50 one-time</h2>
+          <p class="text-gray-600 mt-2">Premium placement for 7 days.</p>
+          <ul class="list-disc pl-5 mt-3 space-y-1 text-gray-700">
+            <li>Featured placement in feed</li>
+            <li>High visibility to daily visitors</li>
+            <li>Indexable listing page</li>
+            <li>Category, tag, and search visibility</li>
+            <li>Editorial review</li>
+            <li>Guaranteed dofollow backlink</li>
+            <li>Colorful gradient border on card</li>
+            <li>One-time payment, no subscription</li>
+          </ul>
+          <p class="mt-3"><a href="/submit?plan=featured" class="font-medium text-gray-900 underline underline-offset-2">Choose Featured</a> · <a href="/featured" class="underline underline-offset-2">What a Featured Spot includes</a></p>
+        </section>
+
+        <p id="backlink-note" class="mt-8 text-sm text-gray-600 leading-relaxed">* On the free plan, the dofollow backlink requires adding our SubmitHunt badge with a do-follow link back to the directory on your site. Skip the badge and you still launch — your backlink just stays nofollow. Premium and Featured include a guaranteed dofollow backlink with no badge required.</p>
+
+        <section class="mt-10">
+          <h2 class="text-xl font-semibold text-gray-900">Frequently asked questions</h2>
+          <h3 class="font-semibold text-gray-900 mt-6">What is a dofollow backlink?</h3>
+          <p class="text-gray-700 mt-1 leading-relaxed">A dofollow backlink passes SEO authority from our site (DR 49+) to yours, helping improve your search engine rankings.</p>
+          <h3 class="font-semibold text-gray-900 mt-6">How long does my listing stay live?</h3>
+          <p class="text-gray-700 mt-1 leading-relaxed">Free listings stay live for 7 days, Premium listings for 14 days. Featured spots run for the duration you purchase.</p>
+          <h3 class="font-semibold text-gray-900 mt-6">Can I submit multiple products?</h3>
+          <p class="text-gray-700 mt-1 leading-relaxed">Yes — free users get one free submission. For additional products, choose the Premium plan.</p>
+        </section>
+
+        <p class="mt-10 text-gray-700">Ready to launch? <a href="/submit" class="underline underline-offset-2">Submit your startup</a>, or browse <a href="/directory" class="underline underline-offset-2">startup &amp; SaaS submission directories</a> and the <a href="/blog" class="underline underline-offset-2">SubmitHunt blog</a>.</p>
+      </main>
+    </div>
     <div id="app-root"></div>
     <script type="importmap">
       {

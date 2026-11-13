@@ -54,6 +54,11 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
   <link rel="stylesheet" href="src/style.css" />
 
+  <!-- The static crawler markup (#ssr-root in <body>) is only for clients
+       without JavaScript: JS browsers never paint it, and src/featured.js
+       removes it before the Preact app renders. -->
+  <script>document.documentElement.classList.add('js');</script>
+  <style>.js #ssr-root{display:none}</style>
 
   <!-- Structured Data / JSON-LD for WebPage -->
   <script type="application/ld+json">
@@ -98,6 +103,56 @@
 </head>
 
 <body>
+  <!-- Crawler-visible summary of this page for clients that don't run
+       JavaScript (most AI crawlers, Google's first pass). Every fact mirrors
+       src/featured.js (plus the Premium/Featured plan cards in src/pricing.js):
+       keep them in sync. -->
+  <div id="ssr-root">
+    <nav aria-label="Main" class="max-w-3xl mx-auto px-4 pt-6">
+      <ul class="flex flex-wrap gap-3 text-sm text-gray-700">
+        <li><a href="/" class="underline underline-offset-2">Discover startups</a></li>
+        <li><a href="/submit" class="underline underline-offset-2">Submit your startup</a></li>
+        <li><a href="/pricing" class="underline underline-offset-2">Pricing</a></li>
+        <li><a href="/featured" aria-current="page" class="font-medium text-gray-900 underline underline-offset-2">Get featured</a></li>
+        <li><a href="/directory" class="underline underline-offset-2">Startup &amp; SaaS submission directories</a></li>
+        <li><a href="/blog" class="underline underline-offset-2">Blog</a></li>
+      </ul>
+    </nav>
+    <main class="max-w-3xl mx-auto px-4 py-12">
+      <h1 class="text-3xl font-semibold tracking-tight text-gray-900">Get maximum visibility for your product</h1>
+      <p class="text-lg text-gray-600 mt-3 leading-relaxed">Featured placement puts your product at the top of SubmitHunt — seen by every visitor, every day. A Featured Spot is a one-time $50 payment for 7 days, with no subscription.</p>
+      <p class="mt-4"><a href="/submit?plan=featured" class="font-medium text-gray-900 underline underline-offset-2">Get featured — $50</a> · <a href="/pricing" class="underline underline-offset-2">View all plans</a></p>
+
+      <section class="mt-10">
+        <h2 class="text-xl font-semibold text-gray-900">Top placement, maximum visibility</h2>
+        <p class="text-gray-700 mt-2 leading-relaxed">A featured product sits at the top of the homepage and is randomly displayed on every launch page, so your reach compounds across the site. In the main feed your card carries a Featured label and a gradient border, in front of our community of indie hackers, investors, and early adopters.</p>
+        <h3 class="font-semibold text-gray-900 mt-6">Featured benefits</h3>
+        <ul class="list-disc pl-5 mt-2 space-y-1 text-gray-700">
+          <li>Skip the waitlist queue — launch immediately</li>
+          <li>Premium placement at the top of the homepage</li>
+          <li>Guaranteed high-authority dofollow backlink (DR 49+)</li>
+          <li>Featured in our startup newsletter</li>
+          <li>Maximum visibility to daily visitors</li>
+          <li>Showcased in a polished, attention-grabbing card layout</li>
+        </ul>
+      </section>
+
+      <section class="mt-10">
+        <h2 class="text-xl font-semibold text-gray-900">Featured Spot or Premium Launch?</h2>
+        <p class="text-gray-700 mt-2 leading-relaxed">Both paid plans skip the standard submission queue and include a guaranteed dofollow backlink with no badge required. Premium Launch is $20 per launch and keeps your product live on the homepage for 14 days, plus a mention in our newsletter. A Featured Spot is $50 one-time for 7 days of featured placement in the feed. <a href="/pricing" class="underline underline-offset-2">Compare all plans</a>.</p>
+      </section>
+
+      <section class="mt-10">
+        <h2 class="text-xl font-semibold text-gray-900">Frequently asked questions</h2>
+        <h3 class="font-semibold text-gray-900 mt-6">How long will my product be featured?</h3>
+        <p class="text-gray-700 mt-1 leading-relaxed">Featured spots run for the duration you purchase: $50 covers one week, paid once with no subscription.</p>
+        <h3 class="font-semibold text-gray-900 mt-6">What information do I need to provide?</h3>
+        <p class="text-gray-700 mt-1 leading-relaxed">Your product name, description, logo or image, and website URL. You enter them in the regular <a href="/submit" class="underline underline-offset-2">submission form</a> with the Featured plan selected, then pay through Stripe.</p>
+      </section>
+
+      <p class="mt-10 text-gray-700">Ready to boost your product's visibility? <a href="/submit?plan=featured" class="font-medium text-gray-900 underline underline-offset-2">Get featured today</a>.</p>
+    </main>
+  </div>
   <div id="app-root"></div>
   <script type="importmap">
       {

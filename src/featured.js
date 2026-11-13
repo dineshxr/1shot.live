@@ -374,4 +374,8 @@ const FeaturedPage = () => {
   `;
 };
 
+// featured.html's static #ssr-root is for crawlers without JavaScript; remove it so nothing renders twice.
+const ssrRoot = document.getElementById("ssr-root");
+if (ssrRoot) ssrRoot.remove();
+
 render(html`<${FeaturedPage} />`, document.getElementById("app-root"));
