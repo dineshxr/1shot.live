@@ -43,6 +43,10 @@
       "destination": "/api/blog.js?slug=:slug"
     },
     {
+      "source": "/category/:slug",
+      "destination": "/api/category.js?slug=:slug"
+    },
+    {
       "source": "/featured",
       "destination": "/featured.html"
     },

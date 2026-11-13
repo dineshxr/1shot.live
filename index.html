@@ -55,11 +55,13 @@
     />
     <link rel="stylesheet" href="/src/style.css" />
 
-    <!-- The homepage's static crawler markup (#ssr-root[data-home] in <body>)
-         is only for clients without JavaScript: JS browsers never paint it, and
-         src/main.js removes it as the SPA boots. -->
+    <!-- Server-rendered crawler markup (#ssr-root in <body>: the homepage block,
+         and what api/blog.js / api/startup.js inject into this shell) is for
+         clients without JavaScript. JS browsers never paint it — no flash or
+         layout shift before the SPA renders the same page — and src/main.js
+         removes it as the SPA boots. -->
     <script>document.documentElement.classList.add('js');</script>
-    <style>.js #ssr-root[data-home]{display:none}</style>
+    <style>.js #ssr-root{display:none}</style>
 
     <!-- Analytics: wrapped so adblocker / network failures never break boot -->
     <script>
@@ -200,6 +202,27 @@
           <li><a href="/directory" class="underline underline-offset-2">Startup directories ranked by DR</a></li>
           <li><a href="/pricing" class="underline underline-offset-2">Pricing</a></li>
           <li><a href="/blog" class="underline underline-offset-2">Blog</a></li>
+        </ul>
+      </nav>
+      <nav aria-label="Browse by category" class="max-w-md mx-auto px-4 pt-6">
+        <!-- Keep in sync with src/lib/categories.js (also rendered in the SPA footer). -->
+        <p class="text-[11px] font-semibold text-gray-500 uppercase tracking-wider mb-2">Browse launches by category</p>
+        <ul class="flex flex-wrap gap-x-4 gap-y-2 text-sm text-gray-700">
+          <li><a href="/category/saas" class="underline underline-offset-2">SaaS Products</a></li>
+          <li><a href="/category/ai-ml" class="underline underline-offset-2">AI &amp; Machine Learning Tools</a></li>
+          <li><a href="/category/productivity" class="underline underline-offset-2">Productivity Tools</a></li>
+          <li><a href="/category/marketing" class="underline underline-offset-2">Marketing Tools</a></li>
+          <li><a href="/category/web-app" class="underline underline-offset-2">Web Apps</a></li>
+          <li><a href="/category/e-commerce" class="underline underline-offset-2">E-commerce Tools</a></li>
+          <li><a href="/category/developer-tools" class="underline underline-offset-2">Developer Tools</a></li>
+          <li><a href="/category/design" class="underline underline-offset-2">Design Tools</a></li>
+          <li><a href="/category/education" class="underline underline-offset-2">Education Tools</a></li>
+          <li><a href="/category/health-fitness" class="underline underline-offset-2">Health &amp; Fitness Apps</a></li>
+          <li><a href="/category/mobile-app" class="underline underline-offset-2">Mobile Apps</a></li>
+          <li><a href="/category/gaming" class="underline underline-offset-2">Gaming Products</a></li>
+          <li><a href="/category/social" class="underline underline-offset-2">Social Apps</a></li>
+          <li><a href="/category/api-service" class="underline underline-offset-2">APIs &amp; Developer Services</a></li>
+          <li><a href="/category/chrome-extension" class="underline underline-offset-2">Chrome Extensions</a></li>
         </ul>
       </nav>
       <aside aria-label="Sponsored" class="max-w-md mx-auto px-4 py-10">

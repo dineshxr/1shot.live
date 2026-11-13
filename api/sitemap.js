@@ -1,6 +1,8 @@
 // Dynamic sitemap served at /sitemap.xml (via rewrite in vercel.json).
-// Always-fresh: static pages + every published blog post + every live startup.
-// Replaces the old hand-maintained sitemap.xml.
+// Always-fresh: static pages + category pages + every live startup + every
+// indexable blog post. Replaces the old hand-maintained sitemap.xml.
+import { CATEGORIES } from '../src/lib/categories.js';
+import { isVetted } from '../src/lib/link-policy.js';
 //
 // Every <loc> must be the page's canonical URL (clean paths like /submit, never
 // the /submit.html file the rewrite serves). <lastmod> is only emitted when we
@@ -55,13 +57,17 @@ export default async function handler(req, res) {
   let posts = [];
   let startups = [];
   try {
-    posts = await fetchAll('blog_posts?select=slug,updated_at,published_at&is_published=eq.true');
+    posts = await fetchAll('blog_posts?select=slug,startup_id,updated_at,published_at&is_published=eq.true');
     startups = await fetchAll(
-      'startups?select=slug,updated_at,created_at&is_live=eq.true&or=(archived.is.null,archived.is.false)&order=upvote_count.desc'
+      'startups?select=id,slug,category,plan,backlink_verified_at,updated_at,created_at&is_live=eq.true&or=(archived.is.null,archived.is.false)&order=upvote_count.desc'
     );
   } catch {
     // Degrade gracefully to the static URLs below.
   }
+  // Only indexable pages belong here: reviews of unvetted listings are
+  // noindex (see reviewIndexable in api/blog.js), so leave them out.
+  const vetted = new Set(startups.filter(isVetted).map((s) => s.id));
+  posts = posts.filter((p) => !p.startup_id || vetted.has(p.startup_id));
 
   // The homepage and /blog change whenever a launch or a post does; the rest
   // only change on deploys, so they carry no lastmod.
@@ -73,6 +79,12 @@ export default async function handler(req, res) {
     tag(`${SITE}/featured`, null, 'weekly', '0.7'),
     tag(`${SITE}/pricing`, null, 'monthly', '0.7'),
   ];
+
+  // Category landing pages (api/category.js); each changes when a listing in it does.
+  for (const [slug, c] of Object.entries(CATEGORIES)) {
+    const inCat = startups.filter((s) => s.category === c.db);
+    urls.push(tag(`${SITE}/category/${slug}`, latest(inCat, 'updated_at', 'created_at') || null, 'daily', '0.8'));
+  }
 
   for (const p of posts) {
     if (!p.slug) continue;

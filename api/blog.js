@@ -5,14 +5,27 @@
 // <title>, description, canonical, Open Graph tags, BlogPosting JSON-LD and
 // the full article HTML in #ssr-root; the Preact SPA replaces that block when
 // it boots (src/main.js). The index lists the latest posts the same way.
+//
+// Indexing policy (reviewIndexable below): editorial guides and reviews of
+// vetted listings (Premium, Featured, badge-verified — src/lib/link-policy.js)
+// are indexable. Auto-generated reviews of other listings stay readable and
+// linked from their listing page but are noindex, follow and left out of the
+// sitemap: Google was crawling and declining hundreds of thin AI reviews, and
+// those listings' own pages now carry the substance. Product links inside a
+// review follow the same link policy.
 import {
   SITE, esc, clip, stripTags, fmtDate, supaGet, getShell, injectHead, injectBody, jsonLdScripts, minimalShell,
+  neighbours, LIVE,
 } from '../lib/ssr.js';
+import { isVetted, applyLinkPolicy } from '../src/lib/link-policy.js';
+import { CATEGORY_SLUG_BY_DB, CATEGORIES } from '../src/lib/categories.js';
 
 const BLOG_URL = `${SITE}/blog`;
 const OG_IMG = `${SITE}/og-image.png`;
 const POST_FIELDS = 'id,startup_id,title,slug,content,excerpt,meta_description,keywords,author_name,published_at,updated_at,category';
 const INDEX_LIMIT = 100;
+
+export const reviewIndexable = (post, startup) => !post.startup_id || isVetted(startup);
 
 const loadPost = async (slug) => {
   const rows = await supaGet(`blog_posts?select=${POST_FIELDS}&slug=eq.${encodeURIComponent(slug)}&is_published=eq.true&limit=1`);
@@ -20,12 +33,26 @@ const loadPost = async (slug) => {
 };
 const loadStartup = async (id) => {
   if (!id) return null;
-  const rows = await supaGet(`startups?select=slug,title,tagline&id=eq.${encodeURIComponent(id)}&is_live=eq.true&limit=1`);
+  const rows = await supaGet(
+    `startups?select=slug,title,tagline,description,category,plan,backlink_verified_at,created_at&id=eq.${encodeURIComponent(id)}&${LIVE}&limit=1`
+  );
   return Array.isArray(rows) && rows[0] ? rows[0] : null;
 };
+// Latest indexable posts (guides + reviews of vetted live listings).
 const loadIndex = async () => {
-  const rows = await supaGet(`blog_posts?select=title,slug,excerpt,published_at,category&is_published=eq.true&order=published_at.desc&limit=${INDEX_LIMIT}`);
-  return Array.isArray(rows) ? rows.filter((p) => p.slug && p.title) : [];
+  const rows = await supaGet(
+    `blog_posts?select=title,slug,excerpt,published_at,category,startup_id,startups(plan,backlink_verified_at,is_live,archived)` +
+    `&is_published=eq.true&order=published_at.desc&limit=600`
+  );
+  if (!Array.isArray(rows)) return [];
+  return rows
+    .filter((p) => p.slug && p.title)
+    .filter((p) => !p.startup_id || (p.startups && p.startups.is_live && p.startups.archived !== true && isVetted(p.startups)))
+    .slice(0, INDEX_LIMIT);
+};
+const categoryOf = (s) => {
+  const slug = s && CATEGORY_SLUG_BY_DB[s.category];
+  return slug ? { path: `/category/${slug}`, name: CATEGORIES[slug].name } : null;
 };
 
 function headMeta({ title, desc, url, type = 'website', published, modified, keywords, noindex = false }) {
@@ -88,9 +115,12 @@ function postJsonLd(post, url, desc, startup) {
   return jsonLdScripts([article, crumbs([['Home', `${SITE}/`], ['Blog', BLOG_URL], [post.title, url]])]);
 }
 
-function postBody(post, startup) {
+function postBody(post, startup, related = []) {
   const meta = [fmtDate(post.published_at), post.author_name || 'SubmitHunt', post.category].filter(Boolean).map(esc).join(' · ');
   const tags = Array.isArray(post.keywords) ? post.keywords.filter(Boolean) : [];
+  // Reviews follow the listing's link policy; editorial guides keep their links as written.
+  const content = post.startup_id ? applyLinkPolicy(post.content, startup) : post.content || '';
+  const cat = categoryOf(startup);
   return `
       <main class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <nav aria-label="Breadcrumb" class="text-xs text-gray-500 mb-6"><a href="/">Home</a> › <a href="/blog">Blog</a> › <span>${esc(clip(post.title, 80))}</span></nav>
@@ -98,10 +128,17 @@ function postBody(post, startup) {
           <p class="text-xs text-gray-500 mb-5">${meta}</p>
           <h1 class="text-3xl sm:text-4xl font-semibold tracking-tight text-gray-900 mb-5">${esc(post.title)}</h1>
           ${post.excerpt ? `<p class="text-lg text-gray-600 mb-8 leading-relaxed pl-4 border-l-2 border-orange-300">${esc(post.excerpt)}</p>` : ''}
-          <div class="blog-content">${post.content || ''}</div>
+          <div class="blog-content">${content}</div>
           ${tags.length ? `<p class="mt-10 pt-6 border-t border-gray-200 text-xs text-gray-500">Tags: ${tags.map(esc).join(', ')}</p>` : ''}
-          ${startup?.slug ? `<p class="mt-6 text-sm text-gray-700">Launched on SubmitHunt: <a href="/startup/${esc(encodeURIComponent(startup.slug))}" class="underline">${esc(startup.title)}</a>${startup.tagline ? ` — ${esc(startup.tagline)}` : ''}</p>` : ''}
+          ${startup?.slug ? `<p class="mt-6 text-sm text-gray-700">Launched on SubmitHunt: <a href="/startup/${esc(encodeURIComponent(startup.slug))}" class="underline">${esc(startup.title)}</a>${startup.tagline ? ` — ${esc(startup.tagline)}` : ''}${cat ? ` · in <a href="${cat.path}" class="underline">${esc(cat.name)}</a>` : ''}</p>` : ''}
         </article>
+        ${related.length ? `
+        <section class="mt-10">
+          <h2 class="text-xl font-semibold text-gray-900 mb-4">More ${esc(cat ? cat.name : 'launches')} on SubmitHunt</h2>
+          <ul class="space-y-3">${related.map((r) => `
+            <li><a href="/startup/${esc(encodeURIComponent(r.slug))}" class="font-medium text-gray-900 underline">${esc(r.title)}</a>${r.tagline || r.description ? ` <span class="text-gray-600">— ${esc(clip(r.tagline || r.description, 110))}</span>` : ''}</li>`).join('')}
+          </ul>
+        </section>` : ''}
         <p class="mt-10 text-center text-sm text-gray-600">Building something? <a href="/submit" class="underline">Submit your startup</a> and get a permanent listing with a do-follow backlink.</p>
       </main>`;
 }
@@ -116,7 +153,7 @@ function indexBody(posts) {
   return `
       <main class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <h1 class="text-3xl sm:text-4xl font-semibold tracking-tight text-gray-900 mb-3">SubmitHunt Blog</h1>
-        <p class="text-gray-600 mb-8">Reviews of startups launched on SubmitHunt, plus launch, backlink and directory guides for makers. Latest ${posts.length} posts below; every post is listed in the <a href="/sitemap.xml" class="underline">sitemap</a>.</p>
+        <p class="text-gray-600 mb-8">Reviews of startups launched on SubmitHunt, plus launch, backlink and directory guides for makers. Latest ${posts.length} reviews and guides below.</p>
         <ul>${items}
         </ul>
       </main>`;
@@ -147,19 +184,21 @@ export default async function handler(req, res) {
   if (!post) {
     const meta = headMeta({ title: 'Post not found | SubmitHunt Blog', desc: 'This blog post does not exist or is no longer published.', url: `${BLOG_URL}/${encodeURIComponent(slug)}`, noindex: true });
     res.setHeader('Cache-Control', 'public, max-age=0, s-maxage=60');
-    return res.status(404).send(shell ? injectHead(shell, meta, '') : minimalShell(meta));
+    return res.status(404).send(shell ? injectHead(shell, meta, '<!-- no structured data on 404s -->') : minimalShell(meta));
   }
 
   const startup = await loadStartup(post.startup_id);
+  const related = startup ? await neighbours(startup, 6) : [];
   const url = `${BLOG_URL}/${encodeURIComponent(post.slug)}`;
   const title = `${clip(post.title, 70)} | SubmitHunt Blog`;
   const desc = clip(post.meta_description || post.excerpt || stripTags(post.content), 160);
   const meta = headMeta({
     title, desc, url, type: 'article', published: post.published_at, modified: post.updated_at,
     keywords: Array.isArray(post.keywords) && post.keywords.length ? post.keywords.join(', ') : '',
+    noindex: !reviewIndexable(post, startup),
   });
   const jsonld = postJsonLd(post, url, desc, startup);
-  const body = postBody(post, startup);
+  const body = postBody(post, startup, related);
   res.setHeader('Cache-Control', 'public, max-age=0, s-maxage=3600, stale-while-revalidate=86400');
   return res.status(200).send(shell ? injectBody(injectHead(shell, meta, jsonld), body) : minimalShell(meta + jsonld, body));
 }

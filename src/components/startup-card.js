@@ -2,6 +2,7 @@
 import { trackEvent, ANALYTICS_EVENTS } from '../lib/events.js';
 import { addReferralParam } from '../lib/url-utils.js';
 import { markVisited } from '../lib/engagement.js';
+import { productRel } from '../lib/link-policy.js';
 import { UpvoteButton } from './upvote-button.js';
 import { RankingBadge } from './ranking-badge.js';
 
@@ -383,9 +384,13 @@ export const StartupCard = ({ startup, user, onUpvoteChange, allStartups }) => {
                 <span class="text-xs font-medium">${commentCount}</span>
               </a>
 
-              <button
+              <a
+                href=${addReferralParam(startup.url)}
+                target="_blank"
+                rel=${productRel(startup)}
                 onClick=${(e) => {
-      e.preventDefault();
+      // Tracking only — a real link crawlers can follow (rel per
+      // src/lib/link-policy.js); don't preventDefault or window.open.
       e.stopPropagation();
 
       markVisited(startup.id);
@@ -394,16 +399,14 @@ export const StartupCard = ({ startup, user, onUpvoteChange, allStartups }) => {
         startupName: startup.title,
         startupUrl: startup.url
       });
-
-      window.open(addReferralParam(startup.url), '_blank', 'noopener,noreferrer');
     }}
                 class="p-2 text-gray-400 hover:text-gray-900 transition-colors rounded-lg hover:bg-gray-100"
-                aria-label="Visit startup"
+                aria-label=${`Visit ${startup.title}`}
               >
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
                 </svg>
-              </button>
+              </a>
             </div>
           </div>
         </div>

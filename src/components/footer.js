@@ -1,3 +1,5 @@
+import { CATEGORIES } from '../lib/categories.js';
+
 export const Footer = () => {
   return html`
     <footer class="mt-16 border-t border-gray-200 bg-white">
@@ -49,7 +51,16 @@ export const Footer = () => {
           </div>
         </div>
 
-        <div class="mt-10 pt-6 border-t border-gray-200 flex flex-col sm:flex-row justify-between items-center gap-3">
+        <nav aria-label="Browse by category" class="mt-10 pt-6 border-t border-gray-200">
+          <h4 class="text-xs font-semibold text-gray-900 uppercase tracking-wider mb-3">Browse by category</h4>
+          <ul class="flex flex-wrap gap-x-4 gap-y-2 text-sm">
+            ${Object.entries(CATEGORIES).map(([slug, c]) => html`
+              <li key=${slug}><a href=${`/category/${slug}`} class="text-gray-600 hover:text-gray-900 transition-colors">${c.name}</a></li>
+            `)}
+          </ul>
+        </nav>
+
+        <div class="mt-8 pt-6 border-t border-gray-200 flex flex-col sm:flex-row justify-between items-center gap-3">
           <p class="text-xs text-gray-500">
             © ${new Date().getFullYear()} SubmitHunt. All rights reserved.
           </p>

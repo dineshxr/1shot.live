@@ -1,9 +1,12 @@
 import { supabaseClient } from '../lib/supabase-client.js';
+import { applyLinkPolicy } from '../lib/link-policy.js';
+import { CATEGORY_SLUG_BY_DB, CATEGORIES } from '../lib/categories.js';
 
 /* global html, useState, useEffect, useRef */
 
 export const BlogPostPage = () => {
   const [post, setPost] = useState(null);
+  const [startup, setStartup] = useState(null);
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState(null);
@@ -33,6 +36,15 @@ export const BlogPostPage = () => {
           setPost(data);
           setGenerating(false);
           setLoading(false);
+          // The listing this review is about decides its link policy (do-follow
+          // only for Premium/Featured/badge-verified — src/lib/link-policy.js).
+          if (data.startup_id) {
+            supabase.from('startups')
+              .select('slug, title, tagline, category, plan, backlink_verified_at')
+              .eq('id', data.startup_id)
+              .maybeSingle()
+              .then(({ data: s }) => setStartup(s || null), () => {});
+          }
           // Anon can't write blog_posts directly; this RPC only bumps view_count
           // (and leaves updated_at alone, so the sitemap lastmod stays honest).
           supabase.rpc('increment_blog_post_view', { p_post_id: data.id })
@@ -146,8 +158,16 @@ export const BlogPostPage = () => {
 
           <div
             class="blog-content"
-            dangerouslySetInnerHTML=${{ __html: post.content }}
+            dangerouslySetInnerHTML=${{ __html: post.startup_id ? applyLinkPolicy(post.content, startup) : post.content }}
           />
+
+          ${startup && startup.slug && html`
+            <p class="mt-8 text-sm text-gray-700">
+              Launched on SubmitHunt: <a href=${`/startup/${encodeURIComponent(startup.slug)}`} class="underline">${startup.title}</a>
+              ${startup.tagline ? ` — ${startup.tagline}` : ''}
+              ${CATEGORY_SLUG_BY_DB[startup.category] && html` · in <a href=${`/category/${CATEGORY_SLUG_BY_DB[startup.category]}`} class="underline">${CATEGORIES[CATEGORY_SLUG_BY_DB[startup.category]].name}</a>`}
+            </p>
+          `}
 
           ${post.keywords && post.keywords.length > 0 && html`
             <div class="mt-10 pt-6 border-t border-gray-200">

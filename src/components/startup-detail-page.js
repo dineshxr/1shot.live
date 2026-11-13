@@ -3,6 +3,8 @@ import { supabaseClient } from '../lib/supabase-client.js';
 import { addReferralParam } from '../lib/url-utils.js';
 import { trackEvent, ANALYTICS_EVENTS } from '../lib/events.js';
 import { markVisited } from '../lib/engagement.js';
+import { productRel } from '../lib/link-policy.js';
+import { CATEGORY_SLUG_BY_DB, CATEGORIES } from '../lib/categories.js';
 import { UpvoteButton } from './upvote-button.js';
 import { CommentSection } from './comment-section.js';
 
@@ -12,6 +14,7 @@ export const StartupDetailPage = ({ user }) => {
   const [error, setError] = useState(null);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [blogPost, setBlogPost] = useState(null);
+  const [related, setRelated] = useState([]);
   const [userVoted, setUserVoted] = useState(null); // null = still checking
 
   useEffect(() => {
@@ -54,6 +57,26 @@ export const StartupDetailPage = ({ user }) => {
           .limit(1)
           .maybeSingle();
         if (blogData) setBlogPost(blogData);
+
+        // Listings launched around this one in the same category (same rule as
+        // lib/ssr.js neighbours(), which renders this list for crawlers).
+        if (startup.category && startup.created_at) {
+          const base = () => supabase
+            .from('startups')
+            .select('slug, title, tagline, description')
+            .eq('category', startup.category)
+            .eq('is_live', true)
+            .or('archived.is.null,archived.is.false')
+            .neq('slug', startup.slug);
+          const [{ data: newer }, { data: older }] = await Promise.all([
+            base().gt('created_at', startup.created_at).order('created_at', { ascending: true }).limit(8),
+            base().lt('created_at', startup.created_at).order('created_at', { ascending: false }).limit(8),
+          ]);
+          const a = newer || [];
+          const b = older || [];
+          const takeA = Math.min(a.length, Math.max(4, 8 - b.length));
+          setRelated([...a.slice(0, takeA).reverse(), ...b.slice(0, 8 - takeA)].filter((r) => r && r.slug && r.title));
+        }
 
       } catch (err) {
         console.error('Error fetching startup details:', err);
@@ -197,6 +220,9 @@ export const StartupDetailPage = ({ user }) => {
     }
   }
   
+  // Tracking only: the "Visit Website" control is a real <a href> so crawlers can
+  // follow it (rel per src/lib/link-policy.js). Don't preventDefault or
+  // window.open here — either would turn it back into a JS-only link.
   const handleVisitWebsite = () => {
     if (startup?.url) {
       markVisited(startup.id);
@@ -205,9 +231,11 @@ export const StartupDetailPage = ({ user }) => {
         startupName: startup.title,
         startupUrl: startup.url
       });
-      window.open(addReferralParam(startup.url), '_blank');
     }
   };
+
+  const categorySlug = startup ? CATEGORY_SLUG_BY_DB[startup.category] : null;
+  const categoryName = categorySlug ? CATEGORIES[categorySlug].name : null;
   
   // Check if we should show navigation arrows
   const hasMultipleImages = startup?.images && startup.images.length > 1;
@@ -317,15 +345,29 @@ export const StartupDetailPage = ({ user }) => {
             </div>
           </div>
           
+          ${startup.category && html`
+            <div class="mb-6">
+              <h2 class="text-xl font-bold mb-2">Category</h2>
+              ${categorySlug
+                ? html`<a href=${`/category/${categorySlug}`} class="text-blue-600 hover:underline">${startup.category}</a>`
+                : html`<span>${startup.category}</span>`}
+            </div>
+          `}
+
           <div class="mb-6">
             <h2 class="text-xl font-bold mb-2">Website</h2>
             <p class="text-lg mb-2">${getHostname(startup.url)}</p>
-            <button
-              onClick=${handleVisitWebsite}
-              class="bg-black text-white px-6 py-3 rounded font-bold hover:bg-gray-800 transition-colors"
-            >
-              Visit Website
-            </button>
+            ${startup.url && html`
+              <a
+                href=${addReferralParam(startup.url)}
+                target="_blank"
+                rel=${productRel(startup)}
+                onClick=${handleVisitWebsite}
+                class="inline-block bg-black text-white px-6 py-3 rounded font-bold hover:bg-gray-800 transition-colors"
+              >
+                Visit Website
+              </a>
+            `}
           </div>
           
           ${startup.author &&
@@ -373,6 +415,23 @@ export const StartupDetailPage = ({ user }) => {
 
         </div>
       </div>
+
+      ${related.length > 0 && html`
+        <section class="mt-8 bg-white border-2 border-black rounded p-6 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
+          <h2 class="text-xl font-bold mb-4">More ${categoryName || `${startup.category} launches`} on SubmitHunt</h2>
+          <ul class="space-y-3">
+            ${related.map((r) => html`
+              <li key=${r.slug}>
+                <a href=${`/startup/${encodeURIComponent(r.slug)}`} class="font-bold hover:underline">${r.title}</a>
+                ${(r.tagline || r.description) && html`<span class="text-gray-600"> — ${(r.tagline || r.description).slice(0, 110)}</span>`}
+              </li>
+            `)}
+          </ul>
+          ${categorySlug && html`
+            <p class="mt-4 text-sm"><a href=${`/category/${categorySlug}`} class="text-blue-600 hover:underline">Browse all ${categoryName}</a></p>
+          `}
+        </section>
+      `}
     </div>
   `;
 };

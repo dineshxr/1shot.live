@@ -1,35 +1,50 @@
-// Server-side meta injection for /startup/:slug (rewritten here in vercel.json).
-// Fetches the startup, injects a unique <title>, description, canonical, Open
-// Graph / Twitter tags and JSON-LD into the index.html shell, then returns it.
-// The Preact SPA still boots from the untouched <body> and renders the page.
-// This is what makes per-startup OG images + rich results work for crawlers,
-// which do not execute the client-side JS.
+// Server-rendered /startup/:slug (rewritten here in vercel.json).
+//
+// Crawlers that don't run JavaScript used to get an empty <body> here: no
+// text, no links — not even the product link a listing promises. Each live
+// listing now ships its own <title>, description, canonical, Open Graph tags,
+// JSON-LD and, in #ssr-root, the listing itself: description, facts, the
+// product link (rel per src/lib/link-policy.js — do-follow only for Premium,
+// Featured and badge-verified listings, exactly as /pricing promises), an
+// excerpt of its review post, and links to the category page and to the
+// listings launched around it. The Preact SPA renders the same page and
+// src/main.js removes #ssr-root when it boots.
+//
+// Unknown slug -> 404 + noindex. Scheduled (not yet live) or archived
+// listings still render for their makers but are noindex.
+import {
+  SITE, esc, clip, fmtDate, supaGet, getShell, injectHead, injectBody, jsonLdScripts, minimalShell,
+  withRef, hostOf, neighbours, firstSentence,
+} from '../lib/ssr.js';
+import { CATEGORY_SLUG_BY_DB, CATEGORIES } from '../src/lib/categories.js';
+import { productRel } from '../src/lib/link-policy.js';
 
-import { getShell } from '../lib/ssr.js';
+const FIELDS =
+  'id,slug,title,tagline,description,category,tags,upvote_count,url,logo_url,plan,backlink_verified_at,' +
+  'launch_date,created_at,is_live,archived';
 
-const SUPABASE_URL = 'https://lbayphzxmdtdmrqmeomt.supabase.co';
-const SUPABASE_ANON =
-  process.env.SUPABASE_ANON_KEY ||
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxiYXlwaHp4bWR0ZG1ycW1lb210Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDA5NTAyNTYsImV4cCI6MjA1NjUyNjI1Nn0.uSt7ll1Gy_TtbHxTyRtkyToZBIbW7ud18X45k5BdzKo';
-const SITE = 'https://www.submithunt.com';
-
-const esc = (s) =>
-  String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-const clip = (s, n) => {
-  s = String(s == null ? '' : s).replace(/\s+/g, ' ').trim();
-  return s.length > n ? s.slice(0, n - 1).trimEnd() + '…' : s;
+const loadStartup = async (slug) => {
+  const rows = await supaGet(`startups?select=${FIELDS}&slug=eq.${encodeURIComponent(slug)}&limit=1`);
+  return Array.isArray(rows) && rows[0] ? rows[0] : null;
+};
+const loadReview = async (id) => {
+  const rows = await supaGet(`blog_posts?select=title,slug,excerpt&startup_id=eq.${encodeURIComponent(id)}&is_published=eq.true&order=published_at.asc&limit=1`);
+  return Array.isArray(rows) && rows[0] ? rows[0] : null;
 };
 
-function metaBlock(s, url, ogImg, title, desc) {
-  const tags = Array.isArray(s.tags) ? s.tags.filter(Boolean) : [];
-  const keywords = [s.title, s.category, ...tags, 'startup', 'SubmitHunt'].filter(Boolean).join(', ');
+const categoryOf = (s) => {
+  const slug = CATEGORY_SLUG_BY_DB[s.category];
+  return slug ? { path: `/category/${slug}`, name: CATEGORIES[slug].name } : null;
+};
+
+function headMeta({ title, desc, url, ogImg, alt, keywords, noindex }) {
   return `
     <title>${esc(title)}</title>
     <meta name="title" content="${esc(title)}" />
     <meta name="description" content="${esc(desc)}" />
-    <meta name="keywords" content="${esc(keywords)}" />
+    ${keywords ? `<meta name="keywords" content="${esc(keywords)}" />` : ''}
     <meta name="author" content="SubmitHunt" />
-    <meta name="robots" content="index, follow" />
+    <meta name="robots" content="${noindex ? 'noindex, follow' : 'index, follow'}" />
     <link rel="canonical" href="${esc(url)}" />
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="SubmitHunt" />
@@ -40,7 +55,7 @@ function metaBlock(s, url, ogImg, title, desc) {
     <meta property="og:image" content="${esc(ogImg)}" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
-    <meta property="og:image:alt" content="${esc(s.title)} on SubmitHunt" />
+    <meta property="og:image:alt" content="${esc(alt)}" />
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:url" content="${esc(url)}" />
     <meta name="twitter:title" content="${esc(title)}" />
@@ -49,9 +64,10 @@ function metaBlock(s, url, ogImg, title, desc) {
     <meta name="twitter:creator" content="@submithunt" />`;
 }
 
-function jsonLdBlock(s, url, ogImg) {
+function jsonLd(s, url, ogImg, cat) {
   const name = s.title || 'Startup';
-  const softwareApp = {
+  // Facts only: no invented price and no star rating (upvotes are not reviews).
+  const app = {
     '@context': 'https://schema.org',
     '@type': 'SoftwareApplication',
     name,
@@ -60,98 +76,116 @@ function jsonLdBlock(s, url, ogImg) {
     operatingSystem: 'Web',
     url,
     image: ogImg,
-    offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
     isPartOf: { '@type': 'WebSite', name: 'SubmitHunt', url: `${SITE}/` },
   };
-  if (s.url) softwareApp.sameAs = [s.url];
-  if (Number(s.upvote_count) > 0) {
-    softwareApp.aggregateRating = {
-      '@type': 'AggregateRating',
-      ratingValue: '5',
-      ratingCount: String(Math.max(1, Number(s.upvote_count))),
-      bestRating: '5',
-      worstRating: '1',
-    };
-  }
+  if (s.url) app.sameAs = [s.url];
+  const crumbs = [['Home', `${SITE}/`]];
+  if (cat) crumbs.push([cat.name, `${SITE}${cat.path}`]);
+  crumbs.push([name, url]);
   const breadcrumb = {
     '@context': 'https://schema.org',
     '@type': 'BreadcrumbList',
-    itemListElement: [
-      { '@type': 'ListItem', position: 1, name: 'Home', item: `${SITE}/` },
-      { '@type': 'ListItem', position: 2, name: 'Directory', item: `${SITE}/directory` },
-      { '@type': 'ListItem', position: 3, name, item: url },
-    ],
+    itemListElement: crumbs.map(([n, item], i) => ({ '@type': 'ListItem', position: i + 1, name: n, item })),
   };
-  const org = {
-    '@context': 'https://schema.org',
-    '@type': 'Organization',
-    name: 'SubmitHunt',
-    url: `${SITE}/`,
-    logo: `${SITE}/og-image.png`,
-  };
-  return [softwareApp, breadcrumb, org]
-    .map((o) => `<script type="application/ld+json">${JSON.stringify(o)}</script>`)
-    .join('\n    ');
+  return jsonLdScripts([app, breadcrumb]);
+}
+
+function body(s, { cat, review, related }) {
+  const tags = Array.isArray(s.tags) ? s.tags.filter(Boolean) : [];
+  const host = hostOf(s.url);
+  const launched = fmtDate(s.launch_date || s.created_at);
+  const fact = (label, value) =>
+    value ? `<div><dt class="text-gray-500">${label}</dt><dd class="text-gray-900 font-medium">${value}</dd></div>` : '';
+  const catHtml = cat ? `<a href="${cat.path}" class="underline">${esc(s.category)}</a>` : esc(s.category || '');
+  return `
+      <main class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        <nav aria-label="Breadcrumb" class="text-xs text-gray-500 mb-6"><a href="/">Home</a> › ${cat ? `<a href="${cat.path}">${esc(cat.name)}</a> › ` : ''}<span>${esc(clip(s.title, 80))}</span></nav>
+        <article class="bg-white border border-gray-200 rounded-2xl shadow-sm p-7 sm:p-10">
+          <header class="flex items-center gap-4 mb-5">
+            ${s.logo_url ? `<img src="${esc(s.logo_url)}" alt="${esc(s.title)} logo" width="56" height="56" class="w-14 h-14 rounded-xl border border-gray-200 object-cover" loading="lazy" />` : ''}
+            <div>
+              <h1 class="text-3xl font-semibold tracking-tight text-gray-900">${esc(s.title)}</h1>
+              ${s.tagline ? `<p class="text-gray-600 mt-1">${esc(s.tagline)}</p>` : ''}
+            </div>
+          </header>
+          ${s.description ? `<p class="text-lg text-gray-700 leading-relaxed mb-6">${esc(s.description)}</p>` : ''}
+          ${s.url ? `<p class="mb-8"><a href="${esc(withRef(s.url))}" target="_blank" rel="${productRel(s)}" class="inline-block bg-gray-900 text-white px-5 py-2.5 rounded-lg font-semibold">Visit ${esc(host || s.title)}</a></p>` : ''}
+          <dl class="grid grid-cols-2 gap-x-6 gap-y-4 text-sm">
+            ${fact('Category', catHtml)}
+            ${fact('Launched on SubmitHunt', esc(launched))}
+            ${fact('Upvotes', String(Number(s.upvote_count) || 0))}
+            ${fact('Website', esc(host))}
+            ${tags.length ? `<div class="col-span-2"><dt class="text-gray-500">Tags</dt><dd class="text-gray-900">${tags.map(esc).join(', ')}</dd></div>` : ''}
+          </dl>
+          ${review ? `
+          <section class="border-t border-gray-200 pt-6 mt-8">
+            <h2 class="text-lg font-semibold text-gray-900 mb-2">From our review</h2>
+            ${review.excerpt ? `<p class="text-gray-700 mb-3">${esc(review.excerpt)}</p>` : ''}
+            <a href="/blog/${esc(encodeURIComponent(review.slug))}" class="underline">${esc(review.title)}</a>
+          </section>` : ''}
+        </article>
+        ${related.length ? `
+        <section class="mt-10">
+          <h2 class="text-xl font-semibold text-gray-900 mb-4">More ${esc(cat ? cat.name : s.category ? `${s.category} launches` : 'launches')} on SubmitHunt</h2>
+          <ul class="space-y-3">${related.map((r) => `
+            <li><a href="/startup/${esc(encodeURIComponent(r.slug))}" class="font-medium text-gray-900 underline">${esc(r.title)}</a>${r.tagline || r.description ? ` <span class="text-gray-600">— ${esc(clip(r.tagline || r.description, 110))}</span>` : ''}</li>`).join('')}
+          </ul>
+          ${cat ? `<p class="mt-4 text-sm"><a href="${cat.path}" class="underline">Browse all ${esc(cat.name)}</a></p>` : ''}
+        </section>` : ''}
+        <p class="mt-10 text-center text-sm text-gray-600">Building something? <a href="/submit" class="underline">Submit your startup</a> — free listings go live on the next open weekday. See <a href="/pricing" class="underline">pricing</a>.</p>
+      </main>`;
 }
 
 export default async function handler(req, res) {
-  const host = req.headers.host || 'submithunt.com';
+  const host = req.headers.host || 'www.submithunt.com';
   const slug =
     req.query && req.query.slug
       ? String(req.query.slug)
       : decodeURIComponent((req.url || '').split('?')[0].split('/').filter(Boolean).pop() || '');
 
-  let startup = null;
-  try {
-    const r = await fetch(
-      `${SUPABASE_URL}/rest/v1/startups?select=slug,title,tagline,description,category,tags,upvote_count,url,logo_url,screenshot_url&slug=eq.${encodeURIComponent(slug)}&limit=1`,
-      { headers: { apikey: SUPABASE_ANON, Authorization: `Bearer ${SUPABASE_ANON}` } }
-    );
-    if (r.ok) {
-      const a = await r.json();
-      startup = a && a[0];
-    }
-  } catch {
-    startup = null;
-  }
-
-  const shell = await getShell(host);
-
-  let title, desc, url, ogImg, meta, jsonld;
-  if (startup) {
-    url = `${SITE}/startup/${encodeURIComponent(startup.slug || slug)}`;
-    ogImg = `${SITE}/api/og.js?slug=${encodeURIComponent(startup.slug || slug)}`;
-    title = `${startup.title} — ${clip(startup.tagline || startup.category || 'Startup', 60)} | SubmitHunt`;
-    desc = clip(startup.tagline || startup.description || `${startup.title} on SubmitHunt — discover, upvote and visit.`, 160);
-    meta = metaBlock(startup, url, ogImg, title, desc);
-    jsonld = jsonLdBlock(startup, url, ogImg);
-  }
-
   res.setHeader('Content-Type', 'text/html; charset=utf-8');
+  const [s, shell] = await Promise.all([slug ? loadStartup(slug) : null, getShell(host)]);
+
+  if (!s) {
+    const meta = headMeta({
+      title: 'Startup not found | SubmitHunt',
+      desc: 'This listing does not exist or has been removed.',
+      url: `${SITE}/startup/${encodeURIComponent(slug)}`,
+      ogImg: `${SITE}/og-image.png?v=49`,
+      alt: 'SubmitHunt',
+      noindex: true,
+    });
+    res.setHeader('Cache-Control', 'public, max-age=0, s-maxage=60');
+    return res.status(404).send(shell ? injectHead(shell, meta, '<!-- no structured data on 404s -->') : minimalShell(meta));
+  }
+
+  const live = s.is_live === true && s.archived !== true;
+  const url = `${SITE}/startup/${encodeURIComponent(s.slug)}`;
+  const ogImg = `${SITE}/api/og.js?slug=${encodeURIComponent(s.slug)}`;
+  const cat = categoryOf(s);
+  const sub = s.tagline || firstSentence(s.description) || s.category || 'Startup';
+  const title = `${s.title} — ${clip(sub, 60)} | SubmitHunt`;
+  let desc = clip(s.tagline || s.description || `${s.title} on SubmitHunt.`, 160);
+  if (desc.length < 90 && s.category) desc = clip(`${desc} A ${s.category} product launched on SubmitHunt.`, 160);
+  const tags = Array.isArray(s.tags) ? s.tags.filter(Boolean) : [];
+  const meta = headMeta({
+    title, desc, url, ogImg,
+    alt: `${s.title} on SubmitHunt`,
+    keywords: [s.title, s.category, ...tags, 'startup', 'SubmitHunt'].filter(Boolean).join(', '),
+    noindex: !live,
+  });
+  const jsonld = jsonLd(s, url, ogImg, cat);
+
+  // Scheduled/archived listings: head only (noindex); the SPA still renders them.
+  let ssrHtml = '';
+  if (live) {
+    const [review, related] = await Promise.all([loadReview(s.id), neighbours(s, 8)]);
+    ssrHtml = body(s, { cat, review, related });
+  }
+
   res.setHeader('Cache-Control', 'public, max-age=0, s-maxage=3600, stale-while-revalidate=86400');
-
-  if (!shell) {
-    // Shell unavailable: return a minimal document that still boots the SPA.
-    const head = startup ? meta + '\n    ' + jsonld : '';
-    res.status(startup ? 200 : 404).send(
-      `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" />${head}<link rel="stylesheet" href="/vendor/tailwind.css" /><link rel="stylesheet" href="/src/style.css" /></head><body><div id="app-root"></div><script type="importmap">{"imports":{"preact":"/vendor/preact.module.js","preact/hooks":"/vendor/preact-hooks.module.js","htm":"/vendor/htm.module.js","htm/preact":"/vendor/htm-preact.module.js","@supabase/supabase-js":"/vendor/supabase.esm.js"}}</script><script type="module" src="/src/main.js"></script></body></html>`
-    );
-    return;
-  }
-
-  let html = shell;
-  if (startup) {
-    if (html.includes('<!-- SSR_META_START -->') && html.includes('<!-- SSR_META_END -->')) {
-      html = html.replace(/<!-- SSR_META_START -->[\s\S]*?<!-- SSR_META_END -->/, `<!-- SSR_META_START -->${meta}\n    <!-- SSR_META_END -->`);
-    } else {
-      html = html.replace(/<title>[\s\S]*?<\/title>/, '').replace('</head>', `${meta}\n  </head>`);
-    }
-    if (html.includes('<!-- SSR_JSONLD_START -->') && html.includes('<!-- SSR_JSONLD_END -->')) {
-      html = html.replace(/<!-- SSR_JSONLD_START -->[\s\S]*?<!-- SSR_JSONLD_END -->/, `<!-- SSR_JSONLD_START -->\n    ${jsonld}\n    <!-- SSR_JSONLD_END -->`);
-    } else {
-      html = html.replace('</head>', `${jsonld}\n  </head>`);
-    }
-  }
-
-  res.status(startup ? 200 : 404).send(html);
+  const page = shell ? injectHead(shell, meta, jsonld) : null;
+  return res
+    .status(200)
+    .send(page ? (ssrHtml ? injectBody(page, ssrHtml) : page) : minimalShell(meta + jsonld, ssrHtml));
 }
